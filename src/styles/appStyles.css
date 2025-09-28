@@ -1,0 +1,256 @@
+/* Base styles for page */
+
+/* Keep space at the bottom for nav */
+.ev-screen {
+  padding-bottom: 65px; /* Space for bottom nav */
+}
+
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background-color: white;
+  font-family: 'Open Sans', sans-serif;
+}
+
+/* Top bar styling */
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 40px;
+  background-color: #001f26; /* dark blue */
+  box-shadow: 0 2px 12px #04BFBF; /* light neon blue shadow */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1002;
+}
+
+.top-bar-logo {
+  height: 65px;
+  filter: drop-shadow(0 0 6px #04BFBF);
+}
+
+/* Container & Map */
+.home-container {
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  background-color: white;
+}
+
+.map-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.leaflet-top.leaflet-left {
+  top: 65px !important; /* height of your header bar */
+  left: 10px !important;
+}
+
+
+/* Floating QR button */
+.qr-floating-button {
+  position: absolute;
+  top: 80px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #F2A007; /* yellow */
+  border: none;
+  box-shadow: 0 0 12px #F2A007;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1002;
+}
+
+.qr-icon {
+  width: 28px;
+  height: 28px;
+  filter: invert(10%) drop-shadow(0 0 2px #001f26);
+}
+
+/* Bottom navigation bar */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 55px;
+  background-color: #001f26;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 -2px 12px #04BFBF;
+  z-index: 1002;
+}
+
+.bottom-bar button {
+  flex: 1;
+  height: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  
+  /* force vertical stacking */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+}
+
+.bottom-bar button:first-child {
+  border-left: none; /* remove left border on first button */
+}
+
+.bottom-bar button:last-child {
+  border-right: none; /* remove right border on last button */
+}
+
+.bottom-bar button:hover {
+  background-color: rgba(4, 191, 191, 0.2); /* subtle hover highlight */
+}
+.bottom-bar button svg {
+  width: 20px;
+  height: 20px;
+  margin-bottom: 4px; /* gap between icon and text */
+}
+
+.bottom-bar button span {
+  font-family: 'Open Sans', sans-serif;
+  font-size: 9px;
+  margin-top: 4px;
+  color: #cdebf5;
+}
+.bottom-bar button.active span {
+  color: #04BFBF;
+}
+
+.bottom-bar button.active svg path {
+  stroke: #04BFBF;
+}
+
+.bottom-buttons {
+  position: fixed;
+  right: 16px;
+  bottom: 80px;  /* keep above footer */
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 2000;
+}
+
+#custom-popup {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 56px; /* height of footer nav */
+  background: #fff;
+  padding: 16px;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.3);
+  z-index: 2000;
+  font-family: 'Rubik', sans-serif;
+}
+
+#custom-popup .popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#custom-popup h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+#custom-popup button {
+  margin: 8px 4px 0 0;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  background: #04BFBF;
+  color: #fff;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#custom-popup #close-popup {
+  background: none;
+  color: #333;
+  font-size: 20px;
+  font-weight: bold;
+  line-height: 1;
+  cursor: pointer;
+}
+/* Support floating button - matches QR button style but WhatsApp green */
+.support-button {
+  /* if you already used inline styles, this is a fallback. Keep for consistency */
+  background-color: #25D366 !important;
+  box-shadow: 0 0 12px #25D366 !important;
+  color: #fff;
+}
+
+/* Support popup overlay */
+.support-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+/* Box inside overlay */
+.support-box {
+  position: relative;
+  width: 92%;
+  max-width: 380px;
+  padding: 18px;
+  background: #fff;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+  font-family: 'Open Sans', sans-serif;
+}
+
+/* Close X inside box */
+.support-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* WhatsApp button inside popup */
+.support-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  background: #25D366;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 14px rgba(37,211,102,0.18);
+}

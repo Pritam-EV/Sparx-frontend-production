@@ -1,0 +1,86 @@
+{
+  "homepage": ".",
+  "name": "frontend",
+  "version": "0.1.0",
+  "proxy": "https://sparx-backend-production.onrender.com",
+  "private": true,
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.2",
+    "@mui/material": "^7.3.2",
+    "@mui/system": "^7.3.0",
+    "@mui/utils": "^5.15.14",
+    "@mui/x-data-grid": "^7.29.9",
+    "@mui/x-date-pickers": "^8.9.2",
+    "@react-google-maps/api": "^2.20.6",
+    "@react-oauth/google": "^0.12.1",
+    "ajv": "^6.12.6",
+    "ajv-keywords": "^3.5.2",
+    "axios": "^1.10.0",
+    "browserify-zlib": "^0.2.0",
+    "buffer": "^6.0.3",
+    "cra-template": "1.2.0",
+    "crypto": "npm:crypto-browserify",
+    "crypto-browserify": "^3.12.1",
+    "d3": "^7.9.0",
+    "date-fns": "^4.1.0",
+    "firebase": "^11.4.0",
+    "jwt-decode": "^4.0.0",
+    "leaflet": "^1.9.4",
+    "mqtt": "^5.10.3",
+    "process": "^0.11.10",
+    "qr-scanner": "^1.4.2",
+    "razorpay": "^2.9.5",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.62.0",
+    "react-icons": "^5.5.0",
+    "react-leaflet": "^4.2.1",
+    "react-qr-scanner": "^1.0.0-alpha.11",
+    "react-router-dom": "^7.1.1",
+    "react-scripts": "5.0.1",
+    "recharts": "^3.1.2",
+    "rm": "^0.1.8",
+    "serve": "^14.2.4",
+    "stream": "npm:stream-browserify",
+    "stream-browserify": "^3.0.0",
+    "url": "^0.11.4",
+    "util": "^0.12.5"
+  },
+  "browser": {
+    "process": false
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "cross-env CI=false react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "cross-env": "^10.0.0",
+    "react-app-rewired": "^0.1.0"
+  },
+  "engines": {
+    "node": "20"
+  }
+}
