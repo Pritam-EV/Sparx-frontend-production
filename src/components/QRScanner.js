@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import QrScanner from "qr-scanner";
 import axios from "axios";
@@ -15,6 +15,17 @@ import {
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 
+// Helper to extract plain device ID from raw QR data
+const extractId = (raw) => {
+  try {
+    // If it's a full URL, split on “/” and take last segment
+    const parts = raw.split("/");
+    return parts.pop() || parts.pop(); // handles trailing slash
+  } catch {
+    return raw;
+  }
+};
+
 const QRScanner = () => {
   const navigate = useNavigate();
   const [device_id, setDeviceId] = useState("");
@@ -30,7 +41,16 @@ const QRScanner = () => {
           if (result?.data) {
             setDeviceId(result.data);
             verifyDevice(result.data);
-            qrScannerRef.current.stop();
+            if (result?.data) {
+               // 1) extract plain ID
+                  const id = extractId(result.data);
+                     // 2) update state and verify
+                   setDeviceId(id);
+                   verifyDevice(id);
+                    qrScannerRef.current.stop();
+                  }
+
+            
           }
         },
         {
@@ -52,7 +72,7 @@ const QRScanner = () => {
     // eslint-disable-next-line
   }, []);
 
-  const verifyDevice = async (id) => {
+  const verifyDevice = useCallback(async (id) => {
     try {
       const response = await axios.get(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/devices/check-device/${id}`
@@ -63,9 +83,11 @@ const QRScanner = () => {
         setError("Device not found. Please check the ID.");
       }
     } catch (err) {
-      setError("Error verifying device. Try again.");
+         setTimeout(() => {
+     setError("Error verifying device. Try again.");
+   }, 3000);
     }
-  };
+  }, [navigate]);
 
   const handleManualEntry = async () => {
     if (device_id.trim() !== "") {

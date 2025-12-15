@@ -173,7 +173,7 @@ async function applyCoupon() {
       return;
     }
 
-    const backendBase = process.env.REACT_APP_Backend_API_Base_URL || 'https://ev-charging-a5c53.web.app/';
+    const backendBase = process.env.REACT_APP_Backend_API_Base_URL || 'https://viz.vjratechnologies.com/';
     const resp = await fetch(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/coupons/apply`, {
       method: 'POST',

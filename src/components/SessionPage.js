@@ -63,29 +63,29 @@ const SessionPage = () => {
   return (
     <>
       <style>{`
-        .top-bar {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 60px;
-          background-color: #001f26;
-          box-shadow: 0 2px 12px #04BFBF;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1002;
-        }
-        .top-bar-logo {
-          height: 50px;
-          filter: drop-shadow(0 0 6px #04BFBF);
-        }
-      `}</style>
+      .top-bar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 40px;
+        background-color: #001f26; /* dark blue */
+        box-shadow: 0 2px 12px #04BFBF; /* light neon blue shadow */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1002;
+      }
 
+      .top-bar-logo {
+        height: 65px;
+        filter: drop-shadow(0 0 6px #04BFBF);
+      }
+      `}</style>
+    <div className="top-bar">
+      <img src="/logo.png" alt="Sparx Logo" className="top-bar-logo" />
+    </div>
       {/* Top Bar */}
-      <div className="top-bar">
-        <img src="/logo.png" alt="Sparx Logo" className="top-bar-logo" />
-      </div>
 
       {/* Page Layout */}
       <Box

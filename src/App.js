@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   BrowserRouter,
   Routes,
   Route,
   Navigate,
   useLocation,
+  useNavigate,
 } from "react-router-dom";
 
 import SplashScreen from "./components/SplashScreen";
@@ -32,11 +33,6 @@ import OwnerDashboard from "./features/owner/OwnerDashboard";
 import MyDevices from "./features/owner/MyDevices";
 import OwnerAnalytics from "./features/owner/OwnerAnalytics";
 
-// If you want to *only* use Refine features in AdminDashboard,
-// then Refine should be integrated inside AdminDashboard, not here.
-
-// Or if you want to *not* use Refine, just remove the import and usage from App.
-
 import UserList from "./pages/users/UserList";
 import UserCreate from "./pages/users/UserCreate";
 import UserEdit from "./pages/users/UserEdit";
@@ -47,34 +43,67 @@ import DeviceEdit from "./pages/devices/DeviceEdit";
 
 // AppContent component handles splash + auth + all routes.
 const AppContent = () => {
-  const [showSplash, setShowSplash] = useState(
-    () => !sessionStorage.getItem("splashShown")
-  );
+  const [showSplash, setShowSplash] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const initialUrlRef = useRef(null);
+  const hasNavigatedRef = useRef(false);
+  const firstLoadRef = useRef(true);
+
+  // Get authentication status
   const isAuthenticated = !!localStorage.getItem("user");
 
+    // 1) Capture initial URL exactly once
   useEffect(() => {
-    if (showSplash) {
-      const timeout = setTimeout(() => {
-        setShowSplash(false);
-        sessionStorage.setItem("splashShown", "true"); // Prevent splash next time
-      }, 2000);
-      return () => clearTimeout(timeout);
-    }
-  }, [showSplash]);
+    initialUrlRef.current =
+      window.location.pathname +
+      window.location.search +
+      window.location.hash;
+    console.log("Initial URL:", initialUrlRef.current);
+  }, []);
 
+  // 2) Run splash timer once on mount
   useEffect(() => {
-    sessionStorage.setItem("lastPage", location.pathname);
-  }, [location]);
+    if (!firstLoadRef.current) return;
+    const timer = setTimeout(() => {
+      setShowSplash(false);
+      const target = initialUrlRef.current;
+
+      // 3a) If it’s a deep link (not root/home/welcome/login/signup), go there
+      const deepLink =
+        target &&
+        !["/", "/home", "/welcome", "/login", "/signup"].includes(target);
+
+      if (deepLink) {
+        console.log("Deep link ->", target);
+        navigate(target, { replace: true });
+      } else {
+        // 3b) Normal launch: auth → home, else → welcome
+        if (isAuthenticated) {
+          console.log("Authenticated → /home");
+          navigate("/home", { replace: true });
+        } else {
+          console.log("Not authenticated → /welcome");
+          navigate("/welcome", { replace: true });
+        }
+      }
+      firstLoadRef.current = false;
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [navigate, isAuthenticated]);
 
   if (showSplash) return <SplashScreen />;
-
+  
+  // Show main app
   return (
     <div className="app-container">
       <Routes>
         {/* Public routes */}
-        <Route path="/" element={<WelcomeScreen />} />
+        <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="/home" element={<Home />} />
+        <Route path="/welcome" element={<WelcomeScreen />} />
 
         {/* Admin protected routes */}
         <Route
@@ -90,9 +119,7 @@ const AppContent = () => {
           <Route path="devices" element={<DevicesOverview />} />
           <Route path="users" element={<UsersManagement />} />
           <Route path="sessions" element={<SessionsOverview />} />
-          <Route path="analytics" element={<Analytics />} />
-          <Route path="/admin/receipts" element={<ReceiptsOverview />} />
-          {/* Below are Refine CRUD routes if you want */}
+          <Route path="receipts" element={<ReceiptsOverview />} />
           <Route path="crud/users" element={<UserList />} />
           <Route path="crud/users/create" element={<UserCreate />} />
           <Route path="crud/users/edit/:id" element={<UserEdit />} />
@@ -101,8 +128,7 @@ const AppContent = () => {
           <Route path="crud/devices/edit/:id" element={<DeviceEdit />} />
         </Route>
 
-        {/* Owner and admin */}
-        {/* Owner routes: redirect /owner to MyDevices by default */}
+        {/* Owner routes */}
         <Route element={<PrivateRoute allowedRoles={['owner']} />}>
           <Route path="/owner" element={<OwnerDashboard />}>
             <Route index element={<MyDevices />} />
@@ -110,7 +136,6 @@ const AppContent = () => {
             <Route path="analytics" element={<OwnerAnalytics />} />
           </Route>
         </Route>
-
 
         {/* Authentication routes */}
         <Route
@@ -126,7 +151,7 @@ const AppContent = () => {
           }
         />
 
-        {/* Private routes - require login */}
+        {/* Private routes */}
         <Route
           path="/profile"
           element={
@@ -143,22 +168,14 @@ const AppContent = () => {
             </PrivateRoute>
           }
         />
-        <Route
-          path="/qr-scanner"
-          element={
-            <PrivateRoute>
-              <QRScanner />
-            </PrivateRoute>
-          }
-        />
+        <Route path="/qr-scanner" element={<QRScanner />} />
+        
+        {/* IMPORTANT: Deep link route for charging options */}
         <Route
           path="/charging-options/:device_id"
-          element={
-            <PrivateRoute>
-              <ChargingOptions />
-            </PrivateRoute>
-          }
+          element={<ChargingOptions />}
         />
+        
         <Route path="/session-summary" element={<SessionSummary />} />
         <Route
           path="/session-start/:transactionId"
@@ -184,14 +201,10 @@ const AppContent = () => {
             </PrivateRoute>
           }
         />
-        <Route 
-           path="/devices/create" 
-           element={
-              <DeviceCreate />
-          } 
-        />
+        <Route path="/devices/create" element={<DeviceCreate />} />
+        
         {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
     </div>
   );
@@ -200,7 +213,6 @@ const AppContent = () => {
 function App() {
   return (
     <BrowserRouter>
-      {/* Integrate AppContent with routing */}
       <AppContent />
     </BrowserRouter>
   );

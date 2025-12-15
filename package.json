@@ -1,5 +1,5 @@
 {
-  "homepage": ".",
+  "homepage": "/",
   "name": "frontend",
   "version": "0.1.0",
   "proxy": "https://sparx-backend-production.onrender.com",
@@ -51,12 +51,14 @@
   "browser": {
     "process": false
   },
-  "scripts": {
-    "start": "react-scripts start",
-    "build": "cross-env CI=false react-scripts build",
-    "test": "react-scripts test",
-    "eject": "react-scripts eject"
-  },
+"scripts": {
+  "start": "react-scripts start",
+  "build": "cross-env CI=false react-scripts build",
+  "serve-build": "serve -s build -l 5000",
+  "deploy": "npm run build && firebase deploy --only hosting",
+  "test": "react-scripts test",
+  "eject": "react-scripts eject"
+},
   "eslintConfig": {
     "extends": [
       "react-app",

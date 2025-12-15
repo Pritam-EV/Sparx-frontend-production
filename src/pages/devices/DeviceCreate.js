@@ -28,7 +28,7 @@ const DeviceCreate = () => {
     setSuccess(false);
 
     try {
-      await apiFetch("https://ev-charging-a5c53.web.app/api/devices", {
+      await apiFetch("https://viz.vjratechnologies.com/api/devices", {
         method: "POST",
         body: JSON.stringify(deviceData),
       });

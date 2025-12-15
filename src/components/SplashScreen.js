@@ -1,15 +1,6 @@
-import React, { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import React from "react";
 
 const SplashScreen = () => {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    setTimeout(() => {
-      navigate("/welcome"); // Redirect after 2 seconds
-    }, 2000);
-  }, [navigate]);
-
   return (
     <div style={styles.container}>
       <img
@@ -27,9 +18,12 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#000000", // Theme background
-    width: "480px", // Full viewport width
+    width: "100vw", // Full viewport width
     height: "100vh", // Full viewport height
-    margin: "0 auto", // Centers horizontally
+    position: "fixed", // Ensures it covers the entire screen
+    top: 0,
+    left: 0,
+    zIndex: 9999, // Ensures it's on top
   },
   logo: {
     width: "60%", // Makes it adaptive to screen size

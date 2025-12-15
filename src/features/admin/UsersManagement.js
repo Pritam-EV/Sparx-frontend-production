@@ -13,7 +13,7 @@ import { apiFetch } from "../../utils/apiFetch";
   useEffect(() => {
     (async () => {
       try {
-        const data = await apiFetch("https://ev-charging-a5c53.web.app/api/users");
+        const data = await apiFetch("https://viz.vjratechnologies.com/api/users");
         setUsers(data);
       } catch (err) {
         setError(err.message);
@@ -150,7 +150,7 @@ import { apiFetch } from "../../utils/apiFetch";
               const id = editing.id || editing._id;
               const endpoint =
                 /* set endpoint for user/device: */ 
-                `${window.location.pathname.includes("user") ? "https://ev-charging-a5c53.web.app/api/users/" : "https://ev-charging-a5c53.web.app/api/devices/"}${id}`;
+                `${window.location.pathname.includes("user") ? "https://viz.vjratechnologies.com/api/users/" : "https://viz.vjratechnologies.com/api/devices/"}${id}`;
               await apiFetch(endpoint, {
                 method: "PUT",
                 body: JSON.stringify(editing),
@@ -192,7 +192,7 @@ import { apiFetch } from "../../utils/apiFetch";
             try {
               const endpoint =
                 /* set endpoint for user/device: */
-                `${window.location.pathname.includes("user") ? "https://ev-charging-a5c53.web.app/api/users/" : "https://ev-charging-a5c53.web.app/api/devices/"}${deleteId}`;
+                `${window.location.pathname.includes("user") ? "https://viz.vjratechnologies.com/api/users/" : "https://viz.vjratechnologies.com/api/devices/"}${deleteId}`;
               await apiFetch(endpoint, { method: "DELETE" });
               setDeleteId(null);
               window.location.reload(); // or refresh your data fetch
