@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigationType, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import "../styles/appStyles.css";
 import FooterNav from "../components/FooterNav";
 import { useParams } from "react-router-dom";
@@ -10,140 +10,13 @@ export default function LiveSessionPage() {
   
   const navigate = useNavigate();
   const location = useLocation();
-  const navigationType = useNavigationType();
-  const [showRefreshWarning, setShowRefreshWarning] = useState(false);
-  const [showReloadConfirm, setShowReloadConfirm] = useState(false);
-  const reloadActionRef = useRef(null);
-  const [showConnectionLost, setShowConnectionLost] = useState(false);
-  const lastFetchSuccessRef = useRef(Date.now());
-  // Track if we already applied stale effects to avoid repeating every tick
-  const wasStaleRef = useRef(false);
-
-  // Track last time telemetry changed, and previous readings
-  const lastTelemetryChangeRef = useRef(Date.now());
-  const prevTelemetryRef = useRef({ voltage: null, current: null, energy: null, power: null });
-  // Utility clamps
   const clamp = (val, min, max) => Math.min(Math.max(val, min), max);
-
-  // Track raw energy to detect resets/jitter and a running offset if meter resets
-  const lastRawEnergyRef = useRef(null);
-  const energyOffsetRef = useRef(0);
-  // Last monotonically increasing, display-safe energy
-  const lastDisplayEnergyRef = useRef(0);
-
-  // Small tolerances
-  const ENERGY_NOISE_TOL = 0.0003;  // kWh jitter to ignore
-  const ENERGY_RESET_TOL = 0.05;    // kWh drop to consider a meter reset
-
-  // Small-change thresholds to ignore noise
-  const TELE_THRESH = {
-    voltage: 1,       // volts
-    current: 0.1,     // amps
-    energy: 0.0005,   // kWh
-    power: 5          // watts
-  };
-
-
-
-
-// 1) 1s guard: use 10s and force relay OFF on first stale transition
-useEffect(() => {
-  const t = setInterval(() => {
-    const stale = Date.now() - lastTelemetryChangeRef.current >= 20_000; // 10s
-    if (stale && !showConnectionLost) setShowConnectionLost(true);
-    if (!stale && showConnectionLost) setShowConnectionLost(false);
-
-    if (stale && !wasStaleRef.current) {
-      setVoltage(0);
-      setCurrent(0);
-      setRelayState('OFF');        // ensure "Charging OFF"
-    }
-    wasStaleRef.current = stale;
-  }, 3000);
-  return () => clearInterval(t);
-}, [showConnectionLost]);
-
-
-
-  const hasChanged = (prev, curr, threshold) =>
-    prev === null || Math.abs(curr - prev) > threshold;
-
-
-  // Detect refresh immediately on mount
-// --- Refresh-detection (single robust effect) ---
-useEffect(() => {
-  // robust check for a reload (works across browsers)
-  const isReload = (() => {
-    try {
-      const navEntries = performance.getEntriesByType?.("navigation") || [];
-      if (navEntries.length > 0) return navEntries[0].type === "reload";
-      if (performance.navigation && typeof performance.navigation.type !== "undefined") {
-        // legacy fallback
-        return performance.navigation.type === performance.navigation.TYPE_RELOAD;
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  })();
-
-  if (!isReload) {
-    // not a reload — do nothing now (we'll reset on unmount)
-    return;
-  }
-
-  // increment counter stored in sessionStorage
-  let refreshCount = parseInt(sessionStorage.getItem("refreshCount") || "0", 10) + 1;
-  sessionStorage.setItem("refreshCount", String(refreshCount));
-  console.log("[FE DEBUG] Refresh detected, count =", refreshCount);
-
-  if (refreshCount === 1) {
-    setShowRefreshWarning(true);
-    const hideTimer = setTimeout(() => setShowRefreshWarning(false), 4000);
-    return () => clearTimeout(hideTimer); // clear timer if component unmounts quickly
-  }
-
-  // second (or further) refresh -> redirect after a short delay so router is ready
-  setTimeout(() => {
-    console.log("[FE DEBUG] Redirecting to /session after second refresh");
-    navigate("/session", { replace: true });
-  }, 150);
-}, []); // run once on mount
-
-useEffect(() => {
-  return () => {
-    sessionStorage.removeItem("refreshCount");
-    console.log("[FE DEBUG] Leaving LiveSessionPage, reset refreshCount");
-  };
-}, []);
-
-useEffect(() => {
-  const handleBeforeUnload = (e) => {
-    // Prevent browser’s default refresh prompt
-    e.preventDefault();
-    e.returnValue = ""; // Required for Chrome
-
-    // Instead of letting it refresh, show our popup
-    setShowReloadConfirm(true);
-
-    // Stop the unload
-    return "";
-  };
-
-  window.addEventListener("beforeunload", handleBeforeUnload);
-
-  return () => {
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-  };
-}, []);
-
-
-
   const [isLoading, setIsLoading] = useState(false);
   const [sessionData, setSessionData] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
 
+  
   const [pausedReason, setPausedReason] = useState(null);  // "voltage" or "button"
 const [timeLeft, setTimeLeft] = useState(0);
 const [showPausePopup, setShowPausePopup] = useState(false);
@@ -230,199 +103,102 @@ const seconds = timeLeft % 60;
   const displayPercent = isCharging ? usagePercent : frozenUsageRef.current;
 
 
-  const fetchActiveSession = async () => {
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/active`, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-      });
+const fetchActiveSession = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.log('No token found, redirecting to login');
+      navigate('/login');
+      return;
+    }
 
-      if (res.status === 404) {
-        console.log('[FE DEBUG] fetchActiveSession: 404 No active session');
-        // If we previously had a sessionId, that means session just ended -> go to summary
-        const lastId = lastSessionIdRef.current;
-        setSessionData(null);
-        setRelayState('OFF');
-        setShowPausePopup(false);
-        setPausedReason(null);
-        // cleanup timer if any
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-        if (lastId) {
-          console.log('[FE DEBUG] Session ended, redirecting to summary for sessionId=', lastId);
-          // clear ref then navigate
-          lastSessionIdRef.current = null;
-          navigate('/session-summary', { state: { sessionId: lastId } });
-          return;
-        }
+    console.log('Fetching from URL:', `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/active`);
+    
+    const res = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/active`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    console.log('Response status:', res.status, res.statusText);
+
+    if (res.status === 404) {
+      const lastId = lastSessionIdRef.current;
+      if (lastId) {
+        console.log('Session ended, redirecting to summary:', lastId);
+        lastSessionIdRef.current = null;
+        navigate('/session-summary', { state: { sessionId: lastId } });
+      } else {
+        console.log('No active session or lastId, going home');
+        navigate('/');
+      }
+      return;
+    }
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error('API Error:', res.status, errorText);
+      if (res.status === 401) {
+        localStorage.removeItem('token');
+        navigate('/login');
         return;
       }
-      if (!res.ok) throw new Error("Failed to fetch active session");
-
-      const data = await res.json();
-      console.log('[FE DEBUG] fetchActiveSession returned:', data);
-
-
-
-
-      setSessionData(data);
-      // update telemetry
-      setVoltage(Number(data.voltage) || 0);
-      setCurrent(Number(data.current) || 0);
-      setEnergyConsumed(Number(data.energyConsumed) || 0);
-
-      // --- Telemetry change detection (freshness) ---
-// 2) In fetchActiveSession success path, REPLACE the early setVoltage/setCurrent with conditional updates:
-const v = Number(data.voltage) || 0;
-const c = Number(data.current) || 0;
-const e = Number(data.energyConsumed) || 0;
-let p = Number.isFinite(Number(data.power)) ? Number(data.power) : v * c;
-// 1) Read the raw energy from backend (falls back to 0 if bad)
-const rawEnergy = Number(data.energyConsumed);
-const safeRawEnergy = Number.isFinite(rawEnergy) ? rawEnergy : 0;
-
-// 2) Detect meter reset: if a significant drop vs previous raw, carry an offset
-if (lastRawEnergyRef.current != null &&
-    safeRawEnergy + ENERGY_NOISE_TOL < lastRawEnergyRef.current - ENERGY_RESET_TOL) {
-  // Meter likely reset; add last raw to offset so display stays continuous
-  energyOffsetRef.current += lastRawEnergyRef.current; 
-}
-lastRawEnergyRef.current = safeRawEnergy;
-
-// 3) Compute display energy with offset, clamp at 0, and enforce monotonic non-decreasing
-let displayEnergy = Math.max(0, safeRawEnergy + energyOffsetRef.current);
-
-// Ignore tiny negative dips or regressions due to noise by holding the last value
-if (displayEnergy + ENERGY_NOISE_TOL < lastDisplayEnergyRef.current) {
-  displayEnergy = lastDisplayEnergyRef.current;
-} else {
-  lastDisplayEnergyRef.current = displayEnergy;
-}
-
-// change detection (kept as-is)
-const prev = prevTelemetryRef.current;
-const anyChanged = hasChanged(prev.voltage, v, TELE_THRESH.voltage) ||
-                   hasChanged(prev.current, c, TELE_THRESH.current) ||
-                   hasChanged(prev.energy,  e, TELE_THRESH.energy)  ||
-                   hasChanged(prev.power,   p, TELE_THRESH.power);
-
-if (anyChanged) {
-  prevTelemetryRef.current = { voltage: v, current: c, energy: e, power: p };
-  lastTelemetryChangeRef.current = Date.now();
-  if (showConnectionLost) setShowConnectionLost(false);
-}
-
-// compute stale at 10s
-const staleNow = Date.now() - lastTelemetryChangeRef.current >= 20_000;
-const normalizedRelay = ((data.relayState || data.relay || '') + '').toUpperCase() === 'ON' ? 'ON' : 'OFF';
-
-// Apply UI based on stale
-if (staleNow) {
-  setShowConnectionLost(true);
-  setVoltage(0);
-  setCurrent(0);
-  setRelayState('OFF');           // lock stage to OFF while stale
-  setEnergyConsumed(displayEnergy);    // keep last good energy (non-negative)
-} else {
-  setShowConnectionLost(false);
-  setVoltage(v);
-  setCurrent(c);
-  setRelayState(normalizedRelay); // only trust backend when fresh
-  setEnergyConsumed(displayEnergy);    // safe, monotonic energy
-}
-
-
-      // Remember session id so we can redirect when session ends
-      if (data.sessionId) {
-        lastSessionIdRef.current = data.sessionId;
-      }
-
-      lastFetchSuccessRef.current = Date.now();        // Update last-success timestamp
-      if (showConnectionLost) {
-          setShowConnectionLost(false);              // Hide popup if it was shown
-      }
-      // --- Pause detection logic ---
-      // Show popup when either backend reports status 'Paused' OR relay is OFF while session still active
-      const deviceStatus = (data.status || '').toString();
-      const isPausedByBackend = deviceStatus.toLowerCase() === 'paused';
-      const isRelayOff = (normalizedRelay === 'OFF');
-
-      if (isPausedByBackend || (isRelayOff && deviceStatus.toLowerCase() === 'occupied')) {
-        // If popup not already visible, open it
-        if (!showPausePopup) {
-          console.log('[FE DEBUG] Detected pause, opening pause popup');
-          setShowPausePopup(true);
-        }
-        // Determine reason only once unless it changes
-        if (!pauseInitializedRef.current) {
-          const v = Number(data.voltage) || 0;
-          const reason = (v > 0 && v < 100) ? 'voltage' : 'button';
-          setPausedReason(reason);
-          console.log('[FE DEBUG] Pause reason initialized:', reason, 'voltage=', v);
-          if (reason === 'button') {
-            console.log('[FE DEBUG] Initializing 300s countdown');
-            setTimeLeft(300);
-          }
-          pauseInitializedRef.current = true; // ✅ mark initialized
-        }
-        else {
-          // keep popup visible, do not reset timeLeft
-          console.log('[FE DEBUG] Pause popup already visible. pausedReason=', pausedReason, 'timeLeft=', timeLeft);
-        }
-      } else {
-        // No pause: clear popup and countdown
-        if (showPausePopup) console.log('[FE DEBUG] Clearing pause popup - session resumed or not paused');
-        setShowPausePopup(false);
-        setPausedReason(null);
-        setTimeLeft(0);
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-         pauseInitializedRef.current = false; // ✅ allow new pause to re-init countdown
-      }
-      console.log('Session status:', deviceStatus);
-      console.log('RelayState:', normalizedRelay);
-      console.log('Is paused by backend?', isPausedByBackend);
-      console.log('Is Relay OFF?', isRelayOff);
-      console.log('Show pause popup?', showPausePopup);
-
-    } catch (err) {
-        console.error("Unexpected error while fetching active session:", err);
-        // If 10s have passed since last successful fetch, show warning
-        if (Date.now() - lastFetchSuccessRef.current >= 10000) {
-            setShowConnectionLost(true);
-        }
+      return; // Don't crash on other errors
     }
-  };
 
-// Track refreshes
-// 🔄 Detect refresh and warn user
-useEffect(() => {
-  if (navigationType === "reload") {
-    const refreshCount = parseInt(sessionStorage.getItem("refreshCount") || "0", 10) + 1;
-    sessionStorage.setItem("refreshCount", refreshCount.toString());
+    const data = await res.json();
+    console.log('FE DEBUG: fetchActiveSession success:', data);
 
-    if (refreshCount === 1) {
-      setShowRefreshWarning(true);
+    // Update states...
+    setVoltage(Number(data.voltage) || 0);
+    setCurrent(Number(data.current) || 0);
+    setEnergyConsumed(Number(data.energyConsumed) || 0);
+    const normalizedRelay = data.relayState?.toUpperCase() === 'ON' ? 'ON' : 'OFF';
+    setRelayState(normalizedRelay);
+    
+    
+    if (data.sessionId) lastSessionIdRef.current = data.sessionId;
 
-      // Auto-hide after 4s (optional)
-      setTimeout(() => setShowRefreshWarning(false), 4000);
-    } else if (refreshCount > 1) {
-      // 🚨 If refreshed again → redirect
-      navigate("/session", { replace: true });
-    }
-  } else {
-    // Reset on normal navigation
-    sessionStorage.removeItem("refreshCount");
+
+// ✅ NEW LOGIC: Prioritize status over relayState
+const deviceStatus = data.status?.toString().toLowerCase();
+const isOffline = deviceStatus === 'offline';
+const isCharging = relayState === 'ON' && !isOffline; // Truthful charging state
+const isPausedByBackend = deviceStatus === 'paused';
+    
+console.log('Device status:', deviceStatus, 'relayState:', normalizedRelay); // DEBUG
+
+// Show OFF if offline OR paused OR relay actually OFF
+
+if (isOffline || isPausedByBackend || normalizedRelay === 'OFF') {
+  if (!showPausePopup) {
+    console.log('FE DEBUG: Device OFF/Offline/Paused → showing pause popup');
+    setShowPausePopup(true);
+    setPausedReason('offline'); // New reason for clarity
+    setTimeLeft(300);
   }
-}, [navigationType, navigate]);
+} else if (normalizedRelay === 'ON' && !isOffline && !showPausePopup) {
+  // Only hide popup if truly charging (ON + not offline)
+  console.log('FE DEBUG: Resumed charging → hiding pause popup');
+  setShowPausePopup(false);
+  setPausedReason(null);
+  setTimeLeft(0);
+  if (timerRef.current) {
+    clearInterval(timerRef.current);
+    timerRef.current = null;
+  }
+}
+
+  } catch (err) {
+    console.error('Unexpected error while fetching active session:', err);
+    // Don't redirect on network errors - keep trying
+  }
+};
+
+
+
 
 
 
@@ -439,11 +215,12 @@ useEffect(() => {
   };
 }, []);
 
-  useEffect(() => {
-    intervalRef.current = setInterval(fetchActiveSession, 5000);
-    fetchActiveSession(); // fetch immediately on mount
-    return () => clearInterval(intervalRef.current);
-  }, []);
+useEffect(() => {
+  fetchActiveSession(); // Initial fetch
+  const intervalRef = setInterval(fetchActiveSession, 5000);
+  return () => clearInterval(intervalRef);
+}, []);
+
 
   useEffect(() => {
     const deviceIdToUse = sessionData?.deviceId || sessionId; // If deviceId unavailable, consider using sessionId fallback or handle null.
@@ -578,7 +355,7 @@ useEffect(() => {
         timerRef.current = null;
       }
     };
-  }, [showPausePopup, pausedReason, timeLeft]);
+  }, [showPausePopup, pausedReason]);
 
 
 
@@ -913,11 +690,12 @@ useEffect(() => {
 
 <div className="main-content">
         {/* Charging status */}
-        <p className="charging-status">
-          <span className={relayState === 'ON' ? 'on' : 'off'}>
-             Charging {relayState === 'ON' ? 'ON' : 'OFF'}
-          </span>
-        </p>
+<p className="charging-status">
+  <span className={isCharging ? 'on' : 'off'}>
+    Charging {isCharging ? 'ON' : 'OFF'}
+  </span>
+</p>
+
 
 <div className="circular-container">
   <svg width="180" height="180" viewBox="0 0 200 200">
@@ -1018,114 +796,48 @@ useEffect(() => {
             </div>
           </div>
         )}
-        {showConnectionLost && (
-          <div
-            className="popup-overlay"
-            onClick={() => setShowConnectionLost(false)}
-          >
-            <div
-              className="popup-box"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div
-                className="close-btn"
-                onClick={() => setShowConnectionLost(false)}
-              >
-                ×
-              </div>
-
-              <h3>Connection Lost / Power Loss</h3>
-              <p>Session might be active,please check your vehicle.</p>
-            </div>
-          </div>
-        )}
 
 
 
 
-        {/* Popup for paused session */}
-        {showPausePopup && (
-          <div className="popup-overlay" onClick={() => setShowPausePopup(false)}>
-            <div
-              className="popup-box"
-              onClick={e => e.stopPropagation()}
-              style={{ width: '300px', height: '250px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}
-            >
-              <div className="close-btn" onClick={() => setShowPausePopup(false)}>✕</div>
+                  {/* Popup for paused session */}
+{showPausePopup && (
+  <div className="popup-overlay" onClick={() => setShowPausePopup(false)}>
+    <div className="popup-box" onClick={e => e.stopPropagation()} style={{ width: '300px', height: '250px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+      <div className="close-btn" onClick={() => setShowPausePopup(false)}>✕</div>
+      
+      {pausedReason === 'offline' ? (
+        <div style={{ padding: '10px', textAlign: 'center' }}>
+          <h3 style={{ color: '#04bfbf' }}>Device Offline</h3>
+          <p>Charger is offline or powered off.</p>
+          <p>Session active. Wait for reconnection or <strong>Stop Session</strong>.</p>
+        </div>
+      ) : (
+        <div style={{ padding: '10px', textAlign: 'center' }}>
+          <h3 style={{ color: '#04bfbf' }}>Charging Paused</h3>
+          <p>Paused due to emergency button.</p>
+          <p>Press button for 5s to resume or session ends in <strong>{minutes}:{seconds.toString().padStart(2, "0")}</strong></p>
+          {timeLeft === 0 && (() => {
+            const sid = lastSessionIdRef.current;
+            if (sid) {
+              console.log('[FE DEBUG] Countdown finished → redirecting to summary');
+              lastSessionIdRef.current = null;
+              navigate('/session-summary', { state: { sessionId: sid } });
+            }
+            return null;
+          })()}
+        </div>
+      )}
+    </div>
+  </div>
+)}
 
-              {pausedReason === 'voltage' ? (
-                <div style={{ padding: '10px', textAlign: 'center' }}>
-                  <h3 style={{ color: '#04bfbf' }}>Charging paused</h3>
-                  <p>Charging paused due to power issue, session will remain on. If you want to end session go to STOP SESSION.</p>
-                </div>
-              ) : (
-                <div style={{ padding: '10px', textAlign: 'center' }}>
-                  <h3 style={{ color: '#04bfbf' }}>Charging paused</h3>
-                  <p>Charging paused due to emergency button pressed.</p>
-                   <p>To continue charging press the button for more than 5 seconds or session will end in <strong> {minutes}:{seconds.toString().padStart(2, "0")}</strong> minutes.</p>
-                    {timeLeft === 0 && (
-                      // If timeLeft hit zero, try to redirect to session summary (use lastSessionIdRef)
-                      (() => {
-                        const sid = lastSessionIdRef.current;
-                        if (sid) {
-                          console.log('[FE DEBUG] Countdown finished -> redirecting to session summary for', sid);
-                          // clear ref first to prevent loop
-                          lastSessionIdRef.current = null;
-                          navigate('/session-summary', { state: { sessionId: sid } });
-                        }
-                        return null;
-                      })()
-                    )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
 
 
       </div>
 </div>
 </div>
-{/* 🔔 Refresh Warning Popup */}
-{showRefreshWarning && (
-  <div className="popup-overlay">
-    <div className="popup-box" style={{ textAlign: "center" }}>
-      <h3 style={{ color: "#ff5252" }}>⚠️ Do not refresh!</h3>
-      <p>Refreshing this page may cause issues.</p>
-      <p>If you refresh again, you will be redirected to the session overview.</p>
-    </div>
-  </div>
-)}
-
-{showReloadConfirm && (
-  <div className="popup-overlay">
-    <div className="popup-box" style={{ textAlign: "center" }}>
-      <h3 style={{ color: "#ff9800" }}>⚠️ Are you sure?</h3>
-      <p>Refreshing this page may cause issues with your charging session.</p>
-      <div style={{ marginTop: "20px", display: "flex", justifyContent: "space-around" }}>
-        <button
-          style={{ padding: "8px 16px", background: "#d32f2f", color: "#fff", borderRadius: "8px", border: "none" }}
-          onClick={() => {
-            setShowReloadConfirm(false);
-            window.location.reload(); // ✅ Force refresh if user insists
-          }}
-        >
-          Continue Refresh
-        </button>
-        <button
-          style={{ padding: "8px 16px", background: "#388e3c", color: "#fff", borderRadius: "8px", border: "none" }}
-          onClick={() => {
-            setShowReloadConfirm(false); // ✅ Stay on page
-          }}
-        >
-          Stay on Page
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
 
 <FooterNav />
     </>

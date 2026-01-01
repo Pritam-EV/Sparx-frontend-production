@@ -1,6 +1,6 @@
 // ChargingOptions.js
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import FooterNav from "../components/FooterNav";
 import {
   Box,
@@ -19,10 +19,7 @@ import {
 function ChargingOptions() {
   const { device_id } = useParams();
   const deviceId = device_id;
-  const [showRefreshWarning, setShowRefreshWarning] = useState(false);
-  const [showReloadConfirm, setShowReloadConfirm] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
 
   // device + UI states
   const [deviceDetails, setDeviceDetails] = useState(null);
@@ -48,25 +45,8 @@ function ChargingOptions() {
   // derived, to carry forward original user selection
   const [originalSelectedAmount, setOriginalSelectedAmount] = useState(0);
 
-  useEffect(() => {
-  const handleBeforeUnload = (e) => {
-    // Prevent browser’s default refresh prompt
-    e.preventDefault();
-    e.returnValue = ""; // Required for Chrome
+  const [paymentError, setPaymentError] = useState(null);
 
-    // Instead of letting it refresh, show our popup
-    setShowReloadConfirm(true);
-
-    // Stop the unload
-    return "";
-  };
-
-  window.addEventListener("beforeunload", handleBeforeUnload);
-
-  return () => {
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-  };
-}, []);
 
 
   /* -------------------------
@@ -139,6 +119,9 @@ function ChargingOptions() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sliderValue, selectedOption, deviceDetails]);
+
+
+
 
   /* -------------------------
    *  Option handlers
@@ -277,8 +260,6 @@ async function consumeCoupon() {
 const currentDeviceStatus = (deviceDetails?.status || "").toString().toLowerCase();
 if (currentDeviceStatus !== "available") {
   alert(`Device is not available. Current status: ${currentDeviceStatus}`);
-
-  alert(`Device is not available. Current status: ${deviceStatus}`);
   return;
 }
 
@@ -288,89 +269,140 @@ if (currentDeviceStatus !== "available") {
     // Safety: ensure positive numeric
     const payableNum = Number(payable || 0);
 
-    if (payableNum === 0) {
-      // Generate local transaction id for free session
-      const txnId =
-        "sparxpay_" + Date.now().toString() + "_" + Math.random().toString(36).slice(2, 9);
+if (payableNum === 0) {
+  const fakeOrderId = `FREE_${Date.now()}`;
 
-        await consumeCoupon();
-      navigate(`/session-start/${deviceId}/${txnId}`, {
-        state: {
-          deviceId,
-          amountPaid: 0,
-          amountSelected: originalSelectedAmount,            // ← new
-            discountApplied: originalSelectedAmount - payableNum, // ← new
-          chargingOption: selectedOption,
-          energySelected: selectedOption === "energy" ? sliderValue : estimatedEnergy,
-          originalSelectedAmount,
-        },
-      });
-      return;
-    }
+  localStorage.setItem("pendingPayment", JSON.stringify({
+    deviceId,
+    amountPaid: 0,
+    amountSelected: originalSelectedAmount,
+    discountApplied: originalSelectedAmount,
+    chargingOption: selectedOption,
+    energySelected: selectedOption === "energy" ? sliderValue : estimatedEnergy,
+    couponCode: appliedCouponObj?.code || null,
+    paymentGateway: "free"
+  }));
 
-    // Paid flow -> Razorpay
-    try {
-      if (typeof window.Razorpay === "undefined") {
-        throw new Error("Razorpay SDK not loaded. Please try again.");
-      }
+  navigate(`/payment-success?order_id=${fakeOrderId}`);
+  return;
+}
 
-      // create order on backend; pass amount (backend expects rupees in your current implementation)
-      const orderResp = await fetch(
-        `${process.env.REACT_APP_Backend_API_Base_URL}/api/payment/orders`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ amount: payableNum }),
-        }
-      );
 
-      const orderData = await orderResp.json();
-      if (!orderData || !orderData.success) {
-        throw new Error(orderData?.message || "Failed to create payment order");
-      }
+    // Paid flow -> Cashfree
+// Paid flow -> Cashfree
+try {
+  setPaymentError(null);
+  setPaymentStatus(null);
 
-      const options = {
-        key: "rzp_test_ebP6zeRyY0r4Vq",
-        amount: orderData.order.amount,
-        currency: orderData.order.currency,
-        name: "Sparx Energy",
-        description: "Charging Session Payment",
-        order_id: orderData.order.id,
+  console.log("Requesting to create Order." + "returning to url" + `${window.location.origin}/charging-options/${deviceId}`);
 
-        handler: async function (response) {
-        const transactionId = response.razorpay_payment_id;
-
-        await consumeCoupon(); // ✅ consume after successful payment
-
-        navigate(`/session-start/${deviceId}/${transactionId}`, {
-            state: {
-            deviceId,
-            amountPaid: payableNum,
-            amountSelected: originalSelectedAmount,            // ← new
-            discountApplied: originalSelectedAmount - payableNum, // ← new
-            chargingOption: selectedOption,
-            energySelected: selectedOption === "energy" ? sliderValue : estimatedEnergy,
-            originalSelectedAmount,
-            couponCode: appliedCouponObj?.code || null,
-            },
-        });
-        },
-
-        prefill: {
-          name: "User Name",
+  const orderResp = await fetch(
+    `${process.env.REACT_APP_Backend_API_Base_URL}/api/payment/order`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${localStorage.getItem("token")}`
+      },
+      body: JSON.stringify({
+        amount: payableNum,
+        // BE will append orderId as param to this returnUrl
+        returnUrl: `${window.location.origin}/charging-options/${deviceId}`,
+        customer: {
+          id: localStorage.getItem("userId") || "guest_user",
           email: "user@example.com",
-          contact: "1234567890",
+          phone: "9999999999",
         },
-      };
-
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (err) {
-      console.error("Payment error:", err);
-      alert("Payment failed: " + (err.message || "Try again"));
+        gateway: "Cashfree"
+      }),
     }
+  );
+
+  console.log("Order Created at BE.");
+
+  let orderData = null;
+  let contentType = orderResp.headers.get("content-type") || "";
+
+  if (contentType.includes("application/json")) {
+    orderData = await orderResp.json();
+  } else {
+    // Non‑JSON (e.g. HTML or blank) – generic handling
+    const text = await orderResp.text();
+    if (!orderResp.ok) {
+      throw new Error("Something went wrong while creating the order. Please try again.");
+    } else {
+      throw new Error("Unexpected response from server.");
+    }
+  }
+
+  if (!orderResp.ok) {
+    // Backend error with JSON body
+    const alertObj = orderData?.alert;
+    const msgFromAlert = alertObj?.message;
+    const msgFromBody = orderData?.message;
+
+    if (msgFromAlert) {
+      setPaymentError(msgFromAlert);
+      alert(msgFromAlert);
+    } else if (msgFromBody) {
+      setPaymentError(msgFromBody);
+      alert(msgFromBody);
+    } else {
+      setPaymentError("Failed to create order. Please try again.");
+      alert("Failed to create order. Please try again.");
+    }
+    return;
+  }
+
+  // resp.ok === true
+  // Expected: { paymentSessionId: "...", ... } or similar
+  const paymentSessionId =
+    orderData?.paymentSessionId ||
+    orderData?.order?.payment_session_id;
+
+  const orderId =
+    orderData?.orderId ||
+    orderData?.order?.order_id;
+
+  if (!paymentSessionId || !orderId) {
+    setPaymentError("Invalid response from payment server.");
+    alert("Invalid response from payment server.");
+    return;
+  }
+
+  // Store orderId & pending state locally
+  localStorage.setItem("cashfreeOrderId", orderId);
+// Around line with localStorage.setItem('pendingPayment'...
+localStorage.setItem('pendingPayment', JSON.stringify({
+  deviceId,
+  amountPaid: payableNum,
+  amountSelected: originalSelectedAmount,
+  discountApplied: originalSelectedAmount - payableNum,
+  chargingOption: selectedOption,
+  energySelected: selectedOption === 'energy' ? sliderValue : estimatedEnergy,
+  couponCode: appliedCouponObj?.code || null,
+  paymentGateway: 'cashfree'
+}));
+
+  localStorage.setItem("deviceId", deviceId);
+
+  if (typeof window.Cashfree === "undefined") {
+    throw new Error("Cashfree SDK not loaded");
+  }
+
+  const cashfree = new window.Cashfree({ mode: "sandbox" }); // use "production" in prod
+
+  cashfree.checkout({
+    paymentSessionId,
+    redirectTarget: "_self", // Cashfree will redirect back via GET
+  });
+} catch (err) {
+  console.error("Payment error:", err);
+  const msg = err?.message || "Payment failed. Please try again.";
+  setPaymentError(msg);
+  alert(msg);
+}
+
   };
 
   /* -------------------------
@@ -621,6 +653,28 @@ const deviceStatus = (deviceDetails.status || "").toString().toLowerCase();
             )}
         </Box>
       </Box>
+
+      {paymentStatus && (
+        <Alert
+          severity={
+            paymentStatus.toLowerCase().includes("successful")
+              ? "success"
+              : paymentStatus.toLowerCase().includes("pending")
+              ? "info"
+              : "warning"
+          }
+          sx={{ mb: 2 }}
+        >
+          {paymentStatus}
+        </Alert>
+      )}
+
+      {paymentError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {paymentError}
+        </Alert>
+      )}
+
 
       {/* Proceed to Payment */}
       <Box mt={4} textAlign="center" width="100%">

@@ -34,7 +34,7 @@ const getUserNameFromLocal = () => {
   return parsed.name || parsed.fullName || parsed.username || parsed.userName || parsed.displayName || "User";
 };
 
-const supportPhone = "919370770190"; // international format without '+'
+const supportPhone = "918855094432"; // international format without '+'
 const getWhatsappUrl = () => {
   const userName = getUserNameFromLocal();
   const msg = `Hi,\n${userName} this side.\nI need help with charging my EV with Sparx Charging Point.`;

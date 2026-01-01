@@ -21,6 +21,7 @@ import QRScanner from "./components/QRScanner";
 import SessionSummary from "./components/SessionSummary";
 import SessionStart from "./components/SessionStart";
 import LiveSession from "./components/LiveSession";
+import PaymentSuccess from "./components/PaymentSuccess";
 
 import AdminAnalytics from "./features/admin/AdminAnalytics";
 import AdminDashboard from "./features/admin/AdminDashboard";
@@ -71,9 +72,20 @@ const AppContent = () => {
       const target = initialUrlRef.current;
 
       // 3a) If it’s a deep link (not root/home/welcome/login/signup), go there
-      const deepLink =
-        target &&
-        !["/", "/home", "/welcome", "/login", "/signup"].includes(target);
+    const deepLink =
+      target &&
+      !["/", "/home", "/welcome", "/login", "/signup"].includes(target);
+
+    // 🔐 Allow Cashfree redirect to bypass splash logic
+    const isPaymentSuccess = target.startsWith("/payment-success");
+
+    if (isPaymentSuccess) {
+      console.log("Payment success deep link ->", target);
+      navigate(target, { replace: true });
+      firstLoadRef.current = false;
+      return;
+    }
+
 
       if (deepLink) {
         console.log("Deep link ->", target);
@@ -202,7 +214,8 @@ const AppContent = () => {
           }
         />
         <Route path="/devices/create" element={<DeviceCreate />} />
-        
+        <Route path="/payment-success" element={<PaymentSuccess />} />
+
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
