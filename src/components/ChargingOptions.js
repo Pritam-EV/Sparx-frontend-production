@@ -292,7 +292,6 @@ if (payableNum === 0) {
 // Paid flow -> Cashfree
 try {
   setPaymentError(null);
-  setPaymentStatus(null);
 
   console.log("Requesting to create Order." + "returning to url" + `${window.location.origin}/charging-options/${deviceId}`);
 
@@ -653,21 +652,6 @@ const deviceStatus = (deviceDetails.status || "").toString().toLowerCase();
             )}
         </Box>
       </Box>
-
-      {paymentStatus && (
-        <Alert
-          severity={
-            paymentStatus.toLowerCase().includes("successful")
-              ? "success"
-              : paymentStatus.toLowerCase().includes("pending")
-              ? "info"
-              : "warning"
-          }
-          sx={{ mb: 2 }}
-        >
-          {paymentStatus}
-        </Alert>
-      )}
 
       {paymentError && (
         <Alert severity="error" sx={{ mb: 2 }}>

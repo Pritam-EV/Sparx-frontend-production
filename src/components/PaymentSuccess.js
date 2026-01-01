@@ -67,7 +67,9 @@ function PaymentSuccess() {
           discountApplied,
           energySelected,
           couponCode,
+          paymentGateway,   // ✅ ADD THIS LINE
         } = pending;
+
 
 /* ---------------------------------
  * 🔁 PAID FLOW (Cashfree)
