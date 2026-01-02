@@ -9,56 +9,32 @@ function PaymentSuccess() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Cashfree always sends order_id
   const orderId = params.get("order_id");
 
   useEffect(() => {
-    async function verifyAndStartSession() {
+    async function run() {
       try {
         console.log("🔁 PaymentSuccess loaded");
-        console.log("🧾 Cashfree order_id:", orderId);
+        console.log("🧾 order_id:", orderId);
 
         if (!orderId) {
-          setError("Missing order ID from payment gateway.");
+          setError("Missing order ID");
           setLoading(false);
           return;
         }
 
         /* ---------------------------------
-         * 1️⃣ VERIFY PAYMENT WITH BACKEND
-         * --------------------------------- */
-        const verifyResp = await fetch(
-          `${process.env.REACT_APP_Backend_API_Base_URL}/api/payment/verify?orderId=${orderId}`,
-          {
-            method: "GET",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
-          }
-        );
-
-        const verifyData = await verifyResp.json();
-        console.log("✅ Payment verify response:", verifyData);
-
-        if (!verifyResp.ok || !verifyData.success) {
-          setError("Payment not verified yet. Please contact support.");
-          setLoading(false);
-          return;
-        }
-
-        /* ---------------------------------
-         * 2️⃣ READ PENDING PAYMENT DATA
+         * 1️⃣ READ pendingPayment FIRST
          * --------------------------------- */
         const pendingRaw = localStorage.getItem("pendingPayment");
         if (!pendingRaw) {
-          setError("Payment verified but session data missing.");
+          setError("Pending payment data missing");
           setLoading(false);
           return;
         }
 
         const pending = JSON.parse(pendingRaw);
-        console.log("📦 Pending payment data:", pending);
+        console.log("📦 pendingPayment:", pending);
 
         const {
           deviceId,
@@ -67,47 +43,48 @@ function PaymentSuccess() {
           discountApplied,
           energySelected,
           couponCode,
-          paymentGateway,   // ✅ ADD THIS LINE
+          paymentGateway, // 🔥 THIS DECIDES FLOW
         } = pending;
 
-
-/* ---------------------------------
- * 🔁 PAID FLOW (Cashfree)
- * --------------------------------- */
-if (paymentGateway !== "free") {
-  const verifyResp = await fetch(
-    `${process.env.REACT_APP_Backend_API_Base_URL}/api/payment/verify?orderId=${orderId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    }
-  );
-
-  const verifyData = await verifyResp.json();
-  console.log("💰 Payment verify:", verifyData);
-
-  if (!verifyResp.ok || !verifyData.success) {
-    setError("Payment not verified yet.");
-    setLoading(false);
-    return;
-  }
-} else {
-  console.log("🎟️ Free session detected – skipping payment verification");
-}
-
         if (!deviceId || !energySelected) {
-          setError("Invalid session data. Please contact support.");
+          setError("Invalid session data");
           setLoading(false);
           return;
         }
 
         /* ---------------------------------
-         * 3️⃣ START SESSION (CRITICAL STEP)
+         * 2️⃣ VERIFY ONLY IF PAID
+         * --------------------------------- */
+        if (paymentGateway !== "free") {
+          console.log("💰 Paid flow → verifying payment");
+
+          const verifyResp = await fetch(
+            `${process.env.REACT_APP_Backend_API_Base_URL}/api/payment/verify?orderId=${orderId}`,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            }
+          );
+
+          const verifyData = await verifyResp.json();
+          console.log("💰 verify response:", verifyData);
+
+          if (!verifyResp.ok || !verifyData.success) {
+            setError("Payment not verified");
+            setLoading(false);
+            return;
+          }
+        } else {
+          console.log("🎟️ Free flow → skipping verification");
+        }
+
+        /* ---------------------------------
+         * 3️⃣ START SESSION
          * --------------------------------- */
         const sessionId = `sess_${deviceId}_${Date.now()}`;
 
-        console.log("🚀 Starting session:", {
+        console.log("🚀 Starting session", {
           sessionId,
           deviceId,
           transactionId: orderId,
@@ -124,7 +101,7 @@ if (paymentGateway !== "free") {
             body: JSON.stringify({
               sessionId,
               deviceId,
-              transactionId: orderId, // 🔥 Cashfree order_id
+              transactionId: orderId, // Cashfree or FREE_xxx
               startTime: new Date().toISOString(),
               startDate: new Date().toISOString().split("T")[0],
               energySelected,
@@ -137,31 +114,24 @@ if (paymentGateway !== "free") {
         );
 
         const startData = await startResp.json();
-        console.log("⚡ Session start response:", startData);
+        console.log("⚡ session start response:", startData);
 
         if (!startResp.ok) {
-          setError(
-            startData?.error ||
-              "Payment successful but session could not be started."
-          );
+          setError(startData?.error || "Session start failed");
           setLoading(false);
           return;
         }
 
         /* ---------------------------------
-         * 4️⃣ CLEANUP (ONLY AFTER SUCCESS)
+         * 4️⃣ CLEANUP
          * --------------------------------- */
         localStorage.removeItem("pendingPayment");
         localStorage.removeItem("cashfreeOrderId");
         localStorage.removeItem("deviceId");
 
-        console.log("🧹 Local storage cleaned");
-
         /* ---------------------------------
-         * 5️⃣ REDIRECT TO LIVE SESSION
+         * 5️⃣ REDIRECT
          * --------------------------------- */
-        console.log("➡️ Redirecting to LiveSession");
-
         navigate("/live-session", {
           state: {
             sessionId,
@@ -171,31 +141,28 @@ if (paymentGateway !== "free") {
           replace: true,
         });
       } catch (err) {
-        console.error("❌ PaymentSuccess fatal error:", err);
-        setError("Unexpected error occurred while starting session.");
+        console.error("❌ PaymentSuccess error:", err);
+        setError("Unexpected error occurred");
         setLoading(false);
       }
     }
 
-    verifyAndStartSession();
+    run();
   }, [navigate, orderId]);
 
-  /* ---------------------------------
-   * UI STATES
-   * --------------------------------- */
   if (loading && !error) {
     return (
-      <div style={{ textAlign: "center", marginTop: "40px" }}>
-        <h3>Verifying payment…</h3>
-        <p>Please wait while we start your charging session.</p>
+      <div style={{ textAlign: "center", marginTop: 40 }}>
+        <h3>Starting charging session…</h3>
+        <p>Please wait</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={{ textAlign: "center", marginTop: "40px", color: "red" }}>
-        <h3>Payment Error</h3>
+      <div style={{ textAlign: "center", marginTop: 40, color: "red" }}>
+        <h3>Error</h3>
         <p>{error}</p>
       </div>
     );
