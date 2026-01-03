@@ -393,7 +393,8 @@ localStorage.setItem('pendingPayment', JSON.stringify({
 
   cashfree.checkout({
     paymentSessionId,
-    redirectTarget: "_self", // Cashfree will redirect back via GET
+    returnUrl: `${window.location.origin}/payment-success?order_id={order_id}`,
+     redirectTarget: "_self",
   });
 } catch (err) {
   console.error("Payment error:", err);

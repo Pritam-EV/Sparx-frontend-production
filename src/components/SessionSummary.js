@@ -82,124 +82,175 @@ const handleSubmitSuggestion = async () => {
   alert('Suggestion saved, thank you!');
 };
 
+const ReceiptRow = ({ label, value, highlight }) => (
+  <Box
+    sx={{
+      display: "flex",
+      justifyContent: "space-between",
+      my: 0.8,
+      fontWeight: highlight ? 700 : 500,
+      color: highlight ? "success.main" : "text.primary",
+    }}
+  >
+    <Typography variant="body2">{label}</Typography>
+    <Typography variant="body2">{value}</Typography>
+  </Box>
+);
+
+const DividerDashed = () => (
+  <Box sx={{ borderTop: "1px dashed #ccc", my: 1.5 }} />
+);
 
 
-  return (
+ return (
+  <Box
+    sx={{
+      minHeight: "100vh",
+      background: "#f4f6f8",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      pt: 4,
+      pb: 6,
+    }}
+  >
+    {/* ================= RECEIPT CARD ================= */}
     <Box
       sx={{
-        fontFamily: "Calibri, sans-serif",
-        minHeight: "100vh",
-        backgroundColor: "#ccc",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        pt: 6,
-        pb: 8,
-            overflow: "hidden",
+        width: { xs: "92%", sm: 380 },
+        background: "#ffffff",
+        borderRadius: 2,
+        boxShadow: "0 10px 30px rgba(0,0,0,0.15)",
+        overflow: "hidden",
       }}
     >
-      <Box
-        sx={{
-          width: { xs: "90%", sm: 360 },
-          maxHeight: { xs: "70vh", sm: "80vh" }, 
-          backgroundColor: "#fff",
-          position: "relative",
-          boxShadow: "0 3px 20px rgba(0,0,0,0.2)",
-           overflowY: "auto",  
-          mb: 5,
-          // Perforation edges via radial-gradient
-          backgroundImage: `
-            radial-gradient(circle at top center, #ccc 12px, transparent 8px),
-            radial-gradient(circle at bottom center,  #ccc 10px, transparent 8px)
-          `,
-          backgroundRepeat: "repeat-x, repeat-x",
-          backgroundSize: "16px 16px, 16px 16px",
-          backgroundPosition: "0 0, 0 100%",
-        }}
-      >
-        <Box sx={{ px: 3, py: 6 }}>
-          <Box sx={{ textAlign: "center", mb: 3 }}>
-            <Typography
-              sx={{
-                borderTop: "1.5px dashed #000000ff",
-                borderBottom: "1.5px dashed #000000ff",
-                py: 1,
-                fontWeight: 550,
-                letterSpacing: 1,
-                fontSize: "1.0rem"
-              }}
-            >
-              SPARX ENERGY
-            </Typography>
-          </Box>
-          <Typography variant="body2" color="textSecondary" sx={{ textAlign: "center", mb: 2 }}>
-            {dateStr} &nbsp; {timeStr}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}><strong>Receipt ID:</strong> {receipt.receiptId}</Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}><strong>Device ID:</strong> {receipt.deviceId}</Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}><strong>Energy Utilized:</strong> {receipt.energyConsumed.toFixed(0)} kWh</Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}><strong>Amount Paid:</strong> ₹{receipt.amountPaid.toFixed(1)}</Typography>
-          <Typography variant="body2" sx={{ mb: 1 }}><strong>Amount Utilized:</strong> ₹{receipt.amountUtilized.toFixed(1)}</Typography>
-          {receipt.refund > 0 && (
-            <Typography variant="body2" sx={{ mb: 1, color: "success.main" }}><strong>Refund:</strong> ₹{receipt.refund.toFixed(1)}</Typography>
-          )}
-          <Box sx={{ borderTop: "1px dashed #bbb", pt: 1, mt: 2 }}>
-            <Box sx={{ textAlign: "center"}}>
-              <Typography variant="caption">  Thanks for charging your EV with us! </Typography>
-            </Box>
-                        <Box sx={{ textAlign: "center"}}>
-              <Typography variant="caption">  Have a nice day. </Typography>
-            </Box>
-          </Box>
-        </Box>
+      {/* Header */}
+      <Box sx={{ textAlign: "center", py: 2, borderBottom: "1px dashed #ccc" }}>
+        <Typography fontWeight={700} letterSpacing={1}>
+          VIZ
+        </Typography>
+            <Typography fontWeight={500} letterSpacing={1}>
+          by VJRA TECHNOLOGIES
+        </Typography>
+        <Typography variant="caption" color="text.secondary">
+          Charging Receipt
+        </Typography>
       </Box>
-      <Typography sx={{ mb:1 }}>
-        Kindly rate your experience
-      </Typography>
-      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2, gap: 1 }}>
 
-      {[1,2,3,4,5].map((i) => (
-        <StarIcon
-          key={i}
-          onClick={() => handleStarClick(i)}
-          sx={{
-            cursor: 'pointer',
-            fontSize: 32,
-            color: i <= rating ? '#F2A007' : '#04bfbf',
-            filter: i <= rating ? 'drop-shadow(0 0 7px rgba(242,160,7,0.7))' : 'none'
-          }}
-        />
-      ))}
-    </Box>
-  {submitted && (
-    <Box sx={{ px:7, mb:1 }}>
-      <Typography sx={{ mb:1 }}>
-        Thanks for rating us... Your suggestion is highly valuable:
-      </Typography>
-      <TextField
-        multiline rows={1}
-        fullWidth value={suggestion}
-        onChange={(e)=>setSuggestion(e.target.value)}
-      />
-      <Button variant="contained" onClick={handleSubmitSuggestion} sx={{ mt:1, backgroundColor: "#F2A007", color: "#ffffffff", px: 4 }}>
-        Submit
-      </Button>
-    </Box>
-  )}
+      {/* Body */}
+      <Box sx={{ px: 3, py: 2 }}>
+        <Typography variant="body2" color="text.secondary" align="center" mb={2}>
+          {dateStr} · {timeStr}
+        </Typography>
 
+        <ReceiptRow label="Receipt ID" value={receipt.receiptId} />
+        <ReceiptRow label="Device ID" value={receipt.deviceId} />
+        <ReceiptRow label="Energy Used" value={`${receipt.energyConsumed.toFixed(2)} kWh`} />
 
-      <Box sx={{ display: "flex", gap: 2, mt:2  }}>
-        <Button variant="contained" onClick={() => navigate("/home")} sx={{ backgroundColor: "#04bfbf", px: 4 }}>
-          Go to Home
-        </Button>
+        <DividerDashed />
+
+        <ReceiptRow label="Amount Paid" value={`₹${receipt.amountPaid.toFixed(2)}`} />
+        <ReceiptRow label="Amount Utilized" value={`₹${receipt.amountUtilized.toFixed(2)}`} />
+
         {receipt.refund > 0 && (
-          <Button variant="outlined" onClick={handleRefund} sx={{ borderColor: "#04bfbf", color: "#04bfbf", px: 4 }}>
-            Refund
-          </Button>
+          <ReceiptRow
+            label="Refund"
+            value={`₹${receipt.refund.toFixed(2)}`}
+            highlight
+          />
         )}
+
+        <DividerDashed />
+
+        <Typography
+          variant="caption"
+          align="center"
+          color="text.secondary"
+          sx={{ display: "block", mt: 1 }}
+        >
+          Thank you for charging with us 🚗⚡
+        </Typography>
       </Box>
     </Box>
-  );
+
+    {/* ================= RATING ================= */}
+    <Box sx={{ mt: 4, textAlign: "center" }}>
+      <Typography fontWeight={600} mb={1}>
+        How was your experience?
+      </Typography>
+
+      <Box sx={{ display: "flex", justifyContent: "center", gap: 1 }}>
+        {[1, 2, 3, 4, 5].map((i) => (
+          <StarIcon
+            key={i}
+            onClick={() => !submitted && handleStarClick(i)}
+            sx={{
+              cursor: submitted ? "default" : "pointer",
+              fontSize: 34,
+              color: i <= rating ? "#F2A007" : "#cfd8dc",
+              transition: "transform 0.2s",
+              "&:hover": !submitted && { transform: "scale(1.2)" },
+            }}
+          />
+        ))}
+      </Box>
+
+      <Typography variant="caption" color="text.secondary">
+        {["Poor", "Fair", "Good", "Very Good", "Excellent"][rating - 1]}
+      </Typography>
+    </Box>
+
+    {/* ================= SUGGESTION ================= */}
+    {submitted && (
+      <Box sx={{ width: { xs: "92%", sm: 380 }, mt: 3 }}>
+        <TextField
+          multiline
+          rows={2}
+          fullWidth
+          placeholder="Any suggestions to improve our service?"
+          value={suggestion}
+          onChange={(e) => setSuggestion(e.target.value)}
+          sx={{ background: "#fff", borderRadius: 1 }}
+        />
+
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={handleSubmitSuggestion}
+          sx={{
+            mt: 1.5,
+            backgroundColor: "#04BFBF",
+            fontWeight: 600,
+          }}
+        >
+          Submit Feedback
+        </Button>
+      </Box>
+    )}
+
+    {/* ================= ACTIONS ================= */}
+    <Box sx={{ display: "flex", gap: 2, mt: 4 }}>
+      <Button
+        variant="contained"
+        onClick={() => navigate("/home")}
+        sx={{ backgroundColor: "#04BFBF", px: 4 }}
+      >
+        Go Home
+      </Button>
+
+      {receipt.refund > 0 && (
+        <Button
+          variant="outlined"
+          onClick={handleRefund}
+          sx={{ borderColor: "#04BFBF", color: "#04BFBF", px: 4 }}
+        >
+          Refund
+        </Button>
+      )}
+    </Box>
+  </Box>
+);
+
 };
 
 export default SessionSummary;

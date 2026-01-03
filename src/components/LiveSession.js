@@ -15,6 +15,8 @@ export default function LiveSessionPage() {
   const [sessionData, setSessionData] = useState(null);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
+const [energySelected, setEnergySelected] = useState(0);
+const [amountPaid, setAmountPaid] = useState(0);
 
   
   const [pausedReason, setPausedReason] = useState(null);  // "voltage" or "button"
@@ -35,8 +37,12 @@ const startDate = rawState.startDate || rawState.start_date || rawState.start ||
 const startTime = rawState.startTime || rawState.start_time || rawState.startedAt || '';
 const deviceIdToUse = sessionData?.deviceId || sessionId; // If deviceId unavailable, consider using sessionId fallback or handle null.
 const deviceId = deviceIdRaw;
-const energySelected = Number(energySelectedRaw) || 0;
 
+
+useEffect(() => {
+  if (energySelectedRaw) setEnergySelected(Number(energySelectedRaw));
+  if (amountPaidRaw) setAmountPaid(Number(amountPaidRaw));
+}, []); // only once
 
 
 // normalize & format amount
@@ -45,8 +51,6 @@ const displayAmount = Number.isFinite(numericAmount) ? numericAmount.toFixed(2) 
 const minutes = Math.floor(timeLeft / 60);
 const seconds = timeLeft % 60;
 
-  // coerce numeric safely
-  const amountPaid = amountPaidRaw !== undefined && amountPaidRaw !== null ? amountPaidRaw : "" ;
 
 
   // fallback device id to sessionData if available
@@ -81,7 +85,7 @@ const seconds = timeLeft % 60;
 
   // Amount utilized must be within [0, amountPaid]
   const frac = energySelectedNum > 0 ? clamp(energyConsumedSafe / energySelectedNum, 0, 1) : 0;
-  const amountUtilized = (frac * (Number(amountPaid) || 0)).toFixed(2);
+  const amountUtilized = (frac * (Number(amountPaid) || 0)).toFixed(1);
 
 
   const relayRef = useRef(relayState);
@@ -150,6 +154,16 @@ const fetchActiveSession = async () => {
 
     const data = await res.json();
     console.log('FE DEBUG: fetchActiveSession success:', data);
+
+    // ✅ FIX: sync billing info from backend
+if (typeof data.energySelected === 'number') {
+  setEnergySelected(data.energySelected);
+}
+
+if (typeof data.amountPaid === 'number') {
+  setAmountPaid(data.amountPaid);
+}
+
 
     // Update states...
     setVoltage(Number(data.voltage) || 0);
@@ -752,11 +766,11 @@ useEffect(() => {
         <div className="info-block">
           <div className="cell top-left">
             <div className="label">Energy Consumed</div>
-            <div className="value">{energyConsumed.toFixed(2)}</div>
+            <div className="value">{energyConsumed.toFixed(1)}</div>
           </div>
           <div className="cell top-right">
             <div className="label">Energy Selected</div>
-            <div className="value">{energySelected.toFixed(2)}</div>
+            <div className="value">{energySelected.toFixed(1)}</div>
           </div>
           <div className="cell bottom-left">           
             <div className="value">{amountUtilized}</div>
@@ -791,7 +805,7 @@ useEffect(() => {
               <p><span>TransactionId:</span> {transactionId || sessionData?.transactionId || sessionData?.transaction_id || '—'}</p>
               <p><span>Start Date:</span> {startDate || sessionData?.startDate || sessionData?.start_date || '—'}</p>
               <p><span>Start Time:</span> {startTime || sessionData?.startTime || sessionData?.start_time || '—'}</p>
-              <p><span>Amount Paid:</span> ₹{displayAmount}</p>
+              <p><span>Amount Paid:</span> ₹{amountPaid}</p>
               <p><span>Energy Selected:</span> {energySelected.toFixed(2)} kWh</p>
             </div>
           </div>
