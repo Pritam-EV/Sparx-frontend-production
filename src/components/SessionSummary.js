@@ -15,7 +15,10 @@ const SessionSummary = () => {
   const [error, setError] = useState(null);
   const [rating, setRating] = useState(receipt?.rating || 2);
   const [suggestion, setSuggestion] = useState(receipt?.suggestion || "");
-  const [submitted, setSubmitted] = useState(!!receipt?.rating);
+const [feedbackSubmitted, setFeedbackSubmitted] = useState(
+  !!receipt?.rating
+);
+
 
   const API = process.env.REACT_APP_Backend_API_Base_URL;
 
@@ -61,26 +64,45 @@ const SessionSummary = () => {
     window.open(`https://wa.me/919370770190?text=${msg}`, "_blank");
   };
 
-  const handleStarClick = async (i) => {
-  setRating(i);
-  setSubmitted(true);
-  // save to backend
-  const token = localStorage.getItem('token');
-  await fetch(`${API}/api/receipts/${sessionId}/rate`, {
-    method: 'POST',
-    headers: { 'Content-Type':'application/json', Authorization:`Bearer ${token}` },
-    body: JSON.stringify({ rating: i })
-  });
-};
+
+
 const handleSubmitSuggestion = async () => {
-  const token = localStorage.getItem('token');
-  await fetch(`${API}/api/receipts/${sessionId}/suggest`, {
-    method:'POST',
-    headers:{'Content-Type':'application/json',Authorization:`Bearer ${token}`},
-    body:JSON.stringify({ suggestion })
-  });
-  alert('Suggestion saved, thank you!');
+  if (feedbackSubmitted) return;
+
+  try {
+    const token = localStorage.getItem("token");
+
+    // 1️⃣ Save rating
+    await fetch(`${API}/api/receipts/${sessionId}/rate`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ rating }),
+    });
+
+    // 2️⃣ Save suggestion
+    if (suggestion?.trim()) {
+      await fetch(`${API}/api/receipts/${sessionId}/suggest`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ suggestion }),
+      });
+    }
+
+    setFeedbackSubmitted(true);
+    alert("Thank you for your feedback ❤️");
+  } catch (err) {
+    console.error("Feedback submit failed:", err);
+    alert("Failed to submit feedback. Please try again.");
+  }
 };
+
+
 
 const ReceiptRow = ({ label, value, highlight }) => (
   <Box
@@ -183,13 +205,15 @@ const DividerDashed = () => (
         {[1, 2, 3, 4, 5].map((i) => (
           <StarIcon
             key={i}
-            onClick={() => !submitted && handleStarClick(i)}
+            onClick={() => {
+  if (!feedbackSubmitted) setRating(i);
+}}
             sx={{
-              cursor: submitted ? "default" : "pointer",
+              cursor: feedbackSubmitted  ? "default" : "pointer",
               fontSize: 34,
               color: i <= rating ? "#F2A007" : "#cfd8dc",
               transition: "transform 0.2s",
-              "&:hover": !submitted && { transform: "scale(1.2)" },
+              "&:hover": !feedbackSubmitted  && { transform: "scale(1.2)" },
             }}
           />
         ))}
@@ -201,7 +225,7 @@ const DividerDashed = () => (
     </Box>
 
     {/* ================= SUGGESTION ================= */}
-    {submitted && (
+    {rating > 0 && !feedbackSubmitted && (
       <Box sx={{ width: { xs: "92%", sm: 380 }, mt: 3 }}>
         <TextField
           multiline
