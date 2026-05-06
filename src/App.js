@@ -22,6 +22,7 @@ import SessionSummary from "./components/SessionSummary";
 import SessionStart from "./components/SessionStart";
 import LiveSession from "./components/LiveSession";
 import PaymentSuccess from "./components/PaymentSuccess";
+import TransactionHistory from "./components/TransactionHistory";
 
 import AdminAnalytics from "./features/admin/AdminAnalytics";
 import AdminDashboard from "./features/admin/AdminDashboard";
@@ -147,6 +148,7 @@ useEffect(() => {
         <Route path="/" element={<Navigate to="/home" replace />} />
         <Route path="/home" element={<Home />} />
         <Route path="/welcome" element={<WelcomeScreen />} />
+        
 
         {/* Admin protected routes */}
         <Route
@@ -215,6 +217,7 @@ useEffect(() => {
             </PrivateRoute>
           }
         />
+        <Route path="/transactions" element={ <PrivateRoute> <TransactionHistory /> </PrivateRoute> } />
         <Route path="/qr-scanner" element={<QRScanner />} />
         
         {/* IMPORTANT: Deep link route for charging options */}
