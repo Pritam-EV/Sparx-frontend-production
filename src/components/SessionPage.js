@@ -154,7 +154,101 @@ const SessionPage = () => {
                     </Typography>
                   ) : (
                     activeSessions.map((s) => (
-                      <SessionCard key={s.sessionId} session={s} isActive navigate={navigate} />
+                      <Card
+key={s._id || s.sessionId}
+  sx={{
+    mb: 2,
+    borderRadius: 3,
+    boxShadow: "0 10px 24px rgba(0,0,0,0.35)",
+    background: "linear-gradient(180deg, #0B1220 0%, #060A12 100%)",
+    border: "1px solid rgba(255,255,255,0.10)",
+    color: "#EAF2FF",
+  }}
+>
+  <CardContent>
+    <Box display="flex" justifyContent="space-between" alignItems="center">
+      <Typography sx={{ fontWeight: 800, color: "#EAF2FF" }}>
+        ChargerId: {s.deviceId || "—"}
+      </Typography>
+
+      <Button
+        size="small"
+        variant="contained"
+          sx={{
+            backgroundColor: "#04BFBF",
+            color: "#061018",
+            fontWeight: 800,
+            "&:hover": { backgroundColor: "#02a7a7" },
+          }}
+        onClick={() => navigate(`/live-session/${s.sessionId}`)}
+      >
+        VIEW LIVE
+      </Button>
+    </Box>
+
+    <Typography variant="body2" sx={{ mt: 0.5, color: "rgba(234,242,255,0.80)" }}>
+      Session ID: {s.sessionId || "—"}
+    </Typography>
+
+    <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.2 }}>
+      <Box>
+        <Typography variant="caption" sx={{ color: "rgba(234,242,255,0.65)" }}>
+          Amount Paid
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{fmtMoney(s.amountPaid)}</Typography>
+      </Box>
+
+      <Box>
+        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+          Energy Utilized
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{fmtKwh(s.energyConsumed)}</Typography>
+      </Box>
+
+      <Box>
+        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+          Amount Utilized
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{fmtMoney(getAmountUtilized(s))}</Typography>
+      </Box>
+
+      <Box>
+        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+          Status
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>
+          {s.status || "Active"}
+        </Typography>
+      </Box>
+    </Box>
+
+    {getRefund(s) > 0 && (
+      <Box
+        sx={{
+          mt: 2,
+          p: 1.2,
+          borderRadius: 2,
+          background: "rgba(255,193,7,0.10)",
+          border: "1px solid rgba(255,193,7,0.35)",
+        }}
+      >
+        <Typography variant="body2" sx={{ fontWeight: 800, color: "#a26b00" }}>
+          Estimated refund so far: {fmtMoney(getRefund(s))}
+        </Typography>
+      </Box>
+    )}
+
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="body2" sx={{ opacity: 0.8 }}>
+        Start: {fmtDateTime(s.startTime)}
+      </Typography>
+      <Typography variant="body2" sx={{ opacity: 0.8 }}>
+        End: In progress
+      </Typography>
+    </Box>
+  </CardContent>
+</Card>
+
                     ))
                   )}
                 </AccordionDetails>
@@ -174,8 +268,93 @@ const SessionPage = () => {
                     </Typography>
                   ) : (
                     pastSessions.map((s) => (
-                      <SessionCard key={s.sessionId} session={s} isActive={false} navigate={navigate} />
+                      
+<Card
+  key={s._id || s.sessionId}
+  sx={{
+    mb: 2,
+    borderRadius: 3,
+    boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
+  }}
+>
+  <CardContent>
+    <Box display="flex" justifyContent="space-between" alignItems="center">
+      <Typography sx={{ fontWeight: 800, color: "#04BFBF" }}>
+        ChargerId: {s.deviceId || "—"}
+      </Typography>
+
+      <Button
+        size="small"
+        variant="outlined"
+        onClick={() => navigate("/session-summary", { state: { sessionId: s.sessionId } })}
+      >
+        View
+      </Button>
+    </Box>
+
+    <Typography variant="body2" sx={{ mt: 0.5, opacity: 0.8 }}>
+      Session ID: {s.sessionId || "—"}
+    </Typography>
+
+    <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.2 }}>
+      <Box>
+        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+          Amount Paid
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{fmtMoney(s.amountPaid)}</Typography>
+      </Box>
+
+      <Box>
+        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+          Energy Utilized
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{fmtKwh(s.energyConsumed)}</Typography>
+      </Box>
+
+      <Box>
+        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+          Amount Utilized
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{fmtMoney(getAmountUtilized(s))}</Typography>
+      </Box>
+
+      <Box>
+        <Typography variant="caption" sx={{ opacity: 0.7 }}>
+          Status
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{s.status || "—"}</Typography>
+      </Box>
+    </Box>
+
+    {getRefund(s) > 0 && (
+      <Box
+        sx={{
+          mt: 2,
+          p: 1.2,
+          borderRadius: 2,
+          background: "rgba(4,191,191,0.10)",
+          border: "1px solid rgba(4,191,191,0.25)",
+        }}
+      >
+        <Typography variant="body2" sx={{ fontWeight: 800, color: "#037a7a" }}>
+          Refund: {fmtMoney(getRefund(s))}
+        </Typography>
+      </Box>
+    )}
+
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="body2" sx={{ opacity: 0.8 }}>
+        Start: {fmtDateTime(s.startTime)}
+      </Typography>
+      <Typography variant="body2" sx={{ opacity: 0.8 }}>
+        End: {fmtDateTime(s.endTime)}
+      </Typography>
+    </Box>
+  </CardContent>
+</Card>
+
                     ))
+                    
                   )}
                 </AccordionDetails>
               </Accordion>
@@ -188,6 +367,20 @@ const SessionPage = () => {
       </Box>
     </>
   );
+};
+const fmtMoney = (n) => `₹${Number(n || 0).toFixed(2)}`;
+const fmtKwh = (n) => `${Number(n || 0).toFixed(2)} kWh`;
+
+const fmtDateTime = (d) => {
+  if (!d) return "—";
+  const dt = new Date(d);
+  return dt.toLocaleString(); // shows date + time
+};
+const getAmountUtilized = (s) => Number(s?.amountUsed ?? 0);
+const getRefund = (s) => {
+  const paid = Number(s?.amountPaid ?? 0);
+  const utilized = getAmountUtilized(s);
+  return Number(Math.max(0, paid - utilized).toFixed(2));
 };
 
 const SessionCard = ({ session, isActive, navigate }) => (

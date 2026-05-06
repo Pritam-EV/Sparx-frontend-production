@@ -1,3 +1,4 @@
+// src/features/admin/AdminDashboard.js
 import React, { useState } from "react";
 import AdminSidebar from "./AdminSidebar";
 import { Outlet } from "react-router-dom";
@@ -12,12 +13,12 @@ const AdminDashboard = () => {
   const handleDrawerToggle = () => setSidebarOpen((prev) => !prev);
 
   return (
-    <Box sx={{ display: "flex", height: "100vh", bgcolor: "#f1f3f5" }}>
+    <Box sx={{ display: "flex", height: "100vh", bgcolor: "#f6f7f9" }}>
       {/* AppBar for mobile */}
       <AppBar
         position="fixed"
         sx={{
-          bgcolor: "#1a1a1a",
+          bgcolor: "#111827",
           color: "#fff",
           height: 56,
           boxShadow: "none",
@@ -41,7 +42,8 @@ const AdminDashboard = () => {
           </Box>
         </Toolbar>
       </AppBar>
-      {/* Persistent drawer at md+ */}
+
+      {/* Sidebar */}
       <Box
         component="nav"
         sx={{
@@ -51,7 +53,6 @@ const AdminDashboard = () => {
         }}
         aria-label="admin sidebar"
       >
-        {/* Mobile temporary Drawer */}
         <Drawer
           variant="temporary"
           open={sidebarOpen}
@@ -62,14 +63,14 @@ const AdminDashboard = () => {
             "& .MuiDrawer-paper": {
               width: drawerWidth,
               boxSizing: "border-box",
-              bgcolor: "#1a1a1a",
+              bgcolor: "#111827",
               color: "#fff"
             }
           }}
         >
           <AdminSidebar isOpen={sidebarOpen} onClose={handleDrawerToggle} />
         </Drawer>
-        {/* Desktop persistent Drawer */}
+
         <Drawer
           variant="permanent"
           sx={{
@@ -77,9 +78,9 @@ const AdminDashboard = () => {
             "& .MuiDrawer-paper": {
               width: drawerWidth,
               boxSizing: "border-box",
-              bgcolor: "#1a1a1a",
+              bgcolor: "#111827",
               color: "#fff",
-              borderRight: "1px solid #333"
+              borderRight: "1px solid #111827"
             }
           }}
           open
@@ -87,6 +88,8 @@ const AdminDashboard = () => {
           <AdminSidebar isOpen />
         </Drawer>
       </Box>
+
+      {/* Main */}
       <Box
         component="main"
         sx={{
@@ -97,7 +100,6 @@ const AdminDashboard = () => {
           pt: { xs: 7, md: 0 },
           px: { xs: 1, sm: 2 },
           pb: 2,
-          bgcolor: "#f1f3f5"
         }}
       >
         <Outlet />

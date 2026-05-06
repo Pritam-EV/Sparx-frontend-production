@@ -28,19 +28,20 @@ const pendingRef = useRef(null);
       timerRef.current = null;
     }
   };
+  
+const goToLiveSession = (ctx) => {
+  // ✅ transactionId is optional (free payments use null)
+  if (!ctx?.sessionId || !ctx?.deviceId) {
+    setError("Invalid session context");
+    return;
+  }
 
-  const goToLiveSession = (ctx) => {
-    if (!ctx?.sessionId || !ctx?.deviceId || !ctx?.transactionId) {
-      setError("Invalid session context");
-      return;
-    }
+  // cleanup
+  localStorage.removeItem("pendingPayment");
+  localStorage.removeItem("cashfreeOrderId");
+  navigate(`/live-session/${ctx.sessionId}`, { replace: true });
+};
 
-    // cleanup
-    localStorage.removeItem("pendingPayment");
-    localStorage.removeItem("cashfreeOrderId");
-
-    navigate(`/live-session/${ctx.sessionId}`, { replace: true });
-  };
 
 const startChargingSession = async ({ sessionId, deviceId, orderId }) => {
   const token = tokenRef.current;
@@ -60,7 +61,7 @@ const startChargingSession = async ({ sessionId, deviceId, orderId }) => {
       body: JSON.stringify({
         sessionId,
         deviceId,
-        transactionId: orderId,
+        transactionId: pending.paymentGateway === "free" ? undefined : orderId,
         startTime: new Date().toISOString(),
         startDate: new Date().toISOString().split("T")[0],
         energySelected: pending.energySelected,
@@ -137,7 +138,8 @@ pendingRef.current = pending;
         /* ------------------------------------------------
          * GENERATE sessionId (ONCE)
          * ------------------------------------------------ */
-        const sessionId = `sess_${deviceId}_${Date.now()}`;
+        const sessionId = `VIZ_${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
+
 
         /* ------------------------------------------------
          * VERIFY PAYMENT (SKIP FOR FREE)
@@ -170,7 +172,7 @@ pendingRef.current = pending;
         console.log("🚀 Starting session", {
           sessionId,
           deviceId,
-          transactionId: orderId,
+          transactionId: paymentGateway === "free" ? null : orderId,
         });
 
 
@@ -182,7 +184,7 @@ pendingRef.current = pending;
         const ctx = {
           sessionId,
           deviceId,
-          transactionId: orderId,
+          transactionId: paymentGateway === "free" ? null : orderId,
         };
 
         setSessionCtx(ctx);
@@ -212,7 +214,7 @@ timerRef.current = setInterval(async () => {
       goToLiveSession({
         sessionId,
         deviceId,
-        transactionId: orderId,
+       transactionId: paymentGateway === "free" ? null : orderId,
       });
     } catch (err) {
       console.error("❌ Failed to start session:", err);
@@ -295,7 +297,7 @@ if (error) {
           textAlign: "center",
         }}
       >
-        Something went wrong
+        Payment Failed
       </Typography>
 
       <Typography

@@ -8,6 +8,7 @@ import ReceiptIcon from "@mui/icons-material/Receipt";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import PersonIcon from '@mui/icons-material/Person'; 
+import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 
 const NavItem = ({ to, icon, label, onClick }) => (
   <NavLink
@@ -59,11 +60,15 @@ const AdminSidebar = ({ isOpen, onClose }) => (
     <Box component="nav" sx={{ flex: 1 }}>
       <NavItem to="" icon={<DashboardIcon />} label="Dashboard" onClick={onClose} />
       <NavItem to="devices" icon={<DevicesIcon />} label="Devices" onClick={onClose} />
+      <NavItem to="users" icon={<PersonIcon />} label="Users" onClick={onClose} />
+      <NavItem to="LiveMonitoring" icon={<MonitorHeartIcon />} label="Live Monitoring" onClick={onClose} />
       <NavItem to="sessions" icon={<BarChartIcon />} label="Sessions" onClick={onClose} />
       <NavItem to="receipts" icon={<ReceiptIcon />} label="Receipts" onClick={onClose} />
       <NavItem to="analytics" icon={<QueryStatsIcon />} label="Analytics" onClick={onClose} />
       <NavItem to="profile" icon={<PersonIcon />} label="Profile" onClick={onClose} />
     </Box>
+
+    
   </Box>
 );
 

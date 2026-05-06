@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -6,26 +6,50 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import DevicesIcon from "@mui/icons-material/DeviceHub";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import PersonIcon from "@mui/icons-material/Person";
+import BatteryChargingFullIcon from "@mui/icons-material/BatteryChargingFull";
+import HistoryIcon from "@mui/icons-material/History";
+
 
 const OwnerSidebar = ({ isOpen, onClose }) => {
+  // ✅ ADD: Track if desktop view
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+
+  // ✅ ADD: Listen to window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 768);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const navStyle = ({ isActive }) =>
     isActive ? { ...styles.link, ...styles.activeLink } : styles.link;
 
+  // ✅ UPDATED: Dynamic sidebar style based on screen size
+  const sidebarStyle = {
+    ...styles.sidebar,
+    // Desktop: static position, always visible
+    // Mobile: fixed position, slides in/out
+    position: isDesktop ? "static" : "fixed",
+    transform: isDesktop ? "none" : `translateX(${isOpen ? '0' : '-100%'})`,
+  };
+
   return (
-    <aside style={{
-      ...styles.sidebar,
-      transform: `translateX(${isOpen ? '0' : '-100%'})`,
-    }}>
-      {/* Close button for mobile */}
+    <aside style={sidebarStyle}>
+      {/* Close button for mobile only */}
       <div style={styles.header}>
         <div style={styles.logo}>Owner Panel</div>
-        <IconButton 
-          onClick={onClose}
-          style={styles.closeButton}
-          size="small"
-        >
-          <CloseIcon style={{ color: '#fff', fontSize: '20px' }} />
-        </IconButton>
+        {!isDesktop && (  // ✅ Only show close button on mobile
+          <IconButton 
+            onClick={onClose}
+            style={styles.closeButton}
+            size="small"
+          >
+            <CloseIcon style={{ color: '#fff', fontSize: '20px' }} />
+          </IconButton>
+        )}
       </div>
       
       <nav style={styles.nav}>
@@ -34,6 +58,18 @@ const OwnerSidebar = ({ isOpen, onClose }) => {
             <NavLink to="/owner/devices" style={navStyle} onClick={onClose}>
               <DevicesIcon style={styles.icon} />
               My Devices
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/owner/live-charging" style={navStyle} onClick={onClose}>
+              <BatteryChargingFullIcon style={styles.icon} />
+              Live Charging
+            </NavLink>
+          </li>
+          <li>
+            <NavLink to="/owner/past-sessions" style={navStyle} onClick={onClose}>
+              <HistoryIcon style={styles.icon} />
+              Past Sessions
             </NavLink>
           </li>
           <li>
@@ -54,9 +90,9 @@ const OwnerSidebar = ({ isOpen, onClose }) => {
   );
 };
 
+
 const styles = {
   sidebar: {
-    position: "fixed",
     top: 0,
     left: 0,
     width: "280px",
@@ -66,10 +102,7 @@ const styles = {
     zIndex: 1300,
     transition: "transform 0.3s ease-in-out",
     borderRight: "1px solid #333",
-    '@media (min-width: 768px)': {
-      position: "static",
-      transform: "none !important"
-    }
+    // ❌ REMOVED: '@media (min-width: 768px)' - doesn't work in inline styles
   },
   header: {
     display: "flex",
@@ -116,5 +149,6 @@ const styles = {
     fontSize: "20px"
   }
 };
+
 
 export default OwnerSidebar;

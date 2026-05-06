@@ -28,7 +28,7 @@ const DeviceCreate = () => {
     setSuccess(false);
 
     try {
-      await apiFetch("https://viz.vjratechnologies.com/api/devices", {
+      await apiFetch("http://localhost:3000/api/devices", {
         method: "POST",
         body: JSON.stringify(deviceData),
       });

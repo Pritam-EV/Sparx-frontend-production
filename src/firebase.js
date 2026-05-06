@@ -1,6 +1,10 @@
-// src/firebase.js
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+
+import {
+  initializeAppCheck,
+  ReCaptchaV3Provider
+} from "firebase/app-check";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCnN13rJw8VEXsK4awxhDDPk1kk-roAWWA",
@@ -13,5 +17,17 @@ const firebaseConfig = {
   measurementId: "G-DMVEDT6880",
 };
 
-export const app = initializeApp(firebaseConfig);
+const app = initializeApp(firebaseConfig);
+
+// Enable debug token on localhost
+if (window.location.hostname === "localhost") {
+  window.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+}
+
+// Initialize App Check
+initializeAppCheck(app, {
+  provider: new ReCaptchaV3Provider("6Le1FWQsAAAAADQTuh1737fwoA0eBoKzj6CKiVm6"),
+  isTokenAutoRefreshEnabled: true,
+});
+
 export const auth = getAuth(app);

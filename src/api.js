@@ -1,20 +1,60 @@
 import axios from "axios";
 
-// Single env var for consistency (set this in .env and on hosting/build CI)
-export const API_BASE = process.env.REACT_APP_API_BASE || "https://sparx-backend-production.onrender.com";
+// ==============================
+// BASE URL
+// ==============================
+export const API_BASE =
+  process.env.REACT_APP_API_BASE || "https://sparx-backend-production.onrender.com";
 
+// ==============================
+// AXIOS INSTANCE
+// ==============================
 export const api = axios.create({
-  baseURL: API_BASE, // all api.post("/api/...") will be prefixed by API_BASE
+  baseURL: API_BASE,
 });
 
-// Optional helper calls should also use API_BASE for consistency:
-export const getDevices = () => axios.get(`${API_BASE}/devices`);
-export const saveSession = (data) => axios.post(`${API_BASE}/sessions/start`, data);
-export const endSession = (data) => axios.post(`${API_BASE}/sessions/end`, data);
-export const startSession = async (transactionId, deviceId) => {
-  return fetch(`${API_BASE}/api/sessions/start`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ transactionId, deviceId }),
-  }).then((r) => r.json());
-};
+// ==============================
+// ATTACH JWT TOKEN AUTOMATICALLY
+// ==============================
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token"); // must match login storage key
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// ==============================
+// HANDLE 401 GLOBAL
+// ==============================
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// ==============================
+// CLEAN HELPERS (USE api ONLY)
+// ==============================
+
+export const getDevices = () => api.get("/api/devices");
+
+export const saveSession = (data) =>
+  api.post("/api/sessions/start", data);
+
+export const endSession = (data) =>
+  api.post("/api/sessions/end", data);
+
+export const startSession = (transactionId, deviceId) =>
+  api.post("/api/sessions/start", { transactionId, deviceId });

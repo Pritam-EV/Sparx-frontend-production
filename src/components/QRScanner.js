@@ -15,12 +15,10 @@ import {
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import ArrowBackIosNewIcon from "@mui/icons-material/ArrowBackIosNew";
 
-// Helper to extract plain device ID from raw QR data
 const extractId = (raw) => {
   try {
-    // If it's a full URL, split on “/” and take last segment
     const parts = raw.split("/");
-    return parts.pop() || parts.pop(); // handles trailing slash
+    return parts.pop() || parts.pop();
   } catch {
     return raw;
   }
@@ -33,65 +31,63 @@ const QRScanner = () => {
   const videoRef = useRef(null);
   const qrScannerRef = useRef(null);
 
-  useEffect(() => {
-    if (videoRef.current) {
-      qrScannerRef.current = new QrScanner(
-        videoRef.current,
-        (result) => {
-          if (result?.data) {
-            setDeviceId(result.data);
-            verifyDevice(result.data);
-            if (result?.data) {
-               // 1) extract plain ID
-                  const id = extractId(result.data);
-                     // 2) update state and verify
-                   setDeviceId(id);
-                   verifyDevice(id);
-                    qrScannerRef.current.stop();
-                  }
+  const verifyDevice = useCallback(
+    async (id) => {
+      try {
+        setError("");
+        const response = await axios.get(
+          `${process.env.REACT_APP_Backend_API_Base_URL}/api/devices/check-device/${id}`
+        );
 
-            
-          }
-        },
-        {
-          preferredCamera: "environment",
-          highlightScanRegion: false,
-          highlightCodeOutline: false,
+        if (response.data.exists) {
+          navigate(`/charging-options/${id}`);
+        } else {
+          setError("Device not found. Please check the charger ID.");
         }
-      );
-      qrScannerRef.current.start().catch(() => {
-        setError("Camera access failed. Please check browser permission.");
-      });
-    }
+      } catch (err) {
+        setError("Error verifying device. Please try again.");
+      }
+    },
+    [navigate]
+  );
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+
+    qrScannerRef.current = new QrScanner(
+      videoRef.current,
+      (result) => {
+        if (result?.data) {
+          const id = extractId(result.data);
+          setDeviceId(id);
+          verifyDevice(id);
+          qrScannerRef.current?.stop();
+        }
+      },
+      {
+        preferredCamera: "environment",
+        highlightScanRegion: false,
+        highlightCodeOutline: false,
+      }
+    );
+
+    qrScannerRef.current.start().catch(() => {
+      setError("Camera access failed. Please check browser permission.");
+    });
+
     return () => {
       if (qrScannerRef.current) {
         qrScannerRef.current.stop();
         qrScannerRef.current.destroy();
       }
     };
-    // eslint-disable-next-line
-  }, []);
-
-  const verifyDevice = useCallback(async (id) => {
-    try {
-      const response = await axios.get(
-        `${process.env.REACT_APP_Backend_API_Base_URL}/api/devices/check-device/${id}`
-      );
-      if (response.data.exists) {
-        navigate(`/charging-options/${id}`);
-      } else {
-        setError("Device not found. Please check the ID.");
-      }
-    } catch (err) {
-         setTimeout(() => {
-     setError("Error verifying device. Try again.");
-   }, 3000);
-    }
-  }, [navigate]);
+  }, [verifyDevice]);
 
   const handleManualEntry = async () => {
     if (device_id.trim() !== "") {
-      await verifyDevice(device_id);
+      await verifyDevice(device_id.trim());
+    } else {
+      setError("Please enter charger ID.");
     }
   };
 
@@ -99,232 +95,270 @@ const QRScanner = () => {
     <Box
       sx={{
         minHeight: "100vh",
-        width: "100vw",
-        backgroundColor: "#0f1d23",
+        width: "100%",
+        background:
+          "radial-gradient(circle at top, rgba(8,38,46,0.9) 0%, #0b151a 45%, #081116 100%)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        justifyContent: "flex-start",
-        pt: 8,
+        px: 2,
+        pb: 4,
       }}
-      >
-              <Typography
-          variant="h6"
-          sx={{
-            position: "absolute",
-            top: 20,
-            left: 0,
-            width: "100%",
-            textAlign: "center",
-            color: "#e6f9ff",
-            fontWeight: 600,
-            fontSize: "1rem",
-            textShadow: "0 2px 8px #0008",
-            zIndex: 3,
-            letterSpacing: "0.02em",
-          }}
-        >
-          Scan Charger QR Code
-        </Typography>
-      {/* Camera container */}
+    >
+      {/* Header */}
       <Box
         sx={{
-          position: "relative",
-          width: "100vw",
-          maxWidth: "100vw",
-          minHeight: { xs: "260px", sm: "340px", md: "420px" },
-          height: { xs: "45vh", sm: "48vh", md: "56vh" },
-          bgcolor: "#091217",
-          borderRadius: "18px",
-          overflow: "hidden",
-          boxShadow: "0 0 10px #02687333",
+          width: "100%",
+          maxWidth: 460,
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: "space-between",
+          pt: 2,
+          pb: 2,
+          position: "sticky",
+          top: 0,
+          zIndex: 5,
+          background: "linear-gradient(180deg, rgba(11,21,26,0.98), rgba(11,21,26,0.82), transparent)",
+          backdropFilter: "blur(8px)",
         }}
       >
-        <video
-          ref={videoRef}
-          style={{
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-            background: "#222",
-            borderRadius: "18px",
+        <IconButton
+          onClick={() => navigate("/home")}
+          sx={{
+            width: 42,
+            height: 42,
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(4,191,191,0.18)",
+            color: "#dffaff",
+            "&:hover": {
+              background: "rgba(4,191,191,0.10)",
+            },
           }}
-          playsInline
-        />
-        {/* Animated corners with motion closer to center */}
-        <Box sx={cornerOverlayStyles}>
-          <span className="corner-tl" />
-          <span className="corner-tr" />
-          <span className="corner-bl" />
-          <span className="corner-br" />
-        </Box>
+        >
+          <ArrowBackIosNewIcon sx={{ fontSize: 18 }} />
+        </IconButton>
 
+        <Typography
+          sx={{
+            color: "#e6f9ff",
+            fontWeight: 700,
+            fontSize: "1rem",
+            letterSpacing: "0.02em",
+            textAlign: "center",
+          }}
+        >
+          Scan Charger QR
+        </Typography>
+
+        <Box sx={{ width: 42, height: 42 }} />
       </Box>
 
-      {/* Fixed width controls container */}
+      {/* Scanner section */}
       <Box
         sx={{
-          width: "340px",
-          maxWidth: "96vw",
-          bgcolor: "#091217",
-          borderRadius: "18px",
-          p: 3,
-          boxShadow: "0 0 10px #02687333",
-          mt: 2,
+          width: "100%",
+          maxWidth: 460,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
+          mt: 1,
         }}
       >
-        {error && (
-          <Typography
-            variant="body2"
-            color="error"
-            sx={{
-              mb: 2,
-              textAlign: "center",
-              backgroundColor: "#ffffff14",
-              padding: "8px 12px",
-              borderRadius: "8px",
-              fontWeight: 500,
-            }}
-          >
-            {error}
-          </Typography>
-        )}
-
-<TextField
-  variant="outlined"
-  placeholder="Enter Charger ID manually"
-  value={device_id}
-  onChange={(e) => setDeviceId(e.target.value)}
-  inputProps={{ maxLength: 60 }}
-  fullWidth
-  sx={{
-    mb: 1,
-    "& .MuiOutlinedInput-root": {
-      borderRadius: "14px",
-      height: 48,
-      background: "#0f1d23",
-      color: "#e6f9ff",
-      fontWeight: 500,
-      pr: 0, // Remove or keep minimal padding right
-    },
-    "& .MuiOutlinedInput-input": {
-      paddingRight: "36px", // Ensure enough padding for icon button inside
-    },
-    "& .MuiOutlinedInput-notchedOutline": {
-      border: "1px solid #ffffff0f",
-    },
-    "& input": { color: "#e6f9ff" },
-  }}
-  InputProps={{
-    endAdornment: (
-      <InputAdornment position="end" sx={{ marginRight: 1 }}>
-        <IconButton
-          aria-label="Verify"
-          edge="end"
-          onClick={handleManualEntry}
-          size="small" // smaller size for neat appearance
+        <Typography
           sx={{
-            background: "#026873ff",
-            color: "#fff",
-            borderRadius: "8px",
-            padding: "10px",
-            "&:hover": { background: "#039FA6ff" },
+            color: "#9dc2cc",
+            fontSize: "13px",
+            textAlign: "center",
+            mb: 2,
+            px: 1,
+            lineHeight: 1.5,
           }}
         >
-          <ArrowForwardIosIcon fontSize="small" />
-        </IconButton>
-      </InputAdornment>
-    ),
-  }}
-/>
+          Align the charger QR code inside the frame or enter the charger ID manually.
+        </Typography>
 
+        <Box
+          sx={{
+            position: "relative",
+            width: "100%",
+            borderRadius: "22px",
+            overflow: "hidden",
+            background: "#091217",
+            border: "1px solid rgba(4,191,191,0.16)",
+            boxShadow: "0 18px 48px rgba(0,0,0,0.35)",
+            minHeight: { xs: "280px", sm: "360px" },
+            height: { xs: "42vh", sm: "48vh" },
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <video
+            ref={videoRef}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              background: "#101820",
+            }}
+            playsInline
+          />
+
+          <Box sx={scanGuideStyles}>
+            <span className="corner-tl" />
+            <span className="corner-tr" />
+            <span className="corner-bl" />
+            <span className="corner-br" />
+          </Box>
+        </Box>
+
+        {/* Manual entry */}
+        <Box
+          sx={{
+            width: "100%",
+            mt: 2.2,
+            background: "rgba(9,18,23,0.95)",
+            borderRadius: "20px",
+            border: "1px solid rgba(4,191,191,0.14)",
+            boxShadow: "0 14px 40px rgba(0,0,0,0.28)",
+            p: 2,
+          }}
+        >
+          <Typography
+            sx={{
+              color: "#e6f9ff",
+              fontSize: "14px",
+              fontWeight: 600,
+              mb: 1.2,
+            }}
+          >
+            Enter charger ID manually
+          </Typography>
+
+          <Box
+            sx={{
+              display: "flex",
+              gap: 1,
+              alignItems: "stretch",
+            }}
+          >
+            <TextField
+              variant="outlined"
+              placeholder="Enter Charger ID"
+              value={device_id}
+              onChange={(e) => setDeviceId(e.target.value)}
+              inputProps={{ maxLength: 60 }}
+              fullWidth
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleManualEntry();
+                }
+              }}
+              sx={{
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: "14px",
+                  minHeight: 50,
+                  background: "#0f1d23",
+                  color: "#e6f9ff",
+                  fontWeight: 500,
+                },
+                "& .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(255,255,255,0.08)",
+                },
+                "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(4,191,191,0.35)",
+                },
+                "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#04BFBF",
+                },
+                "& input": {
+                  color: "#e6f9ff",
+                  fontSize: "14px",
+                  padding: "13px 14px",
+                },
+                "& input::placeholder": {
+                  color: "#7ea0ab",
+                  opacity: 1,
+                },
+              }}
+            />
+
+            <Button
+              onClick={handleManualEntry}
+              variant="contained"
+              sx={{
+                minWidth: "54px",
+                width: "54px",
+                borderRadius: "14px",
+                background: "linear-gradient(180deg, #04BFBF 0%, #028b8b 100%)",
+                color: "#062126",
+                boxShadow: "0 10px 24px rgba(4,191,191,0.28)",
+                "&:hover": {
+                  background: "linear-gradient(180deg, #03a7a7 0%, #027676 100%)",
+                },
+              }}
+            >
+              <ArrowForwardIosIcon sx={{ fontSize: 18 }} />
+            </Button>
+          </Box>
+
+          {error && (
+            <Typography
+              sx={{
+                mt: 1.25,
+                fontSize: "12.5px",
+                color: "#ff8e8e",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,90,90,0.18)",
+                borderRadius: "12px",
+                px: 1.5,
+                py: 1,
+                textAlign: "center",
+              }}
+            >
+              {error}
+            </Typography>
+          )}
+        </Box>
       </Box>
 
-      {/* Back button */}
-<Box
-  sx={{
-    width: "340px",
-    maxWidth: "96vw",
-    mt: 2,
-    display: "flex",
-    justifyContent: "center", // horizontal center
-    alignItems: "center",     // vertical center (if needed)
-  }}
->
-  <Button
-    variant="outlined"
-    size="large"
-    startIcon={<ArrowBackIosNewIcon sx={{ marginLeft: "4px" }} />}
-    onClick={() => navigate("/home")}
-    sx={{
-      height: 48,
-      width: "100px",
-      borderRadius: "14px",
-      color: "#04BFBF",
-      border: "2px solid #04BFBF",
-      textTransform: "none",
-      fontWeight: 600,
-      background: "#0f1d230a",
-      "&:hover": {
-        backgroundColor: "#023C40",
-        border: "2px solid #039FA6",
-        color: "#039FA6",
-      },
-    }}
-  >
-    Back
-  </Button>
-</Box>
-
-
-      {/* Animated corners moving closer and back */}
       <style>
         {`
           .corner-tl, .corner-tr, .corner-bl, .corner-br {
             position: absolute;
-            width: 40px;
-            height: 40px;
+            width: 42px;
+            height: 42px;
             border-radius: 4px;
             border: 4px solid #ffd600;
             z-index: 2;
             animation: corners-move 2s infinite ease-in-out;
             background: none;
           }
-          .corner-tl { top: 18px; left: 18px; border-bottom: none; border-right: none; }
-          .corner-tr { top: 18px; right: 18px; border-bottom: none; border-left: none; }
-          .corner-bl { bottom: 18px; left: 18px; border-top: none; border-right: none; }
-          .corner-br { bottom: 18px; right: 18px; border-top: none; border-left: none; }
+
+          .corner-tl { top: 22px; left: 22px; border-bottom: none; border-right: none; }
+          .corner-tr { top: 22px; right: 22px; border-bottom: none; border-left: none; }
+          .corner-bl { bottom: 22px; left: 22px; border-top: none; border-right: none; }
+          .corner-br { bottom: 22px; right: 22px; border-top: none; border-left: none; }
+
           @keyframes corners-move {
-            0%, 100% {
-              transform: translate(0, 0);
-            }
-            50% {
-              transform: translate(4px, 4px);
-            }
+            0%, 100% { transform: translate(0, 0); }
+            50% { transform: translate(4px, 4px); }
           }
-          .corner-tr {
-            animation-name: corners-move-tr;
-          }
-          .corner-bl {
-            animation-name: corners-move-bl;
-          }
-          .corner-br {
-            animation-name: corners-move-br;
-          }
+
+          .corner-tr { animation-name: corners-move-tr; }
+          .corner-bl { animation-name: corners-move-bl; }
+          .corner-br { animation-name: corners-move-br; }
+
           @keyframes corners-move-tr {
             0%, 100% { transform: translate(0, 0); }
             50% { transform: translate(-4px, 4px); }
           }
+
           @keyframes corners-move-bl {
             0%, 100% { transform: translate(0, 0); }
             50% { transform: translate(4px, -4px); }
           }
+
           @keyframes corners-move-br {
             0%, 100% { transform: translate(0, 0); }
             50% { transform: translate(-4px, -4px); }
@@ -335,12 +369,9 @@ const QRScanner = () => {
   );
 };
 
-const cornerOverlayStyles = {
+const scanGuideStyles = {
   position: "absolute",
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
+  inset: 0,
   pointerEvents: "none",
   zIndex: 2,
 };

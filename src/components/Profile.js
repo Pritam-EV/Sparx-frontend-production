@@ -1,24 +1,69 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Box } from "@mui/material";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  IconButton,
+  Slider,
+  TextField,
+  Button,
+  Typography,
+  Box,
+} from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import FooterNav from "../components/FooterNav";
 
 const Profile = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = localStorage.getItem("user");
   const userData = user && user !== "undefined" ? JSON.parse(user) : null;
+
+  const [policyPopup, setPolicyPopup] = useState({
+    open: false,
+    type: "",
+  });
+
+  const openPolicy = (type) => {
+    setPolicyPopup({ open: true, type });
+  };
+
+  const closePolicy = () => {
+    setPolicyPopup({ open: false, type: "" });
+  };
 
   const [isEditing, setIsEditing] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
+  const [operatorOpen, setOperatorOpen] = useState(false);
+
   const [updatedUserData, setUpdatedUserData] = useState({
     name: userData?.name || "",
     email: userData?.email || "",
-    mobile: userData?.mobile || "", // keep for display, but not editable
+    mobile: userData?.mobile || "",
     vehicleType: userData?.vehicleType || "",
     vehicleNumber: userData?.vehicleNumber || userData?.vehicleReg || "",
   });
 
+  const [operatorForm, setOperatorForm] = useState({
+    name: userData?.name || "",
+    mobile: userData?.mobile || "",
+    email: userData?.email || "",
+    location: "",
+    budget: 1,
+  });
+
   const menuRef = useRef();
+
+  useEffect(() => {}, []);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setPopupVisible(false);
+    setIsEditing(false);
+    setOperatorOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -26,11 +71,15 @@ const Profile = () => {
         setMenuOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
+
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
+  }, [menuOpen]);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -47,13 +96,16 @@ const Profile = () => {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/auth/delete`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        `${process.env.REACT_APP_Backend_API_Base_URL}/api/auth/delete`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (response.ok) {
         alert("Your account has been deleted.");
@@ -70,20 +122,27 @@ const Profile = () => {
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem("token");
-    // simple email validation
-    if (updatedUserData.email && !/^\S+@\S+\.\S+$/.test(updatedUserData.email)) {
+
+    if (
+      updatedUserData.email &&
+      !/^\S+@\S+\.\S+$/.test(updatedUserData.email)
+    ) {
       alert("Please enter a valid email address");
       return;
     }
 
-    const response = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/auth/updateProfile`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(updatedUserData),
-    });
+    const response = await fetch(
+      `${process.env.REACT_APP_Backend_API_Base_URL}/api/auth/updateProfile`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updatedUserData),
+      }
+    );
+
     if (response.ok) {
       const updatedUser = await response.json();
 
@@ -98,23 +157,17 @@ const Profile = () => {
 
       setIsEditing(false);
       setMenuOpen(false);
-      navigate("/profile");
+      window.location.href = "/profile";
     } else {
-      // read error message if any (optional)
       const err = await response.json().catch(() => ({}));
       alert(err.message || "Failed to update profile. Please try again.");
     }
   };
 
   const handleGoToDashboard = () => {
-    console.log("UserData in handler:", userData);
-    console.log("UserData.role:", userData?.role);
-
     if (userData?.role === "admin") {
-      console.log("Navigating to /admin");
       navigate("/admin");
     } else if (userData?.role === "owner") {
-      // Owner logic, e.g. check charger ownership
       navigate("/owner");
     } else {
       setPopupVisible(true);
@@ -125,42 +178,82 @@ const Profile = () => {
     setPopupVisible(false);
   };
 
-  const handleBecomeOperator = () => {
-    navigate("/operator-form");
+  const handleOperatorSubmit = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.REACT_APP_Backend_API_Base_URL}/api/operator/request`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(operatorForm),
+        }
+      );
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("Operator request failed:", text);
+        alert("Failed to submit request. Please try again.");
+        return;
+      }
+
+      await res.json();
+      alert("Request submitted successfully! Our team will contact you.");
+      setOperatorOpen(false);
+    } catch (err) {
+      console.error(err);
+      alert("Something went wrong. Please try again.");
+    }
   };
 
   return (
     <>
-        <style>{`
-      .top-bar {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 40px;
-        background-color: #001f26;
-        box-shadow: 0 2px 12px #04BFBF;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1002;
-      }
+      <style>{`
+        .top-bar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 42px;
+          background-color: #001f26;
+          box-shadow: 0 2px 12px rgba(4, 191, 191, 0.45);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1002;
+        }
 
-      .top-bar-logo {
-        height: 65px;
-        filter: drop-shadow(0 0 6px #04BFBF);
-      }
-    `}</style>
+        .top-bar-logo {
+          height: 62px;
+          filter: drop-shadow(0 0 6px rgba(4, 191, 191, 0.8));
+          object-fit: contain;
+        }
 
-    <div className="top-bar">
-      <img src="/logo.png" alt="Sparx Logo" className="top-bar-logo" />
-    </div>
+        .profile-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
 
-      {/* Outer full-height container. The center area (contentBox) handles scrolling */}
+        .profile-scroll::-webkit-scrollbar-thumb {
+          background: rgba(4, 191, 191, 0.28);
+          border-radius: 999px;
+        }
+
+        .profile-scroll::-webkit-scrollbar-track {
+          background: transparent;
+        }
+      `}</style>
+
+      <div className="top-bar">
+        <img src="/logo.png" alt="Sparx Logo" className="top-bar-logo" />
+      </div>
+
       <Box
         sx={{
-          height: "100vh",
           width: "100vw",
+          height: "100vh",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -171,40 +264,42 @@ const Profile = () => {
           fontFamily:
             "Poppins, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial",
           color: "#e6f9ff",
-          overflow: "hidden", // important: let inner box scroll
+          overflow: "hidden",
         }}
       >
-
-
-        {/* Scrollable content area */}
         <Box
+          className="profile-scroll"
           sx={{
             flex: 1,
             width: "100%",
             maxWidth: 480,
-            mt: "40px", // leave space for top-bar
-            pb: "72px", // leave space for bottom-bar
+            mt: "42px",
             px: 2,
-            boxSizing: "border-box",
+            pt: 2.2,
             overflowY: "auto",
-            WebkitOverflowScrolling: "touch", // smooth scroll on iOS
-            display: "flex",
-            justifyContent: "center",
+            WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain",
+            pb: "110px",
           }}
         >
           <div style={styles.page}>
             <div style={styles.headerContainer}>
               <h2 style={styles.title}>My Profile</h2>
-              <div style={styles.menuWrapper}>
-                <button onClick={() => setMenuOpen(!menuOpen)} style={styles.menuButton}>
+
+              <div style={styles.menuWrapper} ref={menuRef}>
+                <button
+                  onClick={() => setMenuOpen(!menuOpen)}
+                  style={styles.menuButton}
+                >
                   <svg width="24" height="45" fill="#e6f9ff" viewBox="0 0 24 45">
                     <circle cx="5" cy="25" r="2" />
                     <circle cx="12" cy="25" r="2" />
                     <circle cx="19" cy="25" r="2" />
                   </svg>
                 </button>
+
                 {menuOpen && (
-                  <div ref={menuRef} style={styles.dropdown}>
+                  <div style={styles.dropdown}>
                     <button
                       onClick={() => {
                         setIsEditing(true);
@@ -214,12 +309,12 @@ const Profile = () => {
                     >
                       Edit Profile
                     </button>
-                    <button onClick={handleLogout} style={{ ...styles.dropdownItem }}>
+                    <button onClick={handleLogout} style={styles.dropdownItem}>
                       Logout
                     </button>
                     <button
                       onClick={handleDeleteAccount}
-                      style={{ ...styles.dropdownItem, color: "#ff4d4d" }}
+                      style={{ ...styles.dropdownItem, ...styles.dropdownDanger }}
                     >
                       Delete Account
                     </button>
@@ -238,7 +333,7 @@ const Profile = () => {
                   viewBox="0 0 24 24"
                 >
                   <path
-                    fill="#011F26"
+                    fill="#ffffff"
                     d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8V22h19.2v-2.8c0-3.2-6.4-4.8-9.6-4.8z"
                   />
                 </svg>
@@ -249,91 +344,144 @@ const Profile = () => {
               <>
                 {isEditing ? (
                   <form onSubmit={handleProfileUpdate} style={styles.form}>
-                    <div style={styles.inputGroup}>
-                      <label style={styles.label}>Name:</label>
-                      <input
-                        type="text"
-                        value={updatedUserData.name}
-                        onChange={(e) =>
-                          setUpdatedUserData({ ...updatedUserData, name: e.target.value })
-                        }
-                        style={styles.input}
-                      />
-                    </div>
+                    <div style={styles.formCard}>
+                      <div style={styles.inputGroup}>
+                        <label style={styles.label}>Name</label>
+                        <input
+                          type="text"
+                          value={updatedUserData.name}
+                          onChange={(e) =>
+                            setUpdatedUserData({
+                              ...updatedUserData,
+                              name: e.target.value,
+                            })
+                          }
+                          style={styles.input}
+                        />
+                      </div>
 
-                    <div style={styles.inputGroup}>
-                      <label style={styles.label}>Email:</label>
-                      <input
-                        type="email"
-                        value={updatedUserData.email}
-                        onChange={(e) =>
-                          setUpdatedUserData({ ...updatedUserData, email: e.target.value })
-                        }
-                        placeholder="you@example.com"
-                        style={styles.input}
-                        required
-                      />
-                    </div>
+                      <div style={styles.inputGroup}>
+                        <label style={styles.label}>Email</label>
+                        <input
+                          type="email"
+                          value={updatedUserData.email}
+                          onChange={(e) =>
+                            setUpdatedUserData({
+                              ...updatedUserData,
+                              email: e.target.value,
+                            })
+                          }
+                          placeholder="you@example.com"
+                          style={styles.input}
+                          required
+                        />
+                      </div>
 
-                    <div style={styles.inputGroup}>
-                      <label style={styles.label}>Vehicle Type:</label>
-                      <input
-                        type="text"
-                        value={updatedUserData.vehicleType}
-                        onChange={(e) =>
-                          setUpdatedUserData({ ...updatedUserData, vehicleType: e.target.value })
-                        }
-                        style={styles.input}
-                      />
-                    </div>
+                      <div style={styles.inputGroup}>
+                        <label style={styles.label}>Mobile</label>
+                        <input
+                          type="text"
+                          value={updatedUserData.mobile}
+                          onChange={(e) =>
+                            setUpdatedUserData({
+                              ...updatedUserData,
+                              mobile: e.target.value,
+                            })
+                          }
+                          style={styles.input}
+                        />
+                      </div>
 
-                    <div style={styles.inputGroup}>
-                      <label style={styles.label}>Vehicle Number:</label>
-                      <input
-                        type="text"
-                        value={updatedUserData.vehicleNumber}
-                        onChange={(e) =>
-                          setUpdatedUserData({ ...updatedUserData, vehicleNumber: e.target.value })
-                        }
-                        placeholder="MH12AB1234"
-                        style={styles.input}
-                      />
-                    </div>
+                      <div style={styles.inputGroup}>
+                        <label style={styles.label}>Vehicle Type</label>
+                        <input
+                          type="text"
+                          value={updatedUserData.vehicleType}
+                          onChange={(e) =>
+                            setUpdatedUserData({
+                              ...updatedUserData,
+                              vehicleType: e.target.value,
+                            })
+                          }
+                          style={styles.input}
+                        />
+                      </div>
 
-                    <button type="submit" style={styles.updateButton}>
-                      Save Changes
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsEditing(false)}
-                      style={styles.cancelButton}
-                    >
-                      Cancel
-                    </button>
+                      <div style={styles.inputGroup}>
+                        <label style={styles.label}>Vehicle Number</label>
+                        <input
+                          type="text"
+                          value={updatedUserData.vehicleNumber}
+                          onChange={(e) =>
+                            setUpdatedUserData({
+                              ...updatedUserData,
+                              vehicleNumber: e.target.value,
+                            })
+                          }
+                          placeholder="MH12AB1234"
+                          style={styles.input}
+                        />
+                      </div>
+
+                      <div style={styles.actionRow}>
+                        <button type="submit" style={styles.updateButton}>
+                          Save Changes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsEditing(false)}
+                          style={styles.cancelButton}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
                   </form>
                 ) : (
                   <div style={styles.cardContainer}>
                     <div style={styles.infoCard}>
-                      <span style={styles.cardLabel}>Name</span>
-                      <span style={styles.cardValue}>{userData.name}</span>
+                      <div style={styles.infoBlock}>
+                        <span style={styles.cardLabel}>Name</span>
+                        <span style={styles.cardValue}>{userData.name || "-"}</span>
+                      </div>
                     </div>
+
                     <div style={styles.infoCard}>
-                      <span style={styles.cardLabel}>Email</span>
-                      <span style={styles.cardValue}>{userData.email || "Not provided"}</span>
+                      <div style={styles.infoBlock}>
+                        <span style={styles.cardLabel}>Email</span>
+                        <span style={styles.cardValue}>
+                          {userData.email || "Not provided"}
+                        </span>
+                      </div>
                     </div>
+
                     <div style={styles.infoCard}>
-                      <span style={styles.cardLabel}>Mobile</span>
-                      <span style={styles.cardValue}>{userData.mobile}</span>
+                      <div style={styles.infoBlock}>
+                        <span style={styles.cardLabel}>Mobile</span>
+                        <span style={styles.cardValue}>
+                          {userData.mobile || "Not provided"}
+                        </span>
+                      </div>
                     </div>
+
                     <div style={styles.infoCard}>
-                      <span style={styles.cardLabel}>Vehicle</span>
-                      <span style={styles.cardValue}>{userData.vehicleType || "Not provided"}</span>
+                      <div style={styles.infoBlock}>
+                        <span style={styles.cardLabel}>Vehicle Type</span>
+                        <span style={styles.cardValue}>
+                          {userData.vehicleType || "Not provided"}
+                        </span>
+                      </div>
                     </div>
+
                     <div style={styles.infoCard}>
-                      <span style={styles.cardLabel}>Vehicle Number</span>
-                      <span style={styles.cardValue}>
-                        {userData.vehicleNumber || userData.vehicleReg || "Not provided"}
-                      </span>
+                      <div style={styles.infoBlock}>
+                        <span style={styles.cardLabel}>Vehicle Number</span>
+                        <span style={styles.cardValue}>
+                          {userData.vehicleNumber ||
+                            userData.vehicleReg ||
+                            "Not provided"}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -342,195 +490,381 @@ const Profile = () => {
               <p style={styles.noUser}>No user data found</p>
             )}
 
-            {/* Bottom Links */}
-            <div
-              style={{
-                marginTop: 40,
-                maxWidth: 420,
-                width: "100%",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                textAlign: "center",
-              }}
-            >
-              <hr style={{ width: "100%", marginBottom: 12 }} />
-              <p style={styles.linkText} onClick={handleBecomeOperator}>
-                Become operator and start earning
-              </p>
+            <div style={styles.bottomSection}>
+              <div style={styles.separator} />
+
+              <Button
+                onClick={() => setOperatorOpen(true)}
+                sx={{
+                  color: "#cbebfa",
+                  fontWeight: 700,
+                  letterSpacing: "0.3px",
+                  mb: 1.2,
+                  textTransform: "none",
+                  borderRadius: "12px",
+                  px: 2.5,
+                  "&:hover": {
+                    background: "rgba(4,191,191,0.08)",
+                  },
+                }}
+              >
+                CONTACT US
+              </Button>
+
               <p
                 style={{
-                  ...styles.linkText,
-                  cursor: "default",
-                  textDecoration: "none",
-                  color: "#888",
-                  marginBottom: 4,
+                  ...styles.linkTextMuted,
+                  marginBottom: 8,
                 }}
               >
                 Already own a charger?
               </p>
-              <p
-                style={{
-                  ...styles.linkText,
-                  cursor: "pointer",
-                  marginTop: 0,
-                }}
+
+              <Button
                 onClick={handleGoToDashboard}
+                sx={{
+                  mt: 0.5,
+                  minWidth: 220,
+                  background: "linear-gradient(90deg, #04BFBF, #027a7a)",
+                  color: "#011F26",
+                  fontWeight: 700,
+                  borderRadius: "14px",
+                  px: 3,
+                  py: 1.2,
+                  textTransform: "none",
+                  boxShadow: "0 8px 28px rgba(4,191,191,0.28)",
+                  "&:hover": {
+                    background: "linear-gradient(90deg, #03a6a6, #026060)",
+                  },
+                }}
               >
                 Go to dashboard
-              </p>
-                            {/* Policy Links Section */}
-              <div
-                style={{
-                  marginTop: 24,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "8px",
-                }}
-              >
-                <a
-                  href="https://merchant.razorpay.com/policy/RLogEiXDM4Oogf/terms"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.policyLink}
+              </Button>
+
+              <div style={styles.developerSection}>
+                <p
+                  style={{
+                    ...styles.linkTextMuted,
+                    color: "#ffffff",
+                    marginBottom: 4,
+                  }}
                 >
-                  Terms & Conditions
-                </a>
-                <a
-                  href="https://merchant.razorpay.com/policy/RLogEiXDM4Oogf/privacy"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.policyLink}
+                  Designed and Developed by
+                </p>
+
+                <p
+                  style={{
+                    ...styles.linkTextMuted,
+                    color: "#cbebfa",
+                    fontWeight: 700,
+                    marginBottom: 0,
+                  }}
                 >
-                  Privacy Policy
-                </a>
-                <a
-                  href="https://merchant.razorpay.com/policy/RLogEiXDM4Oogf/refund"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.policyLink}
-                >
-                  Refund Policy
-                </a>
-                <a
-                  href="https://merchant.razorpay.com/policy/RLogEiXDM4Oogf/shipping"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.policyLink}
-                >
-                  Shipping Policy
-                </a>
+                  Vjra Technologies LLP
+                </p>
               </div>
+
+            <div style={styles.policyLinksWrap}>
+              <a
+                href="/terms.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={styles.policyLink}
+              >
+                Terms & Conditions
+              </a>
+
+              <span style={styles.policyDot}>•</span>
+
+              <a
+                href="/refund.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={styles.policyLink}
+              >
+                Refund Policy
+              </a>
+            </div>
             </div>
 
-            {/* Popup Overlay */}
             {popupVisible && (
               <div style={styles.popupOverlay} onClick={closePopup}>
                 <div style={styles.popupBox} onClick={(e) => e.stopPropagation()}>
                   <button onClick={closePopup} style={styles.popupCloseBtn}>
                     ✕
                   </button>
-                  <p>No linked charger found.</p>
-                  <p
-                    style={{ color: "#04BFBF", cursor: "pointer", textDecoration: "underline" }}
-                    onClick={() => {
-                      closePopup();
-                      navigate("/operator-form");
+
+                  <Typography
+                    sx={{
+                      fontSize: "18px",
+                      fontWeight: 700,
+                      marginBottom: "8px",
+                      color: "#e6f9ff",
                     }}
                   >
-                    Register your charger here.
-                  </p>
+                    No devices linked
+                  </Typography>
+
+                  <Typography
+                    sx={{
+                      fontSize: "13px",
+                      color: "#9bbac6",
+                      marginBottom: "20px",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    You haven’t linked any charging stations yet. Link your charger
+                    to start managing sessions and earnings.
+                  </Typography>
+
+                  <Button
+                    fullWidth
+                    onClick={() => {
+                      closePopup();
+                      navigate("/onboard-device");
+                    }}
+                    sx={{
+                      background: "linear-gradient(90deg, #04BFBF, #027a7a)",
+                      color: "#011F26",
+                      fontWeight: 700,
+                      borderRadius: "12px",
+                      py: 1.2,
+                      textTransform: "none",
+                      boxShadow: "0 8px 30px rgba(4,191,191,0.35)",
+                      "&:hover": {
+                        background: "linear-gradient(90deg, #03a6a6, #026060)",
+                      },
+                    }}
+                  >
+                    Link / Register Charger
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {policyPopup.open && (
+              <div style={styles.popupOverlay} onClick={closePolicy}>
+                <div
+                  style={{
+                    ...styles.popupBox,
+                    width: "95%",
+                    maxWidth: "800px",
+                    height: "85vh",
+                    padding: "10px",
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button onClick={closePolicy} style={styles.popupCloseBtn}>
+                    ✕
+                  </button>
+
+                  <iframe
+                    src={
+                      policyPopup.type === "terms" ? "/terms.pdf" : "/refund.pdf"
+                    }
+                    title="Policy Document"
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      border: "none",
+                      borderRadius: "10px",
+                    }}
+                  />
                 </div>
               </div>
             )}
           </div>
         </Box>
 
-        {/* Bottom Bar - fixed so it does not scroll with content */}
-        <div
-          className="bottom-bar"
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 65,
-            display: "flex",
-            justifyContent: "space-around",
-            alignItems: "center",
-            background: "001f26",
-            zIndex: 40,
-            pointerEvents: "auto",
+        <Dialog
+          open={operatorOpen}
+          onClose={() => setOperatorOpen(false)}
+          fullWidth
+          maxWidth="sm"
+          PaperProps={{
+            sx: {
+              background:
+                "linear-gradient(180deg, rgba(13,24,30,0.98) 0%, rgba(18,27,34,0.98) 100%)",
+              color: "#e6f9ff",
+              border: "1px solid rgba(4,191,191,0.2)",
+              borderRadius: "18px",
+              boxShadow: "0 24px 60px rgba(0,0,0,0.5)",
+            },
           }}
         >
-          <button onClick={() => navigate("/sessions")} className="home-button">
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="#fff"
-                strokeWidth="1"
-                viewBox="0 0 24 24"
-              >
-                <path d="M13 2L3 14h9v8l9-12h-9z" />
-              </svg>
-              <span style={styles.buttonText}>Sessions</span>
-            </div>
-          </button>
+          <DialogTitle
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              fontWeight: 700,
+              color: "#e6f9ff",
+              pb: 1,
+            }}
+          >
+            Lets Revolutionize EV Charging Network
+            <IconButton onClick={() => setOperatorOpen(false)}>
+              <CloseIcon sx={{ color: "#04BFBF" }} />
+            </IconButton>
+          </DialogTitle>
 
-          <button onClick={() => navigate("/home")} className="scan-button">
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="#fff"
-                strokeWidth="1"
-                viewBox="0 0 24 24"
-              >
-                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-              </svg>
-              <span style={{ ...styles.buttonText, color: "#fff" }}>Home</span>
-            </div>
-          </button>
+          <DialogContent sx={{ pt: 1 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                mb: 2.2,
+                color: "#9bbac6",
+                lineHeight: 1.6,
+              }}
+            >
+              Submit your details and our team will contact you shortly.
+            </Typography>
 
-          <button onClick={() => navigate("/profile")} className="home-button">
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                fill="none"
-                stroke="#04BFBF"
-                strokeWidth="1"
-                viewBox="0 0 24 24"
-              >
-                <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8V22h19.2v-2.8c0-3.2-6.4-4.8-9.6-4.8z" />
-              </svg>
-              <span style={{ ...styles.buttonText, color: "#04BFBF" }}>Profile</span>
-            </div>
-          </button>
-        </div>
+            <TextField
+              label="Name"
+              fullWidth
+              value={operatorForm.name}
+              onChange={(e) =>
+                setOperatorForm({ ...operatorForm, name: e.target.value })
+              }
+              sx={muiFieldSx}
+            />
+
+            <TextField
+              label="Mobile Number"
+              fullWidth
+              value={operatorForm.mobile}
+              onChange={(e) =>
+                setOperatorForm({ ...operatorForm, mobile: e.target.value })
+              }
+              sx={muiFieldSx}
+            />
+
+            <TextField
+              label="Email"
+              fullWidth
+              value={operatorForm.email}
+              onChange={(e) =>
+                setOperatorForm({ ...operatorForm, email: e.target.value })
+              }
+              sx={muiFieldSx}
+            />
+
+            <TextField
+              label="Installation Location"
+              fullWidth
+              placeholder="City / Area"
+              value={operatorForm.location}
+              onChange={(e) =>
+                setOperatorForm({ ...operatorForm, location: e.target.value })
+              }
+              sx={{ ...muiFieldSx, mb: 3 }}
+            />
+
+            <Typography
+              fontWeight={600}
+              sx={{ mb: 1.2, color: "#dff9ff", fontSize: "14px" }}
+            >
+              Estimated Budget
+            </Typography>
+
+            <Slider
+              value={operatorForm.budget}
+              min={0}
+              max={3}
+              step={1}
+              marks={[
+                { value: 0, label: "< ₹5,000" },
+                { value: 1, label: "₹5k – ₹15k" },
+                { value: 2, label: "₹15k – ₹50k" },
+                { value: 3, label: "> ₹50k" },
+              ]}
+              onChange={(e, val) =>
+                setOperatorForm({ ...operatorForm, budget: val })
+              }
+              sx={{
+                mb: 4,
+                color: "#04BFBF",
+                "& .MuiSlider-thumb": {
+                  boxShadow: "0 0 12px rgba(4,191,191,0.8)",
+                },
+                "& .MuiSlider-markLabel": {
+                  color: "#a9c8d4",
+                  fontSize: "11px",
+                },
+                "& .MuiSlider-rail": {
+                  opacity: 0.35,
+                },
+              }}
+            />
+
+            <Button
+              fullWidth
+              size="large"
+              variant="contained"
+              sx={{
+                backgroundColor: "#04BFBF",
+                color: "#0a1117",
+                fontWeight: 700,
+                borderRadius: 2.5,
+                py: 1.25,
+                textTransform: "none",
+                boxShadow: "0 10px 28px rgba(4,191,191,0.28)",
+                "&:hover": {
+                  backgroundColor: "#04BFBF",
+                },
+              }}
+              onClick={handleOperatorSubmit}
+            >
+              Submit Request
+            </Button>
+          </DialogContent>
+        </Dialog>
       </Box>
+
+      <FooterNav currentPage={location.pathname} />
     </>
   );
 };
 
-const popupBackgroundColor = "rgba(22, 22, 22, 0.95)"; // Change as needed
+const muiFieldSx = {
+  mb: 2,
+  "& .MuiOutlinedInput-root": {
+    color: "#e6f9ff",
+    borderRadius: "12px",
+    backgroundColor: "#0f1d23",
+    "& fieldset": {
+      borderColor: "rgba(255,255,255,0.08)",
+    },
+    "&:hover fieldset": {
+      borderColor: "rgba(4,191,191,0.35)",
+    },
+    "&.Mui-focused fieldset": {
+      borderColor: "#04BFBF",
+      boxShadow: "0 0 0 2px rgba(4,191,191,0.08)",
+    },
+  },
+  "& .MuiInputLabel-root": {
+    color: "#8fb2bf",
+  },
+  "& .MuiInputLabel-root.Mui-focused": {
+    color: "#04BFBF",
+  },
+};
+
+const popupBackgroundColor = "rgba(22, 22, 22, 0.95)";
+
 const styles = {
   page: {
-    background: "linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(18,27,34,0.95) 100%)",
-    border: "1px solid rgba(255,255,255,0.06)",
-    borderRadius: "28px",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.7)",
+    background:
+      "linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(18,27,34,0.95) 100%)",
+    border: "1px solid rgba(4,191,191,0.18)",
+    borderRadius: "22px",
+    boxShadow: "0 18px 50px rgba(4,191,191,0.08)",
     backdropFilter: "blur(8px)",
-    padding: "32px 16px 120px 16px",
-    // removed minHeight: calc(100vh - 110px) so it can naturally size inside scrollable area
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
+    padding: "22px 16px 28px 16px",
+    fontFamily:
+      "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
     color: "#e6f9ff",
     display: "flex",
     flexDirection: "column",
@@ -538,6 +872,7 @@ const styles = {
     width: "100%",
     boxSizing: "border-box",
     maxWidth: 420,
+    margin: "0 auto",
   },
 
   headerContainer: {
@@ -546,32 +881,53 @@ const styles = {
     justifyContent: "center",
     position: "relative",
     width: "100%",
-    marginBottom: "2px",
-    marginTop: "5px",
+    marginBottom: "8px",
+    marginTop: "2px",
+    minHeight: "34px",
   },
+
   title: {
     color: "#e6f9ff",
     textAlign: "center",
-    fontSize: "28px",
-    fontWeight: 600,
-    letterSpacing: "1.2px",
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
-    marginBottom: "3px",
+    fontSize: "22px",
+    fontWeight: 700,
+    letterSpacing: "0.4px",
+    fontFamily:
+      "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
+    margin: 0,
   },
-  menuWrapper: { position: "absolute", right: "16px", top: "0" },
-  menuButton: { background: "transparent", border: "none", cursor: "pointer", padding: "4px" },
+
+  menuWrapper: {
+    position: "absolute",
+    right: "2px",
+    top: "-3px",
+  },
+
+  menuButton: {
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    padding: "2px 4px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
   dropdown: {
     position: "absolute",
-    right: 0,
-    top: "28px",
-    background: "#fff",
-    borderRadius: "8px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-    zIndex: 10,
-    minWidth: "120px",
+    right: "0",
+    top: "34px",
+    background: "#f6fbfd",
+    borderRadius: "12px",
+    boxShadow: "0 12px 30px rgba(0,0,0,0.22)",
+    zIndex: 20,
+    minWidth: "160px",
+    overflow: "hidden",
+    border: "1px solid rgba(0,0,0,0.06)",
   },
+
   dropdownItem: {
-    padding: "10px",
+    padding: "11px 14px",
     width: "100%",
     textAlign: "left",
     background: "transparent",
@@ -579,132 +935,229 @@ const styles = {
     cursor: "pointer",
     fontSize: "14px",
     color: "#011F26",
-    borderBottom: "1px solid #eee",
+    borderBottom: "1px solid rgba(0,0,0,0.06)",
   },
-  profileIconContainer: { marginBottom: "24px" },
+
+  dropdownDanger: {
+    color: "#d93636",
+    borderBottom: "none",
+  },
+
+  profileIconContainer: {
+    marginTop: "6px",
+    marginBottom: "22px",
+  },
+
   profileCircle: {
-    width: "90px",
-    height: "90px",
+    width: "92px",
+    height: "92px",
     borderRadius: "50%",
     background: "linear-gradient(135deg,#04bfbf 0%,#027a7a 100%)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
-    boxShadow: "0 6px 24px rgba(4,191,191,0.20)",
+    boxShadow: "0 8px 24px rgba(4,191,191,0.22)",
+    border: "2px solid rgba(255,255,255,0.06)",
   },
+
   cardContainer: {
     width: "100%",
     maxWidth: "420px",
     display: "flex",
     flexDirection: "column",
-    gap: "5px",
+    gap: "10px",
     boxSizing: "border-box",
-    padding: "0 12px",
-    wordBreak: "break-word",
   },
+
   infoCard: {
-    background: "rgba(255,255,255,0.04)",
-    borderRadius: "12px",
+    width: "100%",
+    background: "rgba(4,191,191,0.06)",
+    borderRadius: "14px",
     padding: "14px 16px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+    boxShadow: "0 6px 20px rgba(0,0,0,0.22)",
     display: "flex",
-    justifyContent: "space-between",
     alignItems: "center",
-    border: "1px solid rgba(255,255,255,0.06)",
-    fontWeight: "normal",
+    border: "1px solid rgba(4,191,191,0.15)",
+    boxSizing: "border-box",
   },
+
+  infoBlock: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+    width: "100%",
+    minWidth: 0,
+  },
+
   cardLabel: {
-    color: "#99c3de",
-    fontSize: "13px",
-    marginBottom: "0",
+    color: "#9fc4d3",
+    fontSize: "11px",
+    letterSpacing: "0.8px",
+    textTransform: "uppercase",
+    lineHeight: 1.2,
   },
+
   cardValue: {
     color: "#e6f9ff",
-    fontSize: "17px",
-    fontWeight: "normal",
-  },
-  inputGroup: { marginBottom: "16px", width: "100%", maxWidth: "420px" },
-  label: {
-    color: "rgba(255,255,255,0.6)",
-    fontWeight: 500,
     fontSize: "14px",
-    marginBottom: "4px",
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
+    fontWeight: 600,
+    lineHeight: 1.45,
+    wordBreak: "break-word",
   },
+
+  form: {
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+  },
+
+  formCard: {
+    width: "100%",
+    background: "rgba(4,191,191,0.05)",
+    borderRadius: "16px",
+    padding: "16px",
+    border: "1px solid rgba(4,191,191,0.14)",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.22)",
+    boxSizing: "border-box",
+  },
+
+  inputGroup: {
+    marginBottom: "14px",
+    width: "100%",
+  },
+
+  label: {
+    display: "block",
+    color: "rgba(255,255,255,0.66)",
+    fontWeight: 500,
+    fontSize: "13px",
+    marginBottom: "6px",
+    fontFamily:
+      "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
+  },
+
   input: {
     width: "100%",
-    padding: "12px",
-    fontSize: "15px",
+    padding: "12px 13px",
+    fontSize: "13px",
     borderRadius: "12px",
     background: "#0f1d23",
     color: "#e6f9ff",
-    border: "1px solid rgba(255,255,255,0.06)",
-    marginBottom: "2px",
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
+    border: "1px solid rgba(255,255,255,0.07)",
+    fontFamily:
+      "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
     outline: "none",
-    transition: "border-color 0.2s",
+    transition: "border-color 0.2s, box-shadow 0.2s",
+    boxSizing: "border-box",
   },
-  form: { display: "flex", flexDirection: "column", alignItems: "center" },
+
+  actionRow: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px",
+    marginTop: "8px",
+  },
+
   updateButton: {
-    marginTop: "20px",
-    padding: "12px",
-    fontSize: "15px",
+    width: "100%",
+    padding: "12px 14px",
+    fontSize: "14px",
     borderRadius: "12px",
-    fontWeight: 600,
+    fontWeight: 700,
     textTransform: "none",
     background: "linear-gradient(90deg, #04bfbf, #027a7a)",
     color: "#121b22",
     border: "none",
     cursor: "pointer",
-    boxShadow: "0 6px 24px rgba(4,191,191,0.14)",
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
-    transition: "background 0.2s",
+    boxShadow: "0 6px 24px rgba(4,191,191,0.16)",
+    fontFamily:
+      "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
   },
+
   cancelButton: {
-    marginTop: "10px",
-    padding: "12px",
-    fontSize: "15px",
+    width: "100%",
+    padding: "12px 14px",
+    fontSize: "14px",
     borderRadius: "12px",
     fontWeight: 600,
     background: "rgba(255,255,255,0.03)",
     color: "#e6f9ff",
-    border: "1px solid rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.07)",
     cursor: "pointer",
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
-    transition: "background 0.2s",
+    fontFamily:
+      "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
   },
-  logoutButton: {
-    marginTop: "24px",
-    padding: "12px",
-    background: "transparent",
-    color: "#00fff7",
-    border: "1px solid #00fff7",
-    borderRadius: "12px",
-    cursor: "pointer",
+
+  noUser: {
+    color: "#888",
+    textAlign: "center",
+    fontSize: "14px",
+    marginTop: "6px",
   },
-  noUser: { color: "#888", textAlign: "center", fontSize: "14px" },
-  buttonText: {
+
+  bottomSection: {
+    marginTop: 30,
+    paddingBottom: 14,
+    width: "100%",
+    maxWidth: 420,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center",
+  },
+
+  separator: {
+    width: "100%",
+    height: "1px",
+    background: "linear-gradient(90deg, transparent, rgba(4,191,191,0.5), transparent)",
+    marginBottom: "14px",
+  },
+
+  developerSection: {
+    marginTop: "30px",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "2px",
+  },
+
+  linkTextMuted: {
     fontFamily: "'Open Sans', sans-serif",
-    fontSize: "9px",
-    marginTop: "4px",
-    color: "#cdebf5",
+    fontSize: "14px",
+    color: "#8ea8b3",
+    margin: 0,
+    lineHeight: 1.5,
   },
-  linkText: {
-    fontFamily: "'Open Sans', sans-serif",
-    fontSize: "15px",
-    color: "#04BFBF",
-    cursor: "pointer",
-    marginBottom: "12px",
-    textDecoration: "underline",
-  },
-    policyLink: {
-    fontFamily: "'Open Sans', sans-serif",
-    fontSize: "13px",
-    color: "#04BFBF",
-    textDecoration: "underline",
-    cursor: "pointer",
-    transition: "color 0.2s ease",
-  },
+
+policyLinksWrap: {
+  marginTop: 24,
+  paddingBottom: 12,
+  display: "flex",
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  flexWrap: "wrap",
+  gap: "8px",
+},
+
+policyLink: {
+  fontFamily: "'Open Sans', sans-serif",
+  fontSize: "12px",
+  color: "#8f9da3",
+  textDecoration: "none",
+  cursor: "pointer",
+  lineHeight: 1.4,
+  transition: "color 0.2s ease, opacity 0.2s ease",
+  opacity: 0.9,
+},
+
+policyDot: {
+  fontSize: "11px",
+  color: "#6f7d83",
+  lineHeight: 1,
+},
+
   popupOverlay: {
     position: "fixed",
     top: 0,
@@ -717,26 +1170,31 @@ const styles = {
     justifyContent: "center",
     alignItems: "center",
     zIndex: 1000,
+    padding: "18px",
+    boxSizing: "border-box",
   },
+
   popupBox: {
     background: popupBackgroundColor,
-    border: "2px solid #026873",
+    border: "1px solid rgba(4,191,191,0.35)",
     borderRadius: "15px",
-    padding: "20px 30px",
-    minWidth: "250px",
-    maxWidth: "300px",
+    boxShadow: "0 25px 60px rgba(0,0,0,0.6)",
+    width: "90%",
+    maxWidth: "360px",
+    padding: "28px 24px",
     color: "#fff",
     position: "relative",
     textAlign: "center",
-    // removed whiteSpace: "nowrap" so small screens can wrap text
+    boxSizing: "border-box",
   },
+
   popupCloseBtn: {
     position: "absolute",
     top: "10px",
-    right: "20px",
+    right: "16px",
     background: "transparent",
     border: "none",
-    fontSize: "25px",
+    fontSize: "22px",
     color: "#04BFBF",
     cursor: "pointer",
   },

@@ -26,6 +26,7 @@ import PaymentSuccess from "./components/PaymentSuccess";
 import AdminAnalytics from "./features/admin/AdminAnalytics";
 import AdminDashboard from "./features/admin/AdminDashboard";
 import DevicesOverview from "./features/admin/DevicesOverview";
+import LiveMonitoring from "./features/admin/LiveMonitoring";
 import UsersManagement from "./features/admin/UsersManagement";
 import SessionsOverview from "./features/admin/SessionsOverview";
 import Analytics from "./features/admin/Analytics";
@@ -33,6 +34,9 @@ import ReceiptsOverview from "./features/admin/ReceiptsOverview.js";
 import OwnerDashboard from "./features/owner/OwnerDashboard";
 import MyDevices from "./features/owner/MyDevices";
 import OwnerAnalytics from "./features/owner/OwnerAnalytics";
+import LiveCharging from "./features/owner/LiveCharging";
+import PastSessions from "./features/owner/PastSessions";
+import ConfigureWifi from "./features/owner/ConfigureWifi";
 
 import UserList from "./pages/users/UserList";
 import UserCreate from "./pages/users/UserCreate";
@@ -41,6 +45,10 @@ import UserEdit from "./pages/users/UserEdit";
 import DeviceList from "./pages/devices/DeviceList";
 import DeviceCreate from "./pages/devices/DeviceCreate";
 import DeviceEdit from "./pages/devices/DeviceEdit";
+
+import DeviceOnboarding from './components/DeviceOnboarding';
+
+import { api } from './api';
 
 // AppContent component handles splash + auth + all routes.
 const AppContent = () => {
@@ -106,8 +114,31 @@ const AppContent = () => {
     return () => clearTimeout(timer);
   }, [navigate, isAuthenticated]);
 
-  if (showSplash) return <SplashScreen />;
+
+
+  // Inside AppContent function, after existing useEffects:
+useEffect(() => {
+  const pingBackend = async () => {
+    try {
+      await api.get('/ping'); // Uses your REACT_APP_APIBASE + /ping
+      console.log('✅ BE ping OK');
+    } catch (error) {
+      console.warn('⚠️ BE ping failed (likely cold start):', error.message);
+      // No UI impact - just log
+    }
+  };
+
+  // Ping now
+  pingBackend();
+
+  // Every 10 minutes
+  const intervalId = setInterval(pingBackend, 10 * 60 * 1000);
+
+  return () => clearInterval(intervalId);
+}, []); // empty deps = runs once forever
   
+  if (showSplash) return <SplashScreen />;
+
   // Show main app
   return (
     <div className="app-container">
@@ -129,6 +160,7 @@ const AppContent = () => {
           <Route index element={<Navigate to="devices" replace />} />
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="devices" element={<DevicesOverview />} />
+          <Route path="LiveMonitoring" element={<LiveMonitoring />} />
           <Route path="users" element={<UsersManagement />} />
           <Route path="sessions" element={<SessionsOverview />} />
           <Route path="receipts" element={<ReceiptsOverview />} />
@@ -146,6 +178,9 @@ const AppContent = () => {
             <Route index element={<MyDevices />} />
             <Route path="devices" element={<MyDevices />} />
             <Route path="analytics" element={<OwnerAnalytics />} />
+            <Route path="live-charging" element={<LiveCharging />} />
+            <Route path="past-sessions" element={<PastSessions />} />
+            <Route path="/owner/devices/:deviceId/configure-wifi" element={<ConfigureWifi />}/>
           </Route>
         </Route>
 
@@ -215,6 +250,7 @@ const AppContent = () => {
         />
         <Route path="/devices/create" element={<DeviceCreate />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/onboard-device" element={<DeviceOnboarding />} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/home" replace />} />

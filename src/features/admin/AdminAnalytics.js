@@ -77,18 +77,23 @@ const AdminAnalytics = () => {
         : Array.isArray(receiptsRes?.receipts)
         ? receiptsRes.receipts
         : [];
-      setFinance({
-        amountPaid: rArr.reduce((a, r) => a + Number(r.amountPaid ?? 0), 0),
-        amountUtilized: rArr.reduce(
-          (a, r) => a + Number(r.amountUtilized ?? 0),
-          0
-        ),
-        amountRefunded: rArr.reduce((a, r) => a + Number(r.refund ?? 0), 0),
-        energyUtilized: rArr.reduce(
-          (a, r) => a + Number(r.energyConsumed ?? 0),
-          0
-        ),
-      });
+const amountPaid = rArr.reduce((a, r) => a + Number(r.amountPaid ?? 0), 0);
+const amountRefunded = rArr.reduce((a, r) => a + Number(r.refund ?? 0), 0);
+
+// Utilized should come from sessions (actual charging usage)
+const amountUtilized = sArr.reduce((a, s) => a + Number(s.amountUsed ?? 0), 0);
+
+const energyUtilized = sArr.reduce(
+  (a, s) => a + Number(s.energyConsumed ?? 0),
+  0
+);
+
+setFinance({
+  amountPaid,
+  amountUtilized,
+  amountRefunded,
+  energyUtilized,
+});
 
       setLastFetchedAt(new Date());
     });
@@ -121,23 +126,21 @@ const AdminAnalytics = () => {
     };
   }, [devices]);
 
-  const sessionStats = useMemo(() => {
-    let total = sessions.length,
-      active = 0,
-      completed = 0;
-    for (const s of sessions) {
-      const status = String(s.status ?? "").toLowerCase();
-      if (status === "active") active += 1;
-      if (status === "completed") completed += 1;
-    }
-    return { total, active, completed };
-  }, [sessions]);
+const sessionStats = useMemo(() => {
+  let total = sessions.length;
+  let active = 0;
+  let completed = 0;
 
-  const balance = useMemo(
-    () => finance.amountPaid - finance.amountUtilized - finance.amountRefunded,
-    [finance]
-  );
+  for (const s of sessions) {
+    const status = String(s.status ?? "").toLowerCase();
+    if (status === "active") active++;
+    else if (status === "completed") completed++;
+  }
 
+  return { total, active, completed };
+}, [sessions]);
+const platformRevenue = finance.energyUtilized * 2;
+const balance = finance.amountPaid - finance.amountUtilized;
   return (
     <Box
       sx={{
@@ -243,6 +246,11 @@ const AdminAnalytics = () => {
               </Box>
               <Divider sx={{ borderColor: "rgba(255,255,255,0.05)", my: 1 }} />
               <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+                <Typography sx={labelSx}>Platfrom Revenue:</Typography>
+                <Typography sx={valueSx}>₹{fmt0(platformRevenue)}</Typography>
+              </Box>
+              <Divider sx={{ borderColor: "rgba(255,255,255,0.05)", my: 1 }} />
+              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                 <Typography sx={labelSx}>Balance:</Typography>
                 <Typography sx={valueSx}>₹{fmt0(balance)}</Typography>
               </Box>
@@ -285,7 +293,7 @@ const AdminAnalytics = () => {
             <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", mb: 2 }} />
             <Box sx={{ display: "flex", justifyContent: "space-between" }}>
                 <Typography sx={labelSx}>Utilized:</Typography>
-                <Typography sx={valueSx}>{fmt0(finance.energyUtilized )} kWh </Typography>
+                <Typography sx={valueSx}>{Number(finance.energyUtilized).toFixed(2)} kWh </Typography>
             </Box>
           </Card>
         </Grid>

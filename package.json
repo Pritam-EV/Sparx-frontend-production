@@ -40,7 +40,7 @@
     "react-qr-scanner": "^1.0.0-alpha.11",
     "react-router-dom": "^7.1.1",
     "react-scripts": "5.0.1",
-    "recharts": "^3.1.2",
+    "recharts": "^3.7.0",
     "rm": "^0.1.8",
     "serve": "^14.2.4",
     "stream": "npm:stream-browserify",
@@ -51,14 +51,14 @@
   "browser": {
     "process": false
   },
-"scripts": {
-  "start": "react-scripts start",
-  "build": "cross-env CI=false react-scripts build",
-  "serve-build": "serve -s build -l 5000",
-  "deploy": "npm run build && firebase deploy --only hosting",
-  "test": "react-scripts test",
-  "eject": "react-scripts eject"
-},
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "cross-env CI=false react-scripts build",
+    "serve-build": "serve -s build -l 5000",
+    "deploy": "npm run build && firebase deploy --only hosting",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
   "eslintConfig": {
     "extends": [
       "react-app",

@@ -238,3 +238,74 @@
   color: #ffffff;
   font-size: 14px;
 } 
+/* ===== POS THERMAL RECEIPT STYLE ===== */
+
+.pos-receipt {
+  width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 14px 12px;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 13px;
+  color: #000;
+}
+
+.pos-center {
+  text-align: center;
+}
+
+.pos-title {
+  font-size: 17px;
+  font-weight:700;
+  letter-spacing: 1px;
+}
+
+.pos-subtitle {
+  font-size: 12px;
+  font-weight:500;
+  margin-top: 4px;
+  margin-bottom: 14px;
+}
+
+.pos-divider {
+  border-top: 1px dashed #000;
+  margin: 8px 0;
+}
+
+.pos-row {
+  display: flex;
+    font-size: 12px;
+  font-weight:400;
+  justify-content: space-between;
+  margin: 4px 0;
+}
+
+.pos-bold {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.pos-refund {
+  color: #0a7a3d;
+  font-weight: 700;
+}
+
+.pos-footer {
+  text-align: center;
+  font-size: 10px;
+  margin-top: 25px;
+  line-height: 1.4;
+}
+
+
+html, body, #root {
+  height: auto !important;
+  min-height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+}
+
+body {
+  margin: 0;
+}

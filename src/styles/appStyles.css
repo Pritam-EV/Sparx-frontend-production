@@ -22,7 +22,7 @@ html, body, #root {
   left: 0;
   width: 100%;
   height: 40px;
-  background-color: #001f26; /* dark blue */
+  background-color: #001114; /* dark blue */
   box-shadow: 0 2px 12px #04BFBF; /* light neon blue shadow */
   display: flex;
   justify-content: center;
@@ -31,7 +31,7 @@ html, body, #root {
 }
 
 .top-bar-logo {
-  height: 65px;
+  height: 60px;
   filter: drop-shadow(0 0 6px #04BFBF);
 }
 

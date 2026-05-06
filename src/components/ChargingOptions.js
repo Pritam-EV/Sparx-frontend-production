@@ -1,5 +1,5 @@
 // ChargingOptions.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef  } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import FooterNav from "../components/FooterNav";
 import {
@@ -15,6 +15,16 @@ import {
   Avatar,
   TextField,
 } from "@mui/material";
+
+function shortId(len = 8) {
+  // Browser-safe, uses Web Crypto API
+  const bytes = new Uint8Array(len);
+  window.crypto.getRandomValues(bytes);
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let out = "";
+  for (let i = 0; i < len; i++) out += chars[bytes[i] % chars.length];
+  return out;
+}
 
 function ChargingOptions() {
   const { device_id } = useParams();
@@ -47,7 +57,111 @@ function ChargingOptions() {
 
   const [paymentError, setPaymentError] = useState(null);
 
+// LIMITS
+const minAmount = 20;
+const maxAmount = 500;
+const amountStep = 10;
 
+const minEnergy = 1;
+const maxEnergy = 50;
+const energyStep = 0.5;
+
+// build energy options
+const energyOptions = [];
+for (let e = minEnergy; e <= maxEnergy + 1e-6; e += energyStep) {
+  energyOptions.push(Number(e.toFixed(2)));  // force max 2 decimals
+}
+
+
+const clampEnergy = (val) => {
+  // snap to nearest step
+  const snapped = Math.round(val / energyStep) * energyStep;
+  const clamped = Math.min(maxEnergy, Math.max(minEnergy, snapped));
+  // hard limit to 2 decimals
+  return Number(clamped.toFixed(2));
+};
+
+
+// build amount options: 10, 20, ..., 1000
+const amountOptions = [];
+for (let a = minAmount; a <= maxAmount; a += amountStep) {
+  amountOptions.push(a);
+}
+
+// clamp + snap to nearest step
+const clampAmount = (val) => {
+  const snapped = Math.round(val / amountStep) * amountStep;
+  return Math.min(maxAmount, Math.max(minAmount, snapped));
+};
+
+// const touchStartYRef = useRef(null);
+
+// const handleAmountWheel = (event) => {
+//   event.preventDefault();
+// const scrollSpeed = 3; // adjust: 1=slow, 2=medium, 3=fast
+// const direction = event.deltaY > 0 ? 1 : -1;
+// const next = clampAmount(sliderValue + direction * amountStep * scrollSpeed);
+
+//   setSliderValue(next);
+// };
+
+// const handleAmountTouchStart = (event) => {
+//   touchStartYRef.current = event.touches[0].clientY;
+// };
+
+// const handleAmountTouchMove = (event) => {
+//   if (touchStartYRef.current == null) return;
+//   const currentY = event.touches[0].clientY;
+//   const diff = currentY - touchStartYRef.current;
+
+//   if (Math.abs(diff) > 20) {
+//     const direction = diff > 0 ? -1 : 1; // swipe up -> increase
+//     const next = clampAmount(sliderValue + direction * amountStep);
+//     setSliderValue(next);
+//     touchStartYRef.current = currentY; // allow continuous scrolling
+//   }
+// };
+
+// const energyTouchStartYRef = useRef(null);
+
+// const handleEnergyWheel = (event) => {
+//   event.preventDefault();
+//   // scroll down -> increase energy
+
+//   const rate = deviceDetails?.rate || 20;
+// const scrollSpeed = 3;
+// const direction = event.deltaY > 0 ? 1 : -1;
+
+//   const currentEnergy = estimatedEnergy || minEnergy;
+// const nextEnergy = clampEnergy(currentEnergy + direction * energyStep * scrollSpeed);
+
+//   let newAmount = Number((nextEnergy * rate).toFixed(2));
+//   newAmount = clampAmount(newAmount);
+//   setSliderValue(newAmount);
+// };
+
+// const handleEnergyTouchStart = (event) => {
+//   energyTouchStartYRef.current = event.touches[0].clientY;
+// };
+
+// const handleEnergyTouchMove = (event) => {
+//   if (energyTouchStartYRef.current == null) return;
+//   const currentY = event.touches[0].clientY;
+//   const diff = currentY - energyTouchStartYRef.current;
+
+//   if (Math.abs(diff) > 20) {
+//     const direction = diff > 0 ? -1 : 1; // swipe up -> increase
+//     const rate = deviceDetails?.rate || 20;
+
+//     const currentEnergy = estimatedEnergy || minEnergy;
+//     const nextEnergy = clampEnergy(currentEnergy + direction * energyStep);
+//     let newAmount = Number((nextEnergy * rate).toFixed(2));
+//     newAmount = clampAmount(newAmount);
+//     setSliderValue(newAmount);
+
+//     energyTouchStartYRef.current = currentY;
+//   }
+// };
 
   /* -------------------------
    *  Fetch device details
@@ -137,6 +251,21 @@ function ChargingOptions() {
     setSliderValue(value);
   };
 
+  // User edits the amount (₹) field
+const handleAmountInputChange = (e) => {
+  const raw = e.target.value;
+  const value = Number(raw) || 0;
+  setSliderValue(value); // still the single source of truth
+};
+
+// User edits the energy (kWh) field
+const handleEnergyInputChange = (e) => {
+  const raw = e.target.value;
+  const value = Number(raw) || 0;
+  setSliderValue(value); // still the single source of truth
+};
+
+
   /* -------------------------
    *  Coupon apply -> server validation
    *  - Sends (code, deviceId, amount) to backend
@@ -156,7 +285,7 @@ async function applyCoupon() {
       return;
     }
 
-    const backendBase = process.env.REACT_APP_Backend_API_Base_URL || 'https://viz.vjratechnologies.com/';
+    const backendBase = process.env.REACT_APP_Backend_API_Base_URL || 'https://localhost:3000'
     const resp = await fetch(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/coupons/apply`, {
       method: 'POST',
@@ -270,7 +399,7 @@ if (currentDeviceStatus !== "available") {
     const payableNum = Number(payable || 0);
 
 if (payableNum === 0) {
-  const fakeOrderId = `FREE_${Date.now()}`;
+  const fakeOrderId = shortId(10);
 
   localStorage.setItem("pendingPayment", JSON.stringify({
     deviceId,
@@ -307,11 +436,11 @@ try {
         amount: payableNum,
         // BE will append orderId as param to this returnUrl
         returnUrl: `${window.location.origin}/charging-options/${deviceId}`,
-        customer: {
-          id: localStorage.getItem("userId") || "guest_user",
-          email: "user@example.com",
-          phone: "9999999999",
-        },
+        // customer: {
+        //   id: localStorage.getItem("userId") || "guest_user",
+        //   email: "user@example.com",
+        //   phone: "9999999999",
+        // },
         gateway: "Cashfree"
       }),
     }
@@ -389,7 +518,7 @@ localStorage.setItem('pendingPayment', JSON.stringify({
     throw new Error("Cashfree SDK not loaded");
   }
 
-  const cashfree = new window.Cashfree({ mode: "sandbox" }); // use "production" in prod
+  const cashfree = new window.Cashfree({ mode: "production" }); // use "production" in prod
 
   cashfree.checkout({
     paymentSessionId,
@@ -410,7 +539,7 @@ localStorage.setItem('pendingPayment', JSON.stringify({
    * ------------------------- */
   if (isLoading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" sx={{ background: "#0b0e13" }}>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="110dvh" sx={{ background: "#0b0e13" }}>
         <CircularProgress size={70} sx={{ color: "#04BFBF" }} />
       </Box>
     );
@@ -418,7 +547,7 @@ localStorage.setItem('pendingPayment', JSON.stringify({
 
   if (error) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh" sx={{ background: "#0b0e13" }}>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="110dvh" sx={{ background: "#0b0e13" }}>
         <Alert severity="error">{error}</Alert>
       </Box>
     );
@@ -430,32 +559,48 @@ const deviceStatus = (deviceDetails.status || "").toString().toLowerCase();
   /* -------------------------
    *  UI render
    * ------------------------- */
-  return (
+return (
+  <Box
+    sx={{
+      height: "100dvh",
+      display: "flex",
+      flexDirection: "column",
+      background:
+        "radial-gradient(circle at top, rgba(4,191,191,0.10), transparent 35%), linear-gradient(145deg, #0b0e13, #111a21)",
+      boxShadow: "0 0 20px rgba(4, 191, 191, 0.3)",
+      color: "#e1f5f5",
+    }}
+  >
     <Box
       sx={{
-        minHeight: "95vh",
-        padding: { xs: 2, sm: 4 },
-        margin: "auto",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        background: "linear-gradient(145deg, #0b0e13, #111a21)",
-        boxShadow: "0 0 20px rgba(4, 191, 191, 0.3)",
+        flex: 1,
+        minHeight: 0,
+        overflowY: "auto",
+        overflowX: "hidden",
+        WebkitOverflowScrolling: "touch",
+        width: "100%",
+        maxWidth: 720,
+        mx: "auto",
+        px: { xs: 2, sm: 4 },
+        pt: { xs: 2, sm: 3 },
+        pb: "170px",
+        boxSizing: "border-box",
       }}
     >
+      {/* all your existing page content stays inside here */} {/* pb for footer overlap avoidance */}
       {/* Device Info Card */}
       <Card
         sx={{
-          mb: 5,
+          mb: 2,
           width: { xs: "90%", sm: "80%" },
-          background: "linear-gradient(to right, #1e2c3a, #243745)",
-          borderRadius: "16px",
+           mx: "auto", 
+          background:"linear-gradient(180deg, rgba(26,39,49,0.96) 0%, rgba(17,26,33,0.96) 100%)",
+          borderRadius: "22px",
           padding: "14px",
           color: "#e1f5f5",
           boxShadow: "0 0 10px rgba(4, 191, 191, 0.2)",
           display: "flex",
           alignItems: "center",
-          gap: 2,
         }}
       >
         <Avatar variant="rounded" src="/device-image.png" alt="Device" sx={{ width: 90, height: 90 }} />
@@ -492,7 +637,7 @@ const deviceStatus = (deviceDetails.status || "").toString().toLowerCase();
       variant="subtitle1"
       sx={{ color: "#ffffff", fontWeight: "bold", fontSize: "0.9rem", ml: 0.5 }}
     >
-      ₹{deviceDetails?.rate || 20}/kWh
+      ₹{deviceDetails?.rate || 20}/kWh 
     </Typography>
   </Typography>
 
@@ -512,147 +657,234 @@ const deviceStatus = (deviceDetails.status || "").toString().toLowerCase();
 
       </Card>
 
-      {/* Charging Options */}
-      <Grid container spacing={2} justifyContent="center">
-        {["energy", "amount"].map((option) => (
-          <Grid item key={option}>
-            <Card
-              sx={{
-                textAlign: "center",
-                backgroundColor: selectedOption === option ? "#04BFBF" : "#1c2935",
-                borderRadius: "14px",
-                cursor: "pointer",
-                transition: "all 0.3s ease",
-                boxShadow: selectedOption === option ? "0 0 12px #04BFBF" : "none",
-                "&:hover": {
-                  backgroundColor: "#243645",
-                  boxShadow: "0 0 10px rgba(4, 191, 191, 0.4)",
-                },
-              }}
-              onClick={() => handleOptionSelect(option)}
-            >
-              <CardContent>
-                <Typography variant="body2" sx={{ color: selectedOption === option ? "#0b0e13" : "#7de0dd" }}>
-                  {option === "energy" ? `Energy-Based ` : "Amount-Based"}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
 
-      {/* Slider Section */}
-      {selectedOption && (
-        <Box
-          mt={4}
-          width={{ xs: "90%", sm: "80%" }}
-          sx={{
-            textAlign: "center",
-            padding: "20px",
-            borderRadius: "16px",
-            background: "#121b22",
-            boxShadow: "inset 0 0 10px rgba(4, 191, 191, 0.2)",
-          }}
-        >
-          <Typography variant="body2" sx={{ color: "#e1f5f5", marginBottom: 2 }}>
-            {selectedOption === "energy" ? "Select Energy (kWh)" : "Select Amount (₹)"}
-          </Typography>
-          <Slider
-            value={sliderValue}
-            onChange={handleSliderChange}
-            min={selectedOption === "amount" ? 20 : 0}
-            max={selectedOption === "amount" ? 500 : 50}
-            step={selectedOption === "amount" ? 10 : 2}
-            marks
-            valueLabelDisplay="auto"
-            sx={{
-              color: "#04BFBF",
-              "& .MuiSlider-thumb": {
-                backgroundColor: "#7de0dd",
-                boxShadow: "0 0 5px #04BFBF",
-              },
-              "& .MuiSlider-rail": {
-                backgroundColor: "#2c4c57",
-              },
-              "& .MuiSlider-track": {
-                backgroundColor: "#04BFBF",
-              },
-            }}
-          />
-          <Typography variant="caption" sx={{ color: "#9bcdd2" }}>
-            {selectedOption === "energy" ? `Selected Energy: ${sliderValue} kWh` : `Selected Amount: ₹${sliderValue}`}
-          </Typography>
-          {selectedOption === "amount" && (
-            <Typography variant="caption" sx={{ color: "#7de0dd", display: "block" }}>
-              Estimated Energy: {estimatedEnergy.toFixed(2)} kWh
-            </Typography>
-          )}
-          {selectedOption === "energy" && (
-            <Typography variant="caption" sx={{ color: "#7de0dd", display: "block" }}>
-              Estimated Cost: ₹{estimatedCost.toFixed(2)}
-            </Typography>
-          )}
-        </Box>
-      )}
+
+{/* SMART CHARGE BUILDER */}
+<Box
+  mt={1}
+  width={{ xs: "100%", sm: "80%" }}
+  sx={{
+    maxWidth: 600,
+    mx: "auto",
+    p: 2,
+    borderRadius: "20px",
+    background: "linear-gradient(180deg, #121b22 0%, #0f161d 100%)",
+    boxShadow: "inset 0 0 0 1px rgba(4, 191, 191, 0.14)",
+  }}
+>
+  <Typography sx={{ color: "#ffffff", fontWeight: 600 , textAlign: "Center" }}>
+    Choose how you want to charge
+  </Typography>
+
+  {/* Toggle */}
+  <Box
+    sx={{
+      display: "flex",
+      mt: 1.5,
+      background: "#0c1319",
+      borderRadius: "999px",
+      p: 0.5,
+    }}
+  >
+    <Button
+      fullWidth
+      onClick={() => handleOptionSelect("amount")}
+      sx={{
+        borderRadius: "999px",
+        background:
+          selectedOption === "amount"
+            ? "linear-gradient(135deg,#04BFBF,#029a9a)"
+            : "transparent",
+        color: selectedOption === "amount" ? "#000" : "#7de0dd",
+      }}
+    >
+      Amount
+    </Button>
+
+    <Button
+      fullWidth
+      onClick={() => handleOptionSelect("energy")}
+      sx={{
+        borderRadius: "999px",
+        background:
+          selectedOption === "energy"
+            ? "linear-gradient(135deg,#04BFBF,#029a9a)"
+            : "transparent",
+        color: selectedOption === "energy" ? "#000" : "#7de0dd",
+      }}
+    >
+      Energy
+    </Button>
+  </Box>
+
+  {/* MAIN VALUE */}
+  <Box textAlign="center" mt={3}>
+    <Typography color="#7de0dd">
+      {selectedOption === "amount" ? "Amount" : "Energy"}
+    </Typography>
+
+    <Typography variant="h3" color="#F2A007" fontWeight={700}>
+      {selectedOption === "amount"
+        ? `₹${sliderValue}`
+        : `${sliderValue} kWh`}
+    </Typography>
+
+    <Typography mt={1} variant="h5" color="#aaa" fontWeight={600}>
+      {selectedOption === "amount"
+        ? `≈ ${estimatedEnergy} kWh`
+        : `≈ ₹${estimatedCost}`}
+    </Typography>
+  </Box>
+
+  {/* SLIDER */}
+  <Slider
+    value={sliderValue}
+    onChange={handleSliderChange}
+    min={selectedOption === "amount" ? minAmount : minEnergy}
+    max={selectedOption === "amount" ? maxAmount : maxEnergy}
+    step={selectedOption === "amount" ? amountStep : energyStep}
+    sx={{
+      mt: 1,
+      color: "#04BFBF",
+    }}
+  />
+
+  {/* PRESETS */}
+  <Box
+    mt={2}
+    display="flex"
+    gap={1}
+    flexWrap="wrap"
+    justifyContent="center"
+  >
+    {(selectedOption === "amount"
+      ? [50, 100, 200, 500]
+      : [5, 10, 20, 50]
+    ).map((v) => (
+      <Button
+        key={v}
+        size="small"
+        onClick={() => setSliderValue(v)}
+        sx={{
+          borderRadius: "999px",
+          color: "#7de0dd",
+          border: "1px solid rgba(4,191,191,.3)",
+        }}
+      >
+        {selectedOption === "amount" ? `₹${v}` : `${v} kWh`}
+      </Button>
+    ))}
+  </Box>
+
+</Box>
+      {/* Proceed to Payment */}
+<Box mt={2} mb={6} textAlign="center" width="100%">
+  <Button
+    variant="contained"
+    onClick={handleProceedToPayment}
+    disabled={
+      !selectedOption ||
+      sliderValue === 0 ||
+      (deviceDetails.status || "").toString().toLowerCase() === "occupied"
+    }
+    fullWidth
+    sx={{
+      maxWidth: 320,
+      mx: "auto",
+      py: 1.4,
+      px: 3,
+      fontSize: "0.95rem",
+      borderRadius: "999px",
+      backgroundColor:
+        (deviceDetails.status || "").toString().toLowerCase() === "occupied"
+          ? "#6c757d"
+          : "#F2A007",
+      color: "#fff",
+      boxShadow:
+        (deviceDetails.status || "").toString().toLowerCase() === "occupied"
+          ? "none"
+          : "0 0 12px rgba(242, 160, 7, 0.6)",
+      textTransform: "none",
+      fontWeight: 700,
+      "&:hover": {
+        backgroundColor:
+          (deviceDetails.status || "").toString().toLowerCase() === "occupied"
+            ? "#6c757d"
+            : "#f4af2d",
+      },
+    }}
+  >
+    {(deviceDetails.status || "").toString().toLowerCase() === "occupied"
+      ? "Device Occupied"
+      : "Proceed"}
+  </Button>
+</Box>
 
       {/* Coupon input & Apply (styled to match) */}
-      <Box mt={2} textAlign="center" width="100%" sx={{ px: { xs: 2, sm: 0 } }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "center",
-            gap: 1,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <TextField
-            placeholder="Enter coupon code"
-            value={couponCode}
-            onChange={(e) => setCouponCode(e.target.value)}
-            disabled={couponApplied || applyingCoupon}
-            size="small"
-            sx={{
-              input: { color: "#e1f5f5" },
-              background: "#243745",
-              borderRadius: "8px",
-              width: { xs: "60%", sm: "55%", md: "40%" },
-            }}
-          />
-          <Button
-            variant="contained"
-            onClick={applyCoupon}
-            disabled={!couponCode.trim() || couponApplied || applyingCoupon}
-            sx={{
-              backgroundColor: couponApplied ? "#6c757d" : "#F2A007",
-              px: 3,
-              py: 1,
-              borderRadius: "12px",
-            }}
-          >
-            {applyingCoupon ? "Applying..." : couponApplied ? "Applied" : "Apply"}
-          </Button>
-        </Box>
+<Box mt={2.5} textAlign="center" width="100%" sx={{ px: { xs: 0, sm: 0 } }}>
+  <Box
+    sx={{
+      display: "flex",
+      justifyContent: "center",
+      gap: 1,
+      alignItems: "stretch",
+      flexWrap: "wrap",
+      flexDirection: { xs: "column", sm: "row" },
+    }}
+  >
+    <TextField
+      placeholder="Enter coupon code"
+      value={couponCode}
+      onChange={(e) => setCouponCode(e.target.value)}
+      disabled={couponApplied || applyingCoupon}
+      size="small"
+      fullWidth
+      sx={{
+        maxWidth: { xs: "100%", sm: 320 },
+        input: { color: "#e1f5f5" },
+        background: "#243745",
+        borderRadius: "10px",
+        "& .MuiOutlinedInput-root": {
+          borderRadius: "10px",
+        },
+      }}
+    />
+    <Button
+      variant="contained"
+      onClick={applyCoupon}
+      disabled={!couponCode.trim() || couponApplied || applyingCoupon}
+      sx={{
+        backgroundColor: couponApplied ? "#6c757d" : "#F2A007",
+        px: 3,
+        py: 1.1,
+        borderRadius: "12px",
+        minWidth: { xs: "100%", sm: "120px" },
+        textTransform: "none",
+        fontWeight: 700,
+      }}
+    >
+      {applyingCoupon ? "Applying..." : couponApplied ? "Applied" : "Apply"}
+    </Button>
+  </Box>
 
-        {/* status / error messages */}
-        <Box mt={1}>
-            {couponErrorMsg && (
-            <Alert severity="error" sx={{ mt: 2 }}>
-                {couponErrorMsg}
-            </Alert>
-            )}
-            {couponApplied && discountedPrice !== null && (
-            <>
-                <Alert severity="success" sx={{ mt: 2 }}>
-                Coupon applied successfully!
-                </Alert>
-                <Typography variant="h6" color="primary" sx={{ mt: 2 }}>
-                Final Payable Amount: ₹{discountedPrice.toFixed(2)}
-                </Typography>
-            </>
-            )}
-        </Box>
-      </Box>
+  <Box mt={1.5} mb={2.5}>
+    {couponErrorMsg && (
+      <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
+        {couponErrorMsg}
+      </Alert>
+    )}
+    {couponApplied && discountedPrice !== null && (
+      <>
+        <Alert severity="success" sx={{ mt: 1, mb: 2 }}>
+          Coupon applied successfully!
+        </Alert>
+        <Typography variant="h6" color="#07c400" sx={{ mt: 1, mb: 2 }}>
+          Payable Amount: ₹{discountedPrice.toFixed(2)}
+        </Typography>
+      </>
+    )}
+  </Box>
+</Box>
 
       {paymentError && (
         <Alert severity="error" sx={{ mb: 2 }}>
@@ -661,31 +893,8 @@ const deviceStatus = (deviceDetails.status || "").toString().toLowerCase();
       )}
 
 
-      {/* Proceed to Payment */}
-      <Box mt={4} textAlign="center" width="100%">
-        <Button
-          variant="contained"
-          onClick={handleProceedToPayment}
-          disabled={!selectedOption || sliderValue === 0 || (deviceDetails.status || "").toString().toLowerCase() === "occupied"}
-          fullWidth={true}
-          sx={{
-            maxWidth: "300px",
-            mx: "auto",
-            padding: "12px 28px",
-            fontSize: "0.9rem",
-            borderRadius: "40px",
-            backgroundColor: (deviceDetails.status || "").toString().toLowerCase() === "occupied" ? "#6c757d" : "#F2A007",
-            color: "#fff",
-            boxShadow: (deviceDetails.status || "").toString().toLowerCase() === "occupied" ? "none" : "0 0 12px rgba(242, 160, 7, 0.6)",
-            "&:hover": {
-              backgroundColor: (deviceDetails.status || "").toString().toLowerCase() === "occupied" ? "#6c757d" : "#f4af2d",
-            },
-          }}
-        >
-{(deviceDetails.status || "").toString().toLowerCase() === "occupied" ? "Device Occupied" : "Proceed to Payment"}
 
-        </Button>
-      </Box>
+       </Box>
 
       <FooterNav />
     </Box>

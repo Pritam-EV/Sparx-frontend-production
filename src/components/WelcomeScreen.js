@@ -32,7 +32,7 @@ const WelcomeScreen = () => {
       <Box
         component="img"
         src="/logo.png"
-        alt="SPARX ENERGY"
+        alt="VIZ - Smart Charging"
         sx={{
           maxWidth: { xs: 200, sm: 250, md: 300 },
           height: "auto",
