@@ -36,6 +36,11 @@ function ChargingOptions() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // ETA for occupied device
+const [occupiedEta, setOccupiedEta] = useState(null);      // raw ISO string from API
+const [etaLoading, setEtaLoading] = useState(false);
+const [etaDisplay, setEtaDisplay] = useState(null);         // { timeStr, remaining, progress }
+
   // option/slider
   const [selectedOption, setSelectedOption] = useState("amount");
   const [sliderValue, setSliderValue] = useState(100);
@@ -227,6 +232,69 @@ const showToast = (
 
     fetchDeviceDetails();
   }, [deviceId]);
+
+
+  // Fetch ETA when device is confirmed occupied
+useEffect(() => {
+  if (!deviceDetails || deviceDetails.status?.toLowerCase() !== 'occupied') {
+    setOccupiedEta(null);
+    setEtaDisplay(null);
+    return;
+  }
+
+  const fetchDeviceEta = async () => {
+    setEtaLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const resp = await fetch(
+        `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/device-eta/${deviceId}`,
+        { headers: { Authorization: token ? `Bearer ${token}` : '' } }
+      );
+      if (!resp.ok) { setOccupiedEta(null); return; }
+      const data = await resp.json();
+      setOccupiedEta(data.estimatedEndTime || null);
+      // store progress for the bar
+      setEtaDisplay(prev => ({ ...prev, progress: data.energyProgressPercent || 0 }));
+    } catch (e) {
+      console.error('ETA fetch error:', e);
+      setOccupiedEta(null);
+    } finally {
+      setEtaLoading(false);
+    }
+  };
+
+  fetchDeviceEta();
+}, [deviceDetails, deviceId]);
+
+// Live countdown from occupiedEta
+useEffect(() => {
+  const compute = () => {
+    if (!occupiedEta) { setEtaDisplay(null); return; }
+    const eta = new Date(occupiedEta);
+    const now = new Date();
+    const diffMs = eta - now;
+
+    const timeStr = eta.toLocaleTimeString('en-IN', {
+      hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
+    });
+
+    if (diffMs <= 0) {
+      setEtaDisplay(prev => ({ ...prev, timeStr, remaining: 'Any moment', label: 'Finishing up' }));
+      return;
+    }
+    const totalMins = Math.ceil(diffMs / 60000);
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    const remaining = h > 0 ? `${h}h ${m}m` : `${m} min`;
+    setEtaDisplay(prev => ({ ...prev, timeStr, remaining, label: 'Available in' }));
+  };
+
+  compute();
+  const t = setInterval(compute, 30_000);
+  return () => clearInterval(t);
+}, [occupiedEta]);
+
+
 
   /* -------------------------
    *  Keep estimatedCost / energy in sync with selection
@@ -710,9 +778,49 @@ return (
 </Box>
 
       </Card>
+{/* ── Device ETA pill ── */}
+{deviceStatus === 'occupied' && (
+  <Box
+    sx={{
+      width: { xs: '90%', sm: '80%' },
+      mx: 'auto',
+      mb: 2,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 1.2,
+      px: 2.5,
+      py: 1.2,
+      borderRadius: '999px',
+      background: 'rgba(242,160,7,0.08)',
+      border: '1px solid rgba(242,160,7,0.22)',
+    }}
+  >
+    {/* Pulsing dot */}
+    <Box sx={{
+      width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+      background: '#f2a007', boxShadow: '0 0 6px #f2a007',
+      animation: 'etaPulse 2s ease-in-out infinite',
+      '@keyframes etaPulse': {
+        '0%,100%': { opacity: 1 },
+        '50%':     { opacity: 0.3 },
+      },
+    }} />
 
+    <Typography sx={{ color: '#aaa', fontSize: '0.8rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
+      Est. Available:
+    </Typography>
 
-
+    <Typography sx={{ color: '#f2a007', fontSize: '0.85rem', fontWeight: 700 }}>
+      {etaLoading
+        ? 'Checking…'
+        : etaDisplay?.timeStr
+          ? `${etaDisplay.timeStr}  (${etaDisplay.remaining})`
+          : 'Unavailable'}
+    </Typography>
+  </Box>
+)}
+{/* ────────────────────── */}
 {/* SMART CHARGE BUILDER */}
 {/* SMART CHARGE BUILDER */}
 <Box
