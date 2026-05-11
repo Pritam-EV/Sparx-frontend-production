@@ -1,67 +1,61 @@
 // src/pages/SessionSummary.js
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Box, Button, Typography, TextField, Card, CardContent, CircularProgress } from "@mui/material";
-import StarIcon from '@mui/icons-material/Star';
-import "../styles4.css";
-
+import { CircularProgress } from "@mui/material";
 
 const SessionSummary = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
   const sessionId = state?.sessionId;
-  const [session, setSession] = useState(null);
-  const [receipt, setReceipt] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [rating, setRating] = useState(receipt?.rating || 2);
-  const [suggestion, setSuggestion] = useState(receipt?.suggestion || "");
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(
-    !!receipt?.rating
-  );
-  const contentWidth = { xs: "94%", sm: 380 };
 
-
-  const formatMoney = (v) => `₹${Number(v || 0).toFixed(2)}`;
-  const formatDateTime = (d) =>
-    new Date(d).toLocaleString("en-IN", {
-      dateStyle: "medium",
-      timeStyle: "short"
-    });
-
-
-
+  const [session,           setSession]           = useState(null);
+  const [receipt,           setReceipt]           = useState(null);
+  const [loading,           setLoading]           = useState(true);
+  const [error,             setError]             = useState(null);
+  const [rating,            setRating]            = useState(0);
+  const [suggestion,        setSuggestion]        = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   const API = process.env.REACT_APP_Backend_API_Base_URL;
 
+  const fmtMoney = (v) => `₹${Number(v || 0).toFixed(2)}`;
+  const fmtDateTime = (d) => {
+    if (!d) return "—";
+    return new Date(d).toLocaleString("en-IN", {
+      day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+  };
 
   useEffect(() => {
-    if (!sessionId) return;
+    if (!sessionId) { setLoading(false); return; }
     (async () => {
       try {
         const token = localStorage.getItem("token");
-        let res = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/${sessionId}`, { headers: { Authorization: `Bearer ${token}` } });
+        const res = await fetch(`${API}/api/sessions/${sessionId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         if (!res.ok) throw new Error();
         setSession(await res.json());
 
-
         const fetchReceiptWithRetry = async () => {
-          const token = localStorage.getItem("token");
-          for (let i = 0; i < 6; i++) { // ~6 seconds max
-            const r = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/receipts/${sessionId}`, {
-              headers: { Authorization: `Bearer ${token}` }
+          for (let i = 0; i < 6; i++) {
+            const r = await fetch(`${API}/api/receipts/${sessionId}`, {
+              headers: { Authorization: `Bearer ${token}` },
             });
             if (r.ok) return await r.json();
-            await new Promise(res => setTimeout(res, 1000));
+            await new Promise((res) => setTimeout(res, 1000));
           }
           return null;
         };
 
-
         const rec = await fetchReceiptWithRetry();
-        if (rec) setReceipt(rec);
-
-
+        if (rec) {
+          setReceipt(rec);
+          setRating(rec.rating || 0);
+          setSuggestion(rec.suggestion || "");
+          setFeedbackSubmitted(!!rec.rating);
+        }
       } catch {
         setError("Could not load session summary.");
       } finally {
@@ -70,662 +64,488 @@ const SessionSummary = () => {
     })();
   }, [sessionId]);
 
-
-  if (!sessionId) {
-    return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "linear-gradient(145deg, #0b0e13, #111a21)",
-          px: 2,
-        }}
-      >
-        <Card sx={{ width: "100%", maxWidth: 420, borderRadius: 3, background: "#0f1722", color: "#EAF2FF" }}>
-          <CardContent>
-            <Typography sx={{ fontWeight: 800, fontSize: "1.1rem" }}>Invalid session</Typography>
-            <Typography sx={{ mt: 1, opacity: 0.8 }}>
-              Session ID was not provided. Please go back and try again.
-            </Typography>
-            <Button
-              variant="contained"
-              sx={{ mt: 2, backgroundColor: "#04BFBF", color: "#061018", fontWeight: 800 }}
-              onClick={() => navigate("/home")}
-              fullWidth
-            >
-              Go Home
-            </Button>
-          </CardContent>
-        </Card>
-      </Box>
-    );
-  }
-
-
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "linear-gradient(145deg, #0b0e13, #111a21)",
-          px: 2,
-        }}
-      >
-        <Card
-          sx={{
-            width: "100%",
-            maxWidth: 420,
-            borderRadius: 3,
-            background: "linear-gradient(180deg, #0B1220 0%, #060A12 100%)",
-            color: "#EAF2FF",
-            border: "1px solid rgba(255,255,255,0.10)",
-            boxShadow: "0 10px 24px rgba(0,0,0,0.35)",
-          }}
-        >
-          <CardContent>
-            <Box display="flex" alignItems="center" gap={2}>
-              <CircularProgress size={28} sx={{ color: "#04BFBF" }} />
-              <Box>
-                <Typography sx={{ fontWeight: 800 }}>Loading session summary</Typography>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
-    );
-  }
-
-
-  if (error) {
-    return (
-      <Box
-        sx={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "linear-gradient(145deg, #0b0e13, #111a21)",
-          px: 2,
-        }}
-      >
-        <Card sx={{ width: "100%", maxWidth: 420, borderRadius: 3, background: "#0f1722", color: "#EAF2FF" }}>
-          <CardContent>
-            <Typography sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#ff9a9a" }}>Could not load</Typography>
-            <Typography sx={{ mt: 1, opacity: 0.85 }}>{error}</Typography>
-
-            <Button
-              variant="contained"
-              sx={{ mt: 2, backgroundColor: "#04BFBF", color: "#061018", fontWeight: 800 }}
-              onClick={() => window.location.reload()}
-              fullWidth
-            >
-              Retry
-            </Button>
-
-            <Button
-              variant="text"
-              sx={{ mt: 1, color: "rgba(234,242,255,0.8)" }}
-              onClick={() => navigate("/home")}
-              fullWidth
-            >
-              Go Home
-            </Button>
-          </CardContent>
-        </Card>
-      </Box>
-    );
-  }
-
-
-
-  const endDate = new Date(session.endTime);
-  const dateStr = endDate.toLocaleDateString();
-  const timeStr = endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-
-  if (!receipt) {
-    return (
-      <Box className="receipt-page">
-        <Typography variant="h6" sx={{ color: "#fff" }}>
-          Generating receipt...
-        </Typography>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-
-
   const handleRefund = () => {
     if (!receipt) return;
+    const endDate = session?.endTime ? new Date(session.endTime) : new Date();
     const msg = encodeURIComponent(
       `ReceiptID: ${receipt.receiptId}\n` +
       `DeviceID: ${receipt.deviceId}\n` +
-      `Date: ${dateStr}\n` +
-      `Time: ${timeStr}\n` +
-      `Amount Paid: ₹${receipt.amountPaid.toFixed(2)}\n` +
-      `Amount Utilized: ₹${receipt.amountUtilized.toFixed(2)}\n` +
-      `Discount: ₹${receipt.discountApplied.toFixed(2)}\n` +
-      `Refund: ₹${receipt.refundAmount.toFixed(2)}`  // ✅ FIXED LINE 223
+      `Date: ${endDate.toLocaleDateString()}\n` +
+      `Time: ${endDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}\n` +
+      `Amount Paid: ${fmtMoney(receipt.amountPaid)}\n` +
+      `Amount Utilized: ${fmtMoney(receipt.amountUtilized)}\n` +
+      `Discount: ${fmtMoney(receipt.discountApplied)}\n` +
+      `Refund: ${fmtMoney(receipt.refundAmount)}`
     );
     window.open(`https://wa.me/918855094432?text=${msg}`, "_blank");
   };
 
-
-
-
-  const handleSubmitSuggestion = async () => {
+  const handleSubmitFeedback = async () => {
     if (feedbackSubmitted) return;
-
     try {
       const token = localStorage.getItem("token");
-
-      // 1️⃣ Save rating
       await fetch(`${API}/api/receipts/${sessionId}/rate`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ rating }),
       });
-
-      // 2️⃣ Save suggestion
       if (suggestion?.trim()) {
         await fetch(`${API}/api/receipts/${sessionId}/suggest`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
           body: JSON.stringify({ suggestion }),
         });
       }
-
       setFeedbackSubmitted(true);
-      alert("Thank you for your feedback ❤️");
-    } catch (err) {
-      console.error("Feedback submit failed:", err);
+    } catch {
       alert("Failed to submit feedback. Please try again.");
     }
   };
 
+  const ratingLabels = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
 
-
-
-  const ReceiptRow = ({ label, value, highlight }) => (
-    <Box
-      sx={{
-        display: "flex",
-        justifyContent: "space-between",
-        my: 0.8,
-        fontWeight: highlight ? 700 : 500,
-        color: highlight ? "success.main" : "text.primary",
-      }}
-    >
-      <Typography variant="body2">{label}</Typography>
-      <Typography variant="body2">{value}</Typography>
-    </Box>
+  /* ── Compact row — tighter padding ── */
+  const Row = ({ label, value, valueColor, bold }) => (
+    <div style={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingBottom: "5px",
+      borderBottom: "1px solid rgba(4,191,191,0.10)",
+    }}>
+      <span style={{
+        fontSize: "11.5px", fontWeight: 600,
+        color: "#5a8a90", fontFamily: "Poppins, sans-serif",
+      }}>
+        {label}
+      </span>
+      <span style={{
+        fontSize: "12.5px",
+        fontWeight: bold ? 700 : 600,
+        color: valueColor || "#0e1e1e",
+        fontFamily: "Poppins, sans-serif",
+        textAlign: "right",
+        maxWidth: "62%",
+        wordBreak: "break-word",
+      }}>
+        {value}
+      </span>
+    </div>
   );
 
-
-  const DividerDashed = () => (
-    <Box sx={{ borderTop: "1px dashed #ccc", my: 1.5 }} />
-  );
-
-
-
-return (
-  <Box
-    sx={{
+  /* ── State card wrapper ── */
+  const StateCard = ({ children }) => (
+    <div style={{
       minHeight: "100vh",
-      background:
-        "radial-gradient(circle at top, rgba(4,191,191,0.10), transparent 35%), linear-gradient(145deg, #0b0e13, #111a21)",
-      
-      mx: "auto",
-     
-      px: 2,
-      pt: 3,
-      pb: 12,
-      boxSizing: "border-box",
-      
-      overflowX: "hidden",
-      minWidth: 0,
-    }}
-  >
-      {!sessionId ? (
-        <Card
-          sx={{
-            width: "100%",
-            maxWidth: 420,
-            borderRadius: 3,
-            background: "linear-gradient(180deg, #121b22 0%, #0f161d 100%)",
-            color: "#EAF2FF",
-            border: "1px solid rgba(4,191,191,0.12)",
-            boxShadow: "0 14px 36px rgba(0,0,0,0.28)",
+      background: "#f0fafa",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "24px",
+      fontFamily: "Poppins, sans-serif",
+    }}>
+      <div style={{
+        background: "#fff",
+        borderRadius: "20px",
+        border: "1px solid rgba(4,191,191,0.15)",
+        boxShadow: "0 4px 24px rgba(4,191,191,0.10)",
+        padding: "28px 24px",
+        width: "100%",
+        maxWidth: "400px",
+      }}>
+        {children}
+      </div>
+    </div>
+  );
+
+  /* ── State screens ── */
+  if (!sessionId) return (
+    <StateCard>
+      <div style={{ textAlign: "center" }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: "50%",
+          background: "rgba(161,53,68,0.08)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          margin: "0 auto 12px",
+        }}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a13544" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+        </div>
+        <p style={{ fontSize: "15px", fontWeight: 700, color: "#0e1e1e", margin: "0 0 6px" }}>Invalid Session</p>
+        <p style={{ fontSize: "12px", color: "#7a9aa3", margin: "0 0 18px" }}>
+          Session ID was not provided. Please go back and try again.
+        </p>
+        <button onClick={() => navigate("/home")} style={btnPrimary}>Go Home</button>
+      </div>
+    </StateCard>
+  );
+
+  if (loading) return (
+    <StateCard>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+        <CircularProgress size={26} sx={{ color: "#04bfbf", flexShrink: 0 }} />
+        <div>
+          <p style={{ fontSize: "14px", fontWeight: 700, color: "#0e1e1e", margin: "0 0 3px" }}>
+            Loading summary
+          </p>
+          <p style={{ fontSize: "11px", color: "#7a9aa3", margin: 0 }}>
+            Preparing your receipt…
+          </p>
+        </div>
+      </div>
+    </StateCard>
+  );
+
+  if (error) return (
+    <StateCard>
+      <div style={{ textAlign: "center" }}>
+        <p style={{ fontSize: "15px", fontWeight: 700, color: "#a13544", margin: "0 0 6px" }}>
+          Could not load
+        </p>
+        <p style={{ fontSize: "12px", color: "#7a9aa3", margin: "0 0 18px" }}>{error}</p>
+        <button onClick={() => window.location.reload()} style={btnPrimary}>Retry</button>
+        <button onClick={() => navigate("/home")} style={{ ...btnGhost, marginTop: "8px" }}>Go Home</button>
+      </div>
+    </StateCard>
+  );
+
+  if (!receipt) return (
+    <StateCard>
+      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+        <CircularProgress size={26} sx={{ color: "#04bfbf", flexShrink: 0 }} />
+        <p style={{ fontSize: "13px", fontWeight: 600, color: "#0e1e1e", margin: 0 }}>
+          Generating receipt…
+        </p>
+      </div>
+    </StateCard>
+  );
+
+  /* ══════════════════════════════════
+     Main Receipt
+  ══════════════════════════════════ */
+  return (
+    <>
+      <style>{`
+        html, body { height: 100%; overflow: hidden; }
+        * { box-sizing: border-box; }
+        .summary-scroll::-webkit-scrollbar { width: 5px; }
+        .summary-scroll::-webkit-scrollbar-thumb {
+          background: rgba(4,191,191,0.25); border-radius: 999px;
+        }
+        .summary-scroll::-webkit-scrollbar-track { background: transparent; }
+        .star-btn { background: none; border: none; cursor: pointer; padding: 2px; line-height: 1; }
+        .star-btn:disabled { cursor: default; }
+        .refund-wa:hover { background: rgba(37,211,102,0.14) !important; }
+        .home-btn:hover { background: linear-gradient(90deg, #029a9a, #027070) !important; }
+      `}</style>
+
+      <div style={{
+        height: "100vh",
+        background: "#f0fafa",
+        fontFamily: "Poppins, system-ui, sans-serif",
+        overflowX: "hidden",
+        overflowY: "auto",
+        WebkitOverflowScrolling: "touch",
+      }}>
+        <div
+          className="summary-scroll"
+          style={{
+            maxWidth: "420px",
+            margin: "0 auto",
+            padding: "20px 14px 80px",
           }}
         >
-          <CardContent sx={{ p: 3 }}>
-            <Typography sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#fff" }}>
-              Invalid session
-            </Typography>
-            <Typography sx={{ mt: 1, color: "#b7c7d1" }}>
-              Session ID was not provided. Please go back and try again.
-            </Typography>
-            <Button
-              variant="contained"
-              sx={{
-                mt: 2,
-                backgroundColor: "#04BFBF",
-                color: "#061018",
-                fontWeight: 800,
-                textTransform: "none",
-                borderRadius: "999px",
-                py: 1.1,
-              }}
-              onClick={() => navigate("/home")}
-              fullWidth
-            >
-              Go Home
-            </Button>
-          </CardContent>
-        </Card>
-      ) : loading ? (
-        <Card
-          sx={{
-            width: "100%",
-            maxWidth: 420,
-            borderRadius: 3,
-            background: "linear-gradient(180deg, #121b22 0%, #0f161d 100%)",
-            color: "#EAF2FF",
-            border: "1px solid rgba(4,191,191,0.12)",
-            boxShadow: "0 14px 36px rgba(0,0,0,0.28)",
-          }}
-        >
-          <CardContent sx={{ p: 3 }}>
-            <Box display="flex" alignItems="center" gap={2}>
-              <CircularProgress size={28} sx={{ color: "#04BFBF" }} />
-              <Box>
-                <Typography sx={{ fontWeight: 800, color: "#fff" }}>
-                  Loading session summary
-                </Typography>
-                <Typography sx={{ color: "#b7c7d1", fontSize: "0.9rem" }}>
-                  Preparing your bill receipt...
-                </Typography>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-      ) : error ? (
-        <Card
-          sx={{
-            width: "100%",
-            maxWidth: 420,
-            borderRadius: 3,
-            background: "linear-gradient(180deg, #121b22 0%, #0f161d 100%)",
-            color: "#EAF2FF",
-            border: "1px solid rgba(255, 154, 154, 0.18)",
-            boxShadow: "0 14px 36px rgba(0,0,0,0.28)",
-          }}
-        >
-          <CardContent sx={{ p: 3 }}>
-            <Typography sx={{ fontWeight: 800, fontSize: "1.1rem", color: "#ff9a9a" }}>
-              Could not load
-            </Typography>
-            <Typography sx={{ mt: 1, color: "#b7c7d1" }}>{error}</Typography>
 
-            <Button
-              variant="contained"
-              sx={{
-                mt: 2,
-                backgroundColor: "#04BFBF",
-                color: "#061018",
-                fontWeight: 800,
-                textTransform: "none",
-                borderRadius: "999px",
-                py: 1.1,
-              }}
-              onClick={() => window.location.reload()}
-              fullWidth
-            >
-              Retry
-            </Button>
+          {/* ══ Receipt Card ══ */}
+          <div style={{
+            background: "#ffffff",
+            borderRadius: "18px",
+            border: "1px solid rgba(4,191,191,0.18)",
+            boxShadow: "0 4px 24px rgba(4,191,191,0.12)",
+            overflow: "hidden",
+            marginBottom: "14px",
+          }}>
 
-            <Button
-              variant="text"
-              sx={{
-                mt: 1,
-                color: "rgba(234,242,255,0.8)",
-                textTransform: "none",
-              }}
-              onClick={() => navigate("/home")}
-              fullWidth
-            >
-              Go Home
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <Box
-            sx={{
-              width: "100%",
-              maxWidth: 420,
-              mx: "auto",
-              background: "linear-gradient(180deg, #121b22 0%, #0f161d 100%)",
-              borderRadius: 3,
-              border: "1px solid rgba(4,191,191,0.12)",
-              boxShadow: "0 14px 36px rgba(0,0,0,0.28)",
-              overflow: "hidden",
-            }}
-          >
-            <Box
-              sx={{
-                px: 2.5,
-                py: 2,
-                borderBottom: "1px solid rgba(255,255,255,0.06)",
-                background:
-                  "linear-gradient(180deg, rgba(4,191,191,0.08), rgba(4,191,191,0.02))",
-              }}
-            >
-              <Typography
-                sx={{
-                  color: "#fff",
-                  fontWeight: 800,
-                  fontSize: "1.05rem",
-                  textAlign: "center",
-                  letterSpacing: "0.02em",
-                }}
-              >
-                VIZ - Smart Charging
-              </Typography>
-              <Typography
-                sx={{
-                  color: "#9fb3bf",
-                  fontSize: "0.82rem",
-                  textAlign: "center",
-                  mt: 0.3,
-                }}
-              >
-                by Vjra Technologies LLP
-              </Typography>
-            </Box>
+            {/* Top accent strip */}
+            <div style={{
+              height: "5px",
+              background: "linear-gradient(90deg, #04bfbf, #019999)",
+            }} />
 
-            <Box sx={{ px: 2.5, py: 2 }}>
-              <Box
-                sx={{
-                  display: "grid",
-                  gap: 1,
-                  mb: 2,
-                }}
-              >
-                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                  <Typography sx={{ color: "#9fb3bf", fontSize: "0.88rem" }}>Date</Typography>
-                  <Typography sx={{ color: "#fff", fontSize: "0.88rem", textAlign: "right" }}>
-                    {formatDateTime(receipt.createdAt)}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                  <Typography sx={{ color: "#9fb3bf", fontSize: "0.88rem" }}>Receipt ID</Typography>
-                  <Typography sx={{ color: "#fff", fontSize: "0.88rem", textAlign: "right", wordBreak: "break-word" }}>
-                    {receipt.receiptId}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                  <Typography sx={{ color: "#9fb3bf", fontSize: "0.88rem" }}>Device ID</Typography>
-                  <Typography sx={{ color: "#fff", fontSize: "0.88rem", textAlign: "right", wordBreak: "break-word" }}>
-                    {receipt.deviceId}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                  <Typography sx={{ color: "#9fb3bf", fontSize: "0.88rem" }}>Rate (incl GST)</Typography>
-                  <Typography sx={{ color: "#04BFBF", fontSize: "0.88rem", fontWeight: 700 }}>
-                    {formatMoney(receipt.userRateInclGST)}/kWh
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Box sx={{ borderTop: "1px dashed rgba(255,255,255,0.16)", my: 1.5 }} />
-
-              <Box sx={{ display: "grid", gap: 1 }}>
-                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                  <Typography sx={{ color: "#9fb3bf", fontSize: "0.88rem" }}>Energy Used</Typography>
-                  <Typography sx={{ color: "#fff", fontSize: "0.88rem", fontWeight: 600 }}>
-                    {receipt.energyConsumed.toFixed(2)} kWh
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                  <Typography sx={{ color: "#9fb3bf", fontSize: "0.88rem" }}>Base Amount</Typography>
-                  <Typography sx={{ color: "#fff", fontSize: "0.88rem" }}>
-                    {formatMoney(receipt.taxableAmount)}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                  <Typography sx={{ color: "#9fb3bf", fontSize: "0.88rem" }}>GST (18%)</Typography>
-                  <Typography sx={{ color: "#fff", fontSize: "0.88rem" }}>
-                    {formatMoney(receipt.gstAmount)}
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Box sx={{ borderTop: "1px dashed rgba(255,255,255,0.16)", my: 1.5 }} />
-
-              <Box
-                sx={{
-                  background: "rgba(4,191,191,0.06)",
-                  border: "1px solid rgba(4,191,191,0.10)",
-                  borderRadius: 2,
-                  p: 1.5,
-                }}
-              >
-                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, mb: 0.8 }}>
-                  <Typography sx={{ color: "#d7eef0", fontSize: "0.9rem", fontWeight: 700 }}>
-                    Total
-                  </Typography>
-                  <Typography sx={{ color: "#fff", fontSize: "0.9rem", fontWeight: 800 }}>
-                    {formatMoney(receipt.totalAmount)}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
-                  <Typography sx={{ color: "#d7eef0", fontSize: "0.9rem", fontWeight: 700 }}>
-                    Paid
-                  </Typography>
-                  <Typography sx={{ color: "#fff", fontSize: "0.9rem", fontWeight: 800 }}>
-                    {formatMoney(receipt.amountPaid)}
-                  </Typography>
-                </Box>
-
-                {receipt.refundAmount > 0 && (
-                  <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2, mt: 0.8 }}>
-                    <Typography sx={{ color: "#ffb2b2", fontSize: "0.9rem", fontWeight: 700 }}>
-                      Refund
-                    </Typography>
-                    <Typography sx={{ color: "#ffb2b2", fontSize: "0.9rem", fontWeight: 800 }}>
-                      -{formatMoney(receipt.refundAmount)}
-                    </Typography>
-                  </Box>
-                )}
-              </Box>
-
-              <Typography
-                sx={{
-                  mt: 1.8,
-                  color: "#7f97a4",
-                  fontSize: "0.78rem",
-                  textAlign: "center",
-                  lineHeight: 1.5,
-                }}
-              >
-                This is a charging receipt, not a tax invoice.
-                <br />
-                Thank you for charging with us.
-              </Typography>
-            </Box>
-          </Box>
-
-          <Box
-            sx={{
-              width: "100%",
-              maxWidth: 420,
-              mt: 3,
+            {/* Brand header */}
+            <div style={{
+              padding: "13px 18px 11px",
+              borderBottom: "1px solid rgba(4,191,191,0.12)",
+              background: "rgba(4,191,191,0.04)",
               textAlign: "center",
-            }}
-          >
-            <Typography sx={{ fontSize: "0.8rem", color: "#b7c7d1", mb: 1 }}>
-              How was your charging experience?
-            </Typography>
+            }}>
+              <p style={{
+                margin: 0, fontSize: "14px", fontWeight: 800,
+                color: "#0e1e1e", letterSpacing: "0.3px",
+              }}>
+                VIZ-Smart Charging
+              </p>
+              <p style={{ margin: "2px 0 0", fontSize: "10.5px", color: "#7ab0b5", fontWeight: 500 }}>
+                by Vjra Technologies LLP
+              </p>
+            </div>
 
-            <Box sx={{ display: "flex", justifyContent: "center", gap: 0.5 }}>
-              {[1, 2, 3, 4, 5].map((i) => (
-                <StarIcon
-                  key={i}
-                  onClick={() => {
-                    if (!feedbackSubmitted) setRating(i);
-                  }}
-                  sx={{
-                    cursor: feedbackSubmitted ? "default" : "pointer",
-                    fontSize: 28,
-                    color: i <= rating ? "#F2A007" : "#3a4954",
-                    transition: "transform 0.2s ease, color 0.2s ease",
-                    "&:hover": !feedbackSubmitted && { transform: "scale(1.12)" },
-                  }}
-                />
-              ))}
-            </Box>
-
-            <Typography sx={{ mt: 0.5, color: "#9fb3bf", fontSize: "0.78rem" }}>
-              {["Poor", "Fair", "Good", "Very Good", "Excellent"][rating - 1]}
-            </Typography>
-          </Box>
-
-          {rating > 0 && !feedbackSubmitted && (
-            <Box
-              sx={{
-                width: "100%",
-                maxWidth: 420,
-                mt: 2,
-                p: 2,
-                borderRadius: 3,
-                background: "#0f1722",
-                border: "1px solid rgba(255,255,255,0.08)",
-                boxShadow: "0 10px 24px rgba(0,0,0,0.18)",
-              }}
-            >
-              <TextField
-                rows={3}
-                fullWidth
-                multiline
-                placeholder="Any suggestions to improve our service?"
-                value={suggestion}
-                onChange={(e) => setSuggestion(e.target.value)}
-                sx={{
-                  background: "#101922",
-                  borderRadius: 1.5,
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 2,
-                    color: "#EAF2FF",
-                  },
-                  "& .MuiInputBase-input::placeholder": {
-                    fontSize: "0.85rem",
-                    opacity: 0.65,
-                  },
-                  "& .MuiOutlinedInput-notchedOutline": {
-                    borderColor: "rgba(255,255,255,0.10)",
-                  },
-                }}
-              />
-
-              <Button
-                fullWidth
-                variant="contained"
-                onClick={handleSubmitSuggestion}
-                sx={{
-                  mt: 1.5,
-                  mb: 3,
-                  backgroundColor: "#04BFBF",
-                  color: "#061018",
-                  fontWeight: 800,
-                  textTransform: "none",
-                  borderRadius: "999px",
-                  py: 1.1,
-                  "&:hover": {
-                    backgroundColor: "#03adad",
-                  },
-                }}
-              >
-                Submit Feedback
-              </Button>
-            </Box>
-          )}
-
-          <Box
-            sx={{
+            {/* Receipt rows */}
+            <div style={{
+              padding: "14px 18px 16px",
               display: "flex",
-              gap: 1.2,
-              mt: 2.5,
-              mb: 2,
-              flexWrap: "wrap",
-              justifyContent: "center",
-              width: "100%",
-              maxWidth: 420,
-            }}
-          >
-            <Button
-              variant="contained"
+              flexDirection: "column",
+              gap: "5px",
+            }}>
+
+              {/* Meta section */}
+              <Row label="Date"              value={fmtDateTime(receipt.createdAt)} />
+              <Row label="Receipt ID"        value={receipt.receiptId} />
+              <Row label="Device ID"         value={receipt.deviceId} />
+              <Row label="Rate (incl. GST)"  value={`${fmtMoney(receipt.userRateInclGST)}/kWh`} valueColor="#04bfbf" bold />
+
+              {/* Dashed divider */}
+              <div style={{ borderTop: "1.5px dashed rgba(4,191,191,0.22)", margin: "4px 0" }} />
+
+              {/* Consumption section */}
+              <Row label="Energy Consumed"  value={`${Number(receipt.energyConsumed || 0).toFixed(2)} kWh`} />
+              <Row label="Taxable Amount"  value={fmtMoney(receipt.taxableAmount)} />
+              <Row label="GST (18%)"    value={fmtMoney(receipt.gstAmount)} />
+
+              {/* Dashed divider */}
+              <div style={{ borderTop: "1.5px dashed rgba(4,191,191,0.22)", margin: "4px 0" }} />
+
+              {/* Totals box */}
+              <div style={{
+                background: "rgba(4,191,191,0.06)",
+                borderRadius: "11px",
+                border: "1px solid rgba(4,191,191,0.18)",
+                padding: "10px 12px",
+                display: "flex",
+                flexDirection: "column",
+                gap: "5px",
+              }}>
+                <Row label="Total"    value={fmtMoney(receipt.totalAmount)} bold />
+                <Row label="Paid"     value={fmtMoney(receipt.amountPaid)}  bold valueColor="#04bfbf" />
+                {receipt.discountApplied > 0 && (
+                  <Row label="Discount" value={`-${fmtMoney(receipt.discountApplied)}`} valueColor="#49c700" bold />
+                )}
+                {receipt.refundAmount > 0 && (
+                  <Row label="Refund" value={`-${fmtMoney(receipt.refundAmount)}`} valueColor="#cc001b" bold />
+                )}
+              </div>
+
+              <p style={{
+                margin: "6px 0 0",
+                fontSize: "10px",
+                color: "#a0bec2",
+                textAlign: "center",
+                lineHeight: 1.6,
+              }}>
+                This is a charging receipt, not a tax invoice.
+                {" "}Thank you for charging with us.
+              </p>
+            </div>
+          </div>
+
+          {/* ══ Feedback Card ══ */}
+          <div style={{
+            background: "#ffffff",
+            borderRadius: "18px",
+            border: "1px solid rgba(4,191,191,0.15)",
+            boxShadow: "0 3px 16px rgba(4,191,191,0.09)",
+            padding: "16px 18px",
+            marginBottom: "14px",
+          }}>
+            <p style={{
+              margin: "0 0 12px",
+              fontSize: "13px", fontWeight: 700,
+              color: "#0e1e1e", textAlign: "center",
+            }}>
+              How was your charging experience?
+            </p>
+
+            {/* Stars */}
+            <div style={{ display: "flex", justifyContent: "center", gap: "5px", marginBottom: "4px" }}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <button
+                  key={i}
+                  className="star-btn"
+                  disabled={feedbackSubmitted}
+                  onClick={() => setRating(i)}
+                >
+                  <svg width="28" height="28" viewBox="0 0 24 24"
+                    fill={i <= rating ? "#ff9100" : "none"}
+                    stroke={i <= rating ? "#ff9100" : "#c0d8db"}
+                    strokeWidth="1.5"
+                    style={{ transition: "all 0.15s" }}
+                  >
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
+                </button>
+              ))}
+            </div>
+
+            {rating > 0 && (
+              <p style={{
+                margin: "0 0 12px",
+                fontSize: "11px", fontWeight: 600,
+                color: "#ff9100", textAlign: "center",
+              }}>
+                {ratingLabels[rating]}
+              </p>
+            )}
+
+            {!feedbackSubmitted ? (
+              <>
+                <textarea
+                  rows={3}
+                  placeholder="Any suggestions to improve our service? (optional)"
+                  value={suggestion}
+                  onChange={(e) => setSuggestion(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    fontSize: "12.5px",
+                    fontFamily: "Poppins, sans-serif",
+                    borderRadius: "11px",
+                    border: "1.5px solid rgba(4,191,191,0.20)",
+                    background: "rgba(4,191,191,0.04)",
+                    color: "#0e1e1e",
+                    outline: "none",
+                    resize: "none",
+                    transition: "border-color 0.18s",
+                    lineHeight: 1.55,
+                  }}
+                  onFocus={(e) => { e.target.style.borderColor = "#04bfbf"; }}
+                  onBlur={(e)  => { e.target.style.borderColor = "rgba(4,191,191,0.20)"; }}
+                />
+                <button
+                  onClick={handleSubmitFeedback}
+                  disabled={rating === 0}
+                  style={{
+                    ...btnPrimary,
+                    marginTop: "10px",
+                    opacity: rating === 0 ? 0.45 : 1,
+                    cursor: rating === 0 ? "not-allowed" : "pointer",
+                  }}
+                >
+                  Submit Feedback
+                </button>
+              </>
+            ) : (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                padding: "9px 12px",
+                background: "rgba(4,191,191,0.08)",
+                borderRadius: "10px",
+                border: "1px solid rgba(4,191,191,0.18)",
+              }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#04bfbf" strokeWidth="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "#04bfbf" }}>
+                  Thanks for your feedback!
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* ══ Action Buttons ══ */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+
+            <button
+              className="home-btn"
               onClick={() => navigate("/home")}
-              sx={{
-                backgroundColor: "#04BFBF",
-                color: "#061018",
-                px: 4,
-                borderRadius: "999px",
-                textTransform: "none",
-                fontWeight: 800,
-                minWidth: 120,
-              }}
+              style={btnPrimary}
             >
-              Home
-            </Button>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.2"
+                style={{ marginRight: "6px", flexShrink: 0 }}
+              >
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+              Back to Home
+            </button>
 
             {receipt.refundAmount > 0 && (
-              <Button
-                variant="outlined"
+              <button
                 onClick={handleRefund}
-                sx={{
-                  borderColor: "rgba(4,191,191,0.5)",
-                  color: "#04BFBF",
-                  px: 4,
-                  borderRadius: "999px",
-                  textTransform: "none",
-                  fontWeight: 800,
-                  minWidth: 120,
-                  "&:hover": {
-                    borderColor: "#04BFBF",
-                    backgroundColor: "rgba(4,191,191,0.06)",
-                  },
+                className="refund-wa"
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  background: "rgba(37,211,102,0.07)",
+                  color: "#1a7a3a",
+                  border: "1.5px solid rgba(37,211,102,0.28)",
+                  borderRadius: "14px",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontFamily: "Poppins, sans-serif",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "7px",
+                  transition: "background 0.18s",
                 }}
               >
-                Refund
-              </Button>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#25D366">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                </svg>
+                Request Refund via WhatsApp
+              </button>
             )}
-          </Box>
-        </>
-      )}
-    </Box>
-);
+          </div>
 
-
+        </div>
+      </div>
+    </>
+  );
 };
 
+/* ── Shared button styles ── */
+const btnPrimary = {
+  width: "100%",
+  padding: "12px",
+  background: "linear-gradient(90deg, #04bfbf, #029a9a)",
+  color: "#ffffff",
+  border: "none",
+  borderRadius: "14px",
+  fontSize: "13.5px",
+  fontWeight: 700,
+  cursor: "pointer",
+  fontFamily: "Poppins, sans-serif",
+  boxShadow: "0 5px 18px rgba(4,191,191,0.28)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxSizing: "border-box",
+  transition: "background 0.18s",
+};
+
+const btnGhost = {
+  width: "100%",
+  padding: "12px",
+  background: "transparent",
+  color: "#5a8a90",
+  border: "1.5px solid rgba(4,191,191,0.20)",
+  borderRadius: "14px",
+  fontSize: "13.5px",
+  fontWeight: 600,
+  cursor: "pointer",
+  fontFamily: "Poppins, sans-serif",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  boxSizing: "border-box",
+};
 
 export default SessionSummary;

@@ -58,6 +58,8 @@ export default function LiveSessionPage() {
   const [voltage, setVoltage] = useState(0);
   const [relayState, setRelayState] = useState('OFF');
   const [energyConsumed, setEnergyConsumed] = useState(0);
+  const [estimatedEndTime, setEstimatedEndTime] = useState(null);
+  const [etaDisplay, setEtaDisplay] = useState({ timeStr: null, remaining: null });
 
   const [showPopup, setShowPopup] = useState(false);
   const [error, setError] = useState(null);
@@ -287,6 +289,44 @@ const endDrag = async () => {
     }
   };
 
+// Live ETA countdown — recalculates every 30s from estimatedEndTime
+useEffect(() => {
+  const computeEta = () => {
+    if (!estimatedEndTime) {
+      setEtaDisplay({ timeStr: null, remaining: null });
+      return;
+    }
+    const eta = new Date(estimatedEndTime);
+    const now = new Date();
+    const diffMs = eta.getTime() - now.getTime();
+
+    // Format ETA time as "HH:MM AM/PM"
+    const timeStr = eta.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+      timeZone: 'Asia/Kolkata',
+    });
+
+    if (diffMs <= 0) {
+      setEtaDisplay({ timeStr, remaining: 'Any moment' });
+      return;
+    }
+
+    const totalMins = Math.ceil(diffMs / 60000);
+    const hours = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    const remaining = hours > 0 ? `${hours}h ${mins}m left` : `${mins}m left`;
+
+    setEtaDisplay({ timeStr, remaining });
+  };
+
+  computeEta(); // run immediately
+  const ticker = setInterval(computeEta, 30_000); // refresh every 30s
+  return () => clearInterval(ticker);
+}, [estimatedEndTime]);
+
+
   const fetchActiveSession = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -389,7 +429,7 @@ const endDrag = async () => {
       setCurrent(Number(data.current) || 0);
       setEnergyConsumed(Number(data.energyConsumed) || 0);
       setRelayState(normalizedRelay);
-
+      if (data.estimatedEndTime) setEstimatedEndTime(data.estimatedEndTime);
       if (data.sessionId) lastSessionIdRef.current = data.sessionId;
 
       if (typeof data.energySelected === 'number')
@@ -814,6 +854,80 @@ const endDrag = async () => {
           justify-content: center;
         }
 
+        /* ── ETA Row ─────────────────────────────────────── */
+.eta-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+  width: 100%;
+}
+
+.eta-cell {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 12px 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+.eta-cell-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.eta-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f2a007;
+  box-shadow: 0 0 6px #f2a007;
+  animation: etaPulse 2s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes etaPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.45; transform: scale(0.7); }
+}
+
+.eta-cell-value {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: #f2a007;
+}
+
+.eta-cell-value.faint {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+.eta-cell-sub {
+  font-size: 11px;
+  color: var(--text-soft);
+  opacity: 0.8;
+}
+
+.eta-cell.time-left .eta-cell-value {
+  color: #04bfbf;
+}
+/* ─────────────────────────────────────────────────── */
+
         .info-btn {
           background: rgba(255, 255, 255, 0.07);
           color: #d7eef4;
@@ -930,6 +1044,7 @@ const endDrag = async () => {
           .device-card-right {
             width: 100%;
             flex-direction: row;
+            
           }
 
           .device-action-btn {
@@ -1456,6 +1571,39 @@ const endDrag = async () => {
     </div>
   </div>
 </div>
+
+          {/* ── ETA Row ─────────────────────────────── */}
+          <div className="eta-row">
+            <div className="eta-cell">
+              <div className="eta-cell-label">
+                {etaDisplay.timeStr && <span className="eta-pulse-dot" />}
+                Est. Finish
+              </div>
+              {etaDisplay.timeStr ? (
+                <>
+                  <div className="eta-cell-value">{etaDisplay.timeStr}</div>
+                  <div className="eta-cell-sub">today</div>
+                </>
+              ) : (
+                <div className="eta-cell-value faint">
+                  {usagePercent >= 1 ? 'Calculating…' : 'Waiting for data'}
+                </div>
+              )}
+            </div>
+
+            <div className="eta-cell time-left">
+              <div className="eta-cell-label">Time Left</div>
+              {etaDisplay.remaining ? (
+                <div className="eta-cell-value">{etaDisplay.remaining}</div>
+              ) : (
+                <div className="eta-cell-value faint">—</div>
+              )}
+              <div className="eta-cell-sub">est. remaining</div>
+            </div>
+          </div>
+          {/* ──────────────────────────────────────── */}
+
+
             </div>
 
             <div className="metrics-grid">

@@ -8,7 +8,7 @@ import MyLocationIcon from "@mui/icons-material/MyLocation";
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
-
+import FooterNav from "../components/FooterNav";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -641,35 +641,18 @@ function smoothShrinkMarker(marker) {
 
   }
 
-
-
-
-  return (
+ return (
     <>
     <div className="top-bar">
       <img src="/logo.png" alt="VIZ Logo" className="top-bar-logo" />
     </div>
     <div className="home-container">
 
-      <div className="bottom-bar">
-  <button onClick={() => navigate("/sessions")} className="home-button">
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
-        <path d="M13 2L3 14h9v8l9-12h-9z"/>
-      </svg>
-      <span style={{ fontFamily: "'Rubik', sans-serif", fontSize: "9px", marginTop: "4px", color: "#cdebf5" }}>Sessions</span>
-    </div>
-  </button>
+  
+       
 
   {/* ✅ NEW: Transactions button */}
-    <button onClick={() => navigate("/home")} className="scan-button">
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#04BFBF" strokeWidth="1" viewBox="0 0 24 24">
-        <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
-      </svg>
-      <span style={{ fontFamily: "'Open Sans', sans-serif", fontSize: "9px", marginTop: "4px", color: "#04BFBF" }}>Home</span>
-    </div>
-  </button>
+
   <button onClick={() => navigate("/transactions")} className="home-button">
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
@@ -690,7 +673,7 @@ function smoothShrinkMarker(marker) {
       <span style={{ fontFamily: "'Open Sans', sans-serif", fontSize: "9px", marginTop: "4px", color: "#cdebf5" }}>Profile</span>
     </div>
   </button>
-</div>
+
 
       <button onClick={() => navigate("/qr-scanner")} className="qr-floating-button" style={{
         position: "absolute",
@@ -999,7 +982,7 @@ function smoothShrinkMarker(marker) {
   </div>
 )}
 
-
+<FooterNav />
 
         </div>
 {/* INSTALL HELP / INSTRUCTIONS (shown when beforeinstallprompt not available or the user dismissed) */}
@@ -1077,7 +1060,12 @@ function smoothShrinkMarker(marker) {
         </button>
       </div>
     </div>
+
+   
   </div>
+
+
+  
 )}
 
       </>
@@ -1311,6 +1299,7 @@ const styles = {
     boxShadow: "0 0 10px #ff9100",
     transition: "all 0.3s ease",
   },
+  
 };
 
 export default Home;

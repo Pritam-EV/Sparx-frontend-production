@@ -1,59 +1,366 @@
 // src/components/SessionPage.js
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Button,
-  CircularProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  IconButton,
-} from "@mui/material";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import { useNavigate } from "react-router-dom";
+import { Box, CircularProgress } from "@mui/material";
+import { useNavigate, useLocation } from "react-router-dom";
 import FooterNav from "../components/FooterNav";
 
+const fmtMoney    = (n) => `₹${Number(n || 0).toFixed(2)}`;
+const fmtKwh      = (n) => `${Number(n || 0).toFixed(2)} kWh`;
+const fmtDateTime = (d) => {
+  if (!d) return "—";
+  return new Date(d).toLocaleString("en-IN", {
+    day: "2-digit", month: "short", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+};
+const getAmountUtilized = (s) => Number(s?.amountUsed ?? 0);
+const getRefund = (s) => {
+  const paid     = Number(s?.amountPaid ?? 0);
+  const utilized = getAmountUtilized(s);
+  return Number(Math.max(0, paid - utilized).toFixed(2));
+};
+
+/* ── Status badge ── */
+const StatusBadge = ({ status }) => {
+  const s = (status || "").toLowerCase();
+  const map = {
+    active:    { bg: "rgba(4,191,191,0.12)",   color: "#04bfbf",  label: "Active"    },
+    completed: { bg: "rgba(73,199,0,0.12)",    color: "#3aa300",  label: "Completed" },
+    stopped:   { bg: "rgba(255,145,0,0.13)",   color: "#cc6600",  label: "Stopped"   },
+    failed:    { bg: "rgba(204,0,27,0.10)",    color: "#cc001b",  label: "Failed"    },
+  };
+  const cfg = map[s] || { bg: "rgba(0,0,0,0.06)", color: "#5a7a85", label: status || "—" };
+  return (
+    <span style={{
+      display: "inline-block",
+      padding: "3px 10px",
+      borderRadius: "999px",
+      background: cfg.bg,
+      color: cfg.color,
+      fontWeight: 700,
+      fontSize: "11px",
+      letterSpacing: "0.4px",
+      fontFamily: "Poppins, sans-serif",
+    }}>
+      {cfg.label}
+    </span>
+  );
+};
+
+/* ── Shared stat row ── */
+const StatRow = ({ label, value }) => (
+  <div style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottom: "1px solid rgba(4,191,191,0.10)",
+    paddingBottom: "7px",
+  }}>
+    <span style={{ fontSize: "12px", fontWeight: 600, color: "#5a8a90", fontFamily: "Poppins, sans-serif" }}>
+      {label}
+    </span>
+    <span style={{ fontSize: "13px", fontWeight: 700, color: "#0e1e1e", fontFamily: "Poppins, sans-serif" }}>
+      {value}
+    </span>
+  </div>
+);
+
+/* ── Active Session Card ── */
+const ActiveCard = ({ s, navigate }) => (
+  <div style={{
+    background: "#ffffff",
+    borderRadius: "18px",
+    border: "1px solid rgba(4,191,191,0.20)",
+    boxShadow: "0 4px 24px rgba(4,191,191,0.13)",
+    marginBottom: "14px",
+    overflow: "hidden",
+    fontFamily: "Poppins, sans-serif",
+  }}>
+    {/* teal live strip */}
+    <div style={{
+      height: "4px",
+      background: "linear-gradient(90deg, #04bfbf, #029a9a)",
+    }} />
+
+    <div style={{ padding: "16px 16px 18px" }}>
+      {/* Row 1 */}
+      <div style={{
+        display: "flex", alignItems: "center",
+        justifyContent: "space-between", marginBottom: "6px",
+      }}>
+        <div>
+          <div style={{
+            fontSize: "11px", fontWeight: 700,
+            textTransform: "uppercase", letterSpacing: "0.6px", color: "#7ab0b5",
+          }}>
+            Charger ID
+          </div>
+          <div style={{ fontSize: "15px", fontWeight: 800, color: "#0e1e1e", marginTop: "2px" }}>
+            {s.deviceId || "—"}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {/* LIVE pulse */}
+          <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+            <span style={{
+              width: "8px", height: "8px", borderRadius: "50%",
+              background: "#cc001b",
+              boxShadow: "0 0 0 3px rgba(204,0,27,0.20)",
+              animation: "livePulse 1.6s ease-in-out infinite",
+              display: "inline-block",
+            }} />
+            <span style={{ fontSize: "11px", fontWeight: 700, color: "#cc001b", letterSpacing: "0.4px" }}>
+              LIVE
+            </span>
+          </div>
+          <button
+            onClick={() => navigate(`/live-session/${s.sessionId}`)}
+            style={{
+              background: "linear-gradient(90deg, #04bfbf, #029a9a)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "10px",
+              padding: "7px 14px",
+              fontSize: "12px",
+              fontWeight: 700,
+              cursor: "pointer",
+              fontFamily: "Poppins, sans-serif",
+              boxShadow: "0 4px 12px rgba(4,191,191,0.30)",
+            }}
+          >
+            View Live →
+          </button>
+        </div>
+      </div>
+
+      {/* Session ID */}
+      <div style={{ fontSize: "11px", color: "#7ab0b5", marginBottom: "14px", fontWeight: 500 }}>
+        Session:{" "}
+        <span style={{ color: "#04bfbf", fontWeight: 700 }}>{s.sessionId || "—"}</span>
+      </div>
+
+      {/* Stats */}
+      <div style={{ marginBottom: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+        <StatRow label="Amount Paid" value={fmtMoney(s.amountPaid)} />
+        <StatRow label="Energy Used" value={fmtKwh(s.energyConsumed)} />
+        <StatRow label="Amount Used" value={fmtMoney(getAmountUtilized(s))} />
+        <StatRow label="Status"      value={<StatusBadge status={s.status || "Active"} />} />
+      </div>
+
+      {/* Est. Refund */}
+      {getRefund(s) > 0 && (
+        <div style={{
+          background: "rgba(255,145,0,0.08)",
+          border: "1px solid rgba(255,145,0,0.28)",
+          borderRadius: "10px",
+          padding: "9px 12px",
+          marginBottom: "12px",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+        }}>
+          <span style={{ fontSize: "14px" }}>💰</span>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "#cc6600" }}>
+            Est. refund: {fmtMoney(getRefund(s))}
+          </span>
+        </div>
+      )}
+
+      {/* Time row */}
+      <div style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "6px",
+        background: "rgba(4,191,191,0.05)",
+        borderRadius: "10px",
+        padding: "9px 12px",
+        border: "1px solid rgba(4,191,191,0.14)",
+      }}>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#04bfbf" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span style={{ fontSize: "12px", color: "#5a8a90", fontWeight: 500 }}>
+          Started {fmtDateTime(s.startTime)}
+        </span>
+        <span style={{ marginLeft: "auto", fontSize: "11px", fontWeight: 700, color: "#04bfbf" }}>
+          In progress…
+        </span>
+      </div>
+    </div>
+  </div>
+);
+
+/* ── Past Session Card ── */
+const PastCard = ({ s, navigate }) => (
+  <div style={{
+    background: "#ffffff",
+    borderRadius: "18px",
+    border: "1px solid rgba(4,191,191,0.14)",
+    boxShadow: "0 2px 16px rgba(4,191,191,0.09)",
+    marginBottom: "14px",
+    overflow: "hidden",
+    fontFamily: "Poppins, sans-serif",
+  }}>
+    {/* subtle teal strip */}
+    <div style={{
+      height: "3px",
+      background: "linear-gradient(90deg, rgba(4,191,191,0.55), rgba(4,191,191,0.10))",
+    }} />
+
+    <div style={{ padding: "16px 16px 18px" }}>
+      {/* Row 1 */}
+      <div style={{
+        display: "flex", alignItems: "center",
+        justifyContent: "space-between", marginBottom: "6px",
+      }}>
+        <div>
+          <div style={{
+            fontSize: "11px", fontWeight: 700,
+            textTransform: "uppercase", letterSpacing: "0.6px", color: "#7ab0b5",
+          }}>
+            Charger ID
+          </div>
+          <div style={{ fontSize: "15px", fontWeight: 800, color: "#0e1e1e", marginTop: "2px" }}>
+            {s.deviceId || "—"}
+          </div>
+        </div>
+        <button
+          onClick={() => navigate("/session-summary", { state: { sessionId: s.sessionId } })}
+          style={{
+            background: "rgba(4,191,191,0.09)",
+            color: "#04bfbf",
+            border: "1.5px solid rgba(4,191,191,0.25)",
+            borderRadius: "10px",
+            padding: "7px 14px",
+            fontSize: "12px",
+            fontWeight: 700,
+            cursor: "pointer",
+            fontFamily: "Poppins, sans-serif",
+          }}
+        >
+          Details →
+        </button>
+      </div>
+
+      {/* Session ID */}
+      <div style={{ fontSize: "11px", color: "#7ab0b5", marginBottom: "14px", fontWeight: 500 }}>
+        Session:{" "}
+        <span style={{ color: "#04bfbf", fontWeight: 700 }}>{s.sessionId || "—"}</span>
+      </div>
+
+      {/* Stats */}
+      <div style={{ marginBottom: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
+        <StatRow label="Amount Paid" value={fmtMoney(s.amountPaid)} />
+        <StatRow label="Energy Used" value={fmtKwh(s.energyConsumed)} />
+        <StatRow label="Amount Used" value={fmtMoney(getAmountUtilized(s))} />
+        <StatRow label="Status"      value={<StatusBadge status={s.status} />} />
+      </div>
+
+      {/* Refund badge */}
+      {getRefund(s) > 0 && (
+        <div style={{
+          background: "rgba(73,199,0,0.08)",
+          border: "1px solid rgba(73,199,0,0.25)",
+          borderRadius: "10px",
+          padding: "9px 12px",
+          marginBottom: "12px",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+        }}>
+          <span style={{ fontSize: "14px" }}>↩️</span>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "#3aa300" }}>
+            Refund: {fmtMoney(getRefund(s))}
+          </span>
+        </div>
+      )}
+
+      {/* Start / End time boxes */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+        {[
+          { label: "Start", value: fmtDateTime(s.startTime) },
+          { label: "End",   value: fmtDateTime(s.endTime)   },
+        ].map(({ label, value }) => (
+          <div key={label} style={{
+            background: "rgba(4,191,191,0.05)",
+            borderRadius: "10px",
+            padding: "9px 12px",
+            border: "1px solid rgba(4,191,191,0.13)",
+          }}>
+            <div style={{
+              fontSize: "10px", fontWeight: 700,
+              textTransform: "uppercase", letterSpacing: "0.5px",
+              color: "#7ab0b5", marginBottom: "3px",
+            }}>
+              {label}
+            </div>
+            <div style={{ fontSize: "11px", fontWeight: 600, color: "#0e6e75" }}>
+              {value}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+/* ── Empty State ── */
+const EmptyState = ({ isActive }) => (
+  <div style={{
+    display: "flex", flexDirection: "column",
+    alignItems: "center", justifyContent: "center",
+    padding: "48px 24px", textAlign: "center",
+  }}>
+    <div style={{
+      width: "64px", height: "64px", borderRadius: "50%",
+      background: "rgba(4,191,191,0.10)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      marginBottom: "16px",
+    }}>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#04bfbf" strokeWidth="1.8">
+        {isActive
+          ? <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+          : <><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></>
+        }
+      </svg>
+    </div>
+    <p style={{ fontSize: "15px", fontWeight: 700, color: "#0e1e1e", margin: "0 0 6px", fontFamily: "Poppins, sans-serif" }}>
+      {isActive ? "No active sessions" : "No past sessions"}
+    </p>
+    <p style={{ fontSize: "13px", color: "#7ab0b5", margin: 0, fontFamily: "Poppins, sans-serif" }}>
+      {isActive
+        ? "Start charging to see your live session here."
+        : "Your completed sessions will appear here."}
+    </p>
+  </div>
+);
+
+/* ══════════════════════════════
+   Main Component
+══════════════════════════════ */
 const SessionPage = () => {
   const [activeSessions, setActiveSessions] = useState([]);
-  const [pastSessions, setPastSessions] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [pastSessions,   setPastSessions]   = useState([]);
+  const [loading,        setLoading]        = useState(true);
+  const [activeTab,      setActiveTab]      = useState("active");
   const navigate = useNavigate();
+  const location = useLocation();
 
-
-  useEffect(() => {
-    fetchSessions();
-  }, []); // only once on mount
+  useEffect(() => { fetchSessions(); }, []);
 
   const fetchSessions = async () => {
     setLoading(true);
     const token = localStorage.getItem("token");
-    if (!token) {
-      console.warn("🔒 No auth token – redirecting to login");
-      return navigate("/login");
-    }
-
+    if (!token) return navigate("/login");
     try {
       const res = await axios.get(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/user-sessions`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      // backend returns { activeSessions: [...], pastSessions: [...] }
       setActiveSessions(res.data.activeSessions || []);
-      setPastSessions(res.data.pastSessions || []);
+      setPastSessions(res.data.pastSessions     || []);
     } catch (err) {
-      console.error(
-        "❌ Error fetching sessions:",
-        err.response?.status,
-        err.response?.data || err.message
-      );
-      // if unauthorized, kick to login
       if (err.response?.status === 401) navigate("/login");
     } finally {
       setLoading(false);
@@ -63,389 +370,189 @@ const SessionPage = () => {
   return (
     <>
       <style>{`
-      .top-bar {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 40px;
-        background-color: #001f26; /* dark blue */
-        box-shadow: 0 2px 12px #04BFBF; /* light neon blue shadow */
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 1002;
-      }
+        @keyframes livePulse {
+          0%,100% { box-shadow: 0 0 0 3px rgba(204,0,27,0.18); }
+          50%      { box-shadow: 0 0 0 7px rgba(204,0,27,0.05); }
+        }
+        html, body { height: 100%; overflow: hidden; }
+        * { box-sizing: border-box; }
+        .session-scroll::-webkit-scrollbar { width: 5px; }
+        .session-scroll::-webkit-scrollbar-thumb {
+          background: rgba(4,191,191,0.25); border-radius: 999px;
+        }
+        .session-scroll::-webkit-scrollbar-track { background: transparent; }
+        .tab-btn { transition: all 0.18s ease; }
+        .tab-btn:active { transform: scale(0.97); }
+        .refresh-btn:hover { background: rgba(4,191,191,0.14) !important; }
 
-      .top-bar-logo {
-        height: 65px;
-        filter: drop-shadow(0 0 6px #04BFBF);
-      }
+        .top-bar {
+          position: fixed;
+          top: 0; left: 0;
+          width: 100%;
+          height: 42px;
+          background-color: #0e1e1e;
+          box-shadow: 0 2px 12px rgba(4,191,191,0.28);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1002;
+        }
+        .top-bar-logo {
+          height: 62px;
+          filter: drop-shadow(0 0 6px rgba(4,191,191,0.80));
+          object-fit: contain;
+        }
       `}</style>
-    <div className="top-bar">
-      <img src="/logo.png" alt="Sparx Logo" className="top-bar-logo" />
-    </div>
+
       {/* Top Bar */}
+      <div className="top-bar">
+        <img src="/logo.png" alt="Sparx Logo" className="top-bar-logo" />
+      </div>
 
-      {/* Page Layout */}
-      <Box
-        sx={{
-          pt: "60px", // space for top bar
-          pb: "60px", // space for bottom nav
-          height: "100vh", // full viewport
-          display: "flex",
-          flexDirection: "column",
-          bgcolor: "#ffffff",
-          color: "#011F26",
-        }}
-        >
-        {/* Scrollable Content */}
+      <Box sx={{
+        width: "100vw",
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        backgroundColor: "#f0fafa",
+        fontFamily: "Poppins, system-ui, sans-serif",
+        color: "#0e1e1e",
+        overflow: "hidden",
+      }}>
         <Box
+          className="session-scroll"
           sx={{
-            flexGrow: 1,
+            flex: 1,
+            width: "100%",
+            maxWidth: 480,
+            mt: "42px",
+            px: 2,
+            pt: 2.2,
             overflowY: "auto",
-            p: { xs: 2, sm: 3 },
+            WebkitOverflowScrolling: "touch",
+            overscrollBehavior: "contain",
+            pb: "110px",
           }}
         >
-          <Box sx={{ position: "relative", mb: 2 }}>
-            <Typography
-              variant="h5"
-              sx={{
-                fontWeight: "bold",
-                color: "#011F26",
-                mb: 1,
-                textAlign: "center",
-              }}
-            >
-              Charging Sessions
-            </Typography>
-
-            <IconButton
+          {/* ── Page header ── */}
+          <div style={{
+            display: "flex", alignItems: "center",
+            justifyContent: "space-between", marginBottom: "18px",
+          }}>
+            <h2 style={{
+              margin: 0, fontSize: "22px", fontWeight: 700,
+              color: "#0e1e1e", fontFamily: "Poppins, sans-serif",
+            }}>
+              Sessions
+            </h2>
+            <button
+              className="refresh-btn"
               onClick={fetchSessions}
-              sx={{
-                position: "absolute",
-                right: 0,
-                top: 0,
-                color: "#04BFBF",
-                "&:hover": { color: "#011F26" },
+              style={{
+                background: "rgba(4,191,191,0.09)",
+                border: "1.5px solid rgba(4,191,191,0.20)",
+                borderRadius: "10px",
+                width: "36px", height: "36px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer",
+                color: "#04bfbf",
+                transition: "background 0.18s",
               }}
+              title="Refresh"
             >
-              <RefreshIcon />
-            </IconButton>
-          </Box>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <polyline points="23 4 23 10 17 10"/>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+              </svg>
+            </button>
+          </div>
 
+          {/* ── Tab switcher ── */}
+          <div style={{
+            display: "flex",
+            background: "rgba(4,191,191,0.08)",
+            borderRadius: "14px",
+            padding: "4px",
+            marginBottom: "20px",
+            gap: "4px",
+            border: "1px solid rgba(4,191,191,0.14)",
+          }}>
+            {[
+              { key: "active", label: "Active", count: activeSessions.length },
+              { key: "past",   label: "Past",   count: pastSessions.length   },
+            ].map((tab) => {
+              const isSel = activeTab === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  className="tab-btn"
+                  onClick={() => setActiveTab(tab.key)}
+                  style={{
+                    flex: 1,
+                    padding: "9px 0",
+                    borderRadius: "11px",
+                    border: "none",
+                    background: isSel
+                      ? "linear-gradient(90deg, #04bfbf, #029a9a)"
+                      : "transparent",
+                    color: isSel ? "#ffffff" : "#5a8a90",
+                    fontWeight: isSel ? 700 : 500,
+                    fontSize: "13px",
+                    cursor: "pointer",
+                    fontFamily: "Poppins, sans-serif",
+                    boxShadow: isSel ? "0 3px 10px rgba(4,191,191,0.30)" : "none",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    transition: "all 0.18s",
+                  }}
+                >
+                  {tab.label}
+                  {!loading && (
+                    <span style={{
+                      background: isSel
+                        ? "rgba(255,255,255,0.22)"
+                        : "rgba(4,191,191,0.12)",
+                      color: isSel ? "#ffffff" : "#04bfbf",
+                      borderRadius: "999px",
+                      padding: "1px 7px",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                    }}>
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── Content ── */}
           {loading ? (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="40vh">
-              <CircularProgress sx={{ color: "#04BFBF" }} />
-            </Box>
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "40vh" }}>
+              <CircularProgress sx={{ color: "#04bfbf" }} />
+            </div>
+          ) : activeTab === "active" ? (
+            activeSessions.length === 0
+              ? <EmptyState isActive={true} />
+              : activeSessions.map((s) => (
+                  <ActiveCard key={s._id || s.sessionId} s={s} navigate={navigate} />
+                ))
           ) : (
-            <>
-              {/* Active Sessions Accordion */}
-              <Accordion defaultExpanded sx={accordionStyle}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: "#011F26" }} />}>
-                  <Typography variant="h6" sx={{ color: "#011F26" }}>
-                    Active Sessions
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  {activeSessions.length === 0 ? (
-                    <Typography variant="body2" sx={{ color: "#9bcdd2" }}>
-                      No active sessions found.
-                    </Typography>
-                  ) : (
-                    activeSessions.map((s) => (
-                      <Card
-key={s._id || s.sessionId}
-  sx={{
-    mb: 2,
-    borderRadius: 3,
-    boxShadow: "0 10px 24px rgba(0,0,0,0.35)",
-    background: "linear-gradient(180deg, #0B1220 0%, #060A12 100%)",
-    border: "1px solid rgba(255,255,255,0.10)",
-    color: "#EAF2FF",
-  }}
->
-  <CardContent>
-    <Box display="flex" justifyContent="space-between" alignItems="center">
-      <Typography sx={{ fontWeight: 800, color: "#EAF2FF" }}>
-        ChargerId: {s.deviceId || "—"}
-      </Typography>
-
-      <Button
-        size="small"
-        variant="contained"
-          sx={{
-            backgroundColor: "#04BFBF",
-            color: "#061018",
-            fontWeight: 800,
-            "&:hover": { backgroundColor: "#02a7a7" },
-          }}
-        onClick={() => navigate(`/live-session/${s.sessionId}`)}
-      >
-        VIEW LIVE
-      </Button>
-    </Box>
-
-    <Typography variant="body2" sx={{ mt: 0.5, color: "rgba(234,242,255,0.80)" }}>
-      Session ID: {s.sessionId || "—"}
-    </Typography>
-
-    <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.2 }}>
-      <Box>
-        <Typography variant="caption" sx={{ color: "rgba(234,242,255,0.65)" }}>
-          Amount Paid
-        </Typography>
-        <Typography sx={{ fontWeight: 700 }}>{fmtMoney(s.amountPaid)}</Typography>
-      </Box>
-
-      <Box>
-        <Typography variant="caption" sx={{ opacity: 0.7 }}>
-          Energy Utilized
-        </Typography>
-        <Typography sx={{ fontWeight: 700 }}>{fmtKwh(s.energyConsumed)}</Typography>
-      </Box>
-
-      <Box>
-        <Typography variant="caption" sx={{ opacity: 0.7 }}>
-          Amount Utilized
-        </Typography>
-        <Typography sx={{ fontWeight: 700 }}>{fmtMoney(getAmountUtilized(s))}</Typography>
-      </Box>
-
-      <Box>
-        <Typography variant="caption" sx={{ opacity: 0.7 }}>
-          Status
-        </Typography>
-        <Typography sx={{ fontWeight: 700 }}>
-          {s.status || "Active"}
-        </Typography>
-      </Box>
-    </Box>
-
-    {getRefund(s) > 0 && (
-      <Box
-        sx={{
-          mt: 2,
-          p: 1.2,
-          borderRadius: 2,
-          background: "rgba(255,193,7,0.10)",
-          border: "1px solid rgba(255,193,7,0.35)",
-        }}
-      >
-        <Typography variant="body2" sx={{ fontWeight: 800, color: "#a26b00" }}>
-          Estimated refund so far: {fmtMoney(getRefund(s))}
-        </Typography>
-      </Box>
-    )}
-
-    <Box sx={{ mt: 2 }}>
-      <Typography variant="body2" sx={{ opacity: 0.8 }}>
-        Start: {fmtDateTime(s.startTime)}
-      </Typography>
-      <Typography variant="body2" sx={{ opacity: 0.8 }}>
-        End: In progress
-      </Typography>
-    </Box>
-  </CardContent>
-</Card>
-
-                    ))
-                  )}
-                </AccordionDetails>
-              </Accordion>
-
-              {/* Past Sessions Accordion */}
-              <Accordion sx={accordionStyle}>
-                <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ color: "#011F26" }} />}>
-                  <Typography variant="h6" sx={{ color: "#011F26" }}>
-                    Past Sessions
-                  </Typography>
-                </AccordionSummary>
-                <AccordionDetails>
-                  {pastSessions.length === 0 ? (
-                    <Typography variant="body2" sx={{ color: "#9bcdd2" }}>
-                      No past sessions found.
-                    </Typography>
-                  ) : (
-                    pastSessions.map((s) => (
-                      
-<Card
-  key={s._id || s.sessionId}
-  sx={{
-    mb: 2,
-    borderRadius: 3,
-    boxShadow: "0 6px 18px rgba(0,0,0,0.08)",
-  }}
->
-  <CardContent>
-    <Box display="flex" justifyContent="space-between" alignItems="center">
-      <Typography sx={{ fontWeight: 800, color: "#04BFBF" }}>
-        ChargerId: {s.deviceId || "—"}
-      </Typography>
-
-      <Button
-        size="small"
-        variant="outlined"
-        onClick={() => navigate("/session-summary", { state: { sessionId: s.sessionId } })}
-      >
-        View
-      </Button>
-    </Box>
-
-    <Typography variant="body2" sx={{ mt: 0.5, opacity: 0.8 }}>
-      Session ID: {s.sessionId || "—"}
-    </Typography>
-
-    <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.2 }}>
-      <Box>
-        <Typography variant="caption" sx={{ opacity: 0.7 }}>
-          Amount Paid
-        </Typography>
-        <Typography sx={{ fontWeight: 700 }}>{fmtMoney(s.amountPaid)}</Typography>
-      </Box>
-
-      <Box>
-        <Typography variant="caption" sx={{ opacity: 0.7 }}>
-          Energy Utilized
-        </Typography>
-        <Typography sx={{ fontWeight: 700 }}>{fmtKwh(s.energyConsumed)}</Typography>
-      </Box>
-
-      <Box>
-        <Typography variant="caption" sx={{ opacity: 0.7 }}>
-          Amount Utilized
-        </Typography>
-        <Typography sx={{ fontWeight: 700 }}>{fmtMoney(getAmountUtilized(s))}</Typography>
-      </Box>
-
-      <Box>
-        <Typography variant="caption" sx={{ opacity: 0.7 }}>
-          Status
-        </Typography>
-        <Typography sx={{ fontWeight: 700 }}>{s.status || "—"}</Typography>
-      </Box>
-    </Box>
-
-    {getRefund(s) > 0 && (
-      <Box
-        sx={{
-          mt: 2,
-          p: 1.2,
-          borderRadius: 2,
-          background: "rgba(4,191,191,0.10)",
-          border: "1px solid rgba(4,191,191,0.25)",
-        }}
-      >
-        <Typography variant="body2" sx={{ fontWeight: 800, color: "#037a7a" }}>
-          Refund: {fmtMoney(getRefund(s))}
-        </Typography>
-      </Box>
-    )}
-
-    <Box sx={{ mt: 2 }}>
-      <Typography variant="body2" sx={{ opacity: 0.8 }}>
-        Start: {fmtDateTime(s.startTime)}
-      </Typography>
-      <Typography variant="body2" sx={{ opacity: 0.8 }}>
-        End: {fmtDateTime(s.endTime)}
-      </Typography>
-    </Box>
-  </CardContent>
-</Card>
-
-                    ))
-                    
-                  )}
-                </AccordionDetails>
-              </Accordion>
-            </>
+            pastSessions.length === 0
+              ? <EmptyState isActive={false} />
+              : pastSessions.map((s) => (
+                  <PastCard key={s._id || s.sessionId} s={s} navigate={navigate} />
+                ))
           )}
         </Box>
-
-        {/* Bottom Bar */}
-        <FooterNav />
       </Box>
+
+      <FooterNav currentPage={location.pathname} />
     </>
   );
-};
-const fmtMoney = (n) => `₹${Number(n || 0).toFixed(2)}`;
-const fmtKwh = (n) => `${Number(n || 0).toFixed(2)} kWh`;
-
-const fmtDateTime = (d) => {
-  if (!d) return "—";
-  const dt = new Date(d);
-  return dt.toLocaleString(); // shows date + time
-};
-const getAmountUtilized = (s) => Number(s?.amountUsed ?? 0);
-const getRefund = (s) => {
-  const paid = Number(s?.amountPaid ?? 0);
-  const utilized = getAmountUtilized(s);
-  return Number(Math.max(0, paid - utilized).toFixed(2));
-};
-
-const SessionCard = ({ session, isActive, navigate }) => (
-  
-  <Card
-    sx={{
-      background: "linear-gradient(to right, rgb(9, 36, 63), #243745)",
-      borderRadius: "16px",
-      mb: 2,
-      boxShadow: "0 0 10px rgba(151, 241, 241, 0.2)",
-    }}
-  >
-    <CardContent>
-      <Typography variant="body2" sx={{ color: "#9bcdd2" }}>Device ID: {session.deviceId}</Typography>
-      <Typography variant="body2" sx={{ color: "#9bcdd2" }}>Session ID: {session.sessionId}</Typography>
-      <Typography variant="body2" sx={{ color: "#9bcdd2" }}>Transaction: {session.transactionId}</Typography>
-      <Typography variant="body2" sx={{ color: "#9bcdd2" }}>Start: {new Date(session.startTime).toLocaleString()}</Typography>
-
-      {isActive ? (
-        <> 
-          <Typography variant="body2" sx={{ color: "#04BFBF" }}>LIVE</Typography>
-          <Button
-            variant="contained"
-            onClick={() =>
-              
-              navigate(`/live-session/${session.sessionId}`, {
-                state: {
-                  deviceId: session.deviceId,
-                  amountPaid: session.amountPaid,
-                  energySelected: session.energySelected,
-                  transactionId: session.transactionId,
-                },
-              })
-            }
-            sx={{
-              mt: 1,
-              backgroundColor: "#F2A007",
-              color: "#fff",
-              borderRadius: "30px",
-              fontSize: "0.8rem",
-              "&:hover": { backgroundColor: "#f4af2d" },
-            }}
-          >
-            View Live
-          </Button>
-        </>
-      ) : (
-        <>
-          <Typography variant="body2" sx={{ color: "#9bcdd2" }}>
-            End: {session.endTime ? new Date(session.endTime).toLocaleString() : "N/A"}
-          </Typography>
-          <Typography variant="body2" sx={{ color: "#9bcdd2" }}>
-            Energy: {session.energyConsumed?.toFixed(2)} kWh | ₹{session.amountUsed?.toFixed(2)}
-          </Typography>
-        </>
-      )}
-    </CardContent>
-  </Card>
-);
-
-const accordionStyle = {
-  background: "transparent",
-  borderRadius: "10px",
-  mb: 2,
-  boxShadow: "0 0 10px rgba(4, 191, 191, 0.1)",
 };
 
 export default SessionPage;

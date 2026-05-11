@@ -50,12 +50,17 @@ function ChargingOptions() {
   const [applyingCoupon, setApplyingCoupon] = useState(false);
   const [discountedPrice, setDiscountedPrice] = useState(null);
   const [appliedCouponObj, setAppliedCouponObj] = useState(null);
-  const [couponErrorMsg, setCouponErrorMsg] = useState("");
 
   // derived, to carry forward original user selection
   const [originalSelectedAmount, setOriginalSelectedAmount] = useState(0);
 
   const [paymentError, setPaymentError] = useState(null);
+
+  const [toast, setToast] = useState({
+  open: false,
+  message: "",
+  type: "error",
+});
 
 // LIMITS
 const minAmount = 20;
@@ -162,7 +167,29 @@ const clampAmount = (val) => {
 //     energyTouchStartYRef.current = currentY;
 //   }
 // };
+const toastTimeoutRef = useRef(null);
 
+const showToast = (
+  message,
+  type = "error"
+) => {
+  if (toastTimeoutRef.current) {
+    clearTimeout(toastTimeoutRef.current);
+  }
+
+  setToast({
+    open: true,
+    message,
+    type,
+  });
+
+  toastTimeoutRef.current = setTimeout(() => {
+    setToast((prev) => ({
+      ...prev,
+      open: false,
+    }));
+  }, 2800);
+};
   /* -------------------------
    *  Fetch device details
    * ------------------------- */
@@ -206,6 +233,7 @@ const clampAmount = (val) => {
    *  and compute originalSelectedAmount (before coupon)
    * ------------------------- */
   useEffect(() => {
+   
     if (!deviceDetails) return;
 
     const rate = deviceDetails.rate || 20;
@@ -229,7 +257,6 @@ const clampAmount = (val) => {
       setCouponApplied(false);
       setAppliedCouponObj(null);
       setDiscountedPrice(null);
-      setCouponErrorMsg("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sliderValue, selectedOption, deviceDetails]);
@@ -274,13 +301,12 @@ const handleEnergyInputChange = (e) => {
    * ------------------------- */
 async function applyCoupon() {
   if (couponApplied) return;
-  setCouponErrorMsg('');
   setApplyingCoupon(true);
 
   try {
     const token = localStorage.getItem('token');
     if (!token) {
-      setCouponErrorMsg('You must be logged in to apply a coupon.');
+      showToast('You must be logged in to apply a coupon.',  "error");
       setApplyingCoupon(false);
       return;
     }
@@ -331,12 +357,20 @@ async function applyCoupon() {
     setCouponApplied(true);
     setAppliedCouponObj({ ...data.coupon, code: data.coupon.code });
     setDiscountedPrice(data.newAmount);
-
+showToast(
+  `Coupon applied • Payable ₹${data.newAmount.toFixed(2)}`,
+  "success"
+);
 
     setApplyingCoupon(false);
   } catch (err) {
     console.error('applyCoupon error:', err);
-    setCouponErrorMsg(err.message || 'Failed to apply coupon');
+const errorMessage =
+  err.message === "Invalid coupon code"
+    ? "Invalid Coupon"
+    : err.message || "Failed to apply coupon";
+
+showToast(errorMessage, "error");
     setApplyingCoupon(false);
   }
 }
@@ -374,13 +408,13 @@ async function consumeCoupon() {
    * ------------------------- */
   const handleProceedToPayment = async () => {
     if (!selectedOption || sliderValue === 0) {
-      alert("Please select a charging option and value!");
+      showToast("Please select a charging option and value!", "error");
       return;
     }
 
     // ensure we have device details
     if (!deviceDetails) {
-      alert("Device not loaded. Try again.");
+      showToast("Device not loaded. Try again.", "error");
       return;
     }
 
@@ -388,7 +422,7 @@ async function consumeCoupon() {
 
 const currentDeviceStatus = (deviceDetails?.status || "").toString().toLowerCase();
 if (currentDeviceStatus !== "available") {
-  alert(`Device is not available. Current status: ${currentDeviceStatus}`);
+  showToast(`Device is not available. Current status: ${currentDeviceStatus}`, "error");
   return;
 }
 
@@ -471,13 +505,13 @@ try {
 
     if (msgFromAlert) {
       setPaymentError(msgFromAlert);
-      alert(msgFromAlert);
+      showToast(msgFromAlert, "error");
     } else if (msgFromBody) {
       setPaymentError(msgFromBody);
-      alert(msgFromBody);
+      showToast(msgFromBody);
     } else {
-      setPaymentError("Failed to create order. Please try again.");
-      alert("Failed to create order. Please try again.");
+      setPaymentError("Kindly login to continue.", "error");
+      showToast("Kindly login to continue.", "error");
     }
     return;
   }
@@ -494,7 +528,7 @@ try {
 
   if (!paymentSessionId || !orderId) {
     setPaymentError("Invalid response from payment server.");
-    alert("Invalid response from payment server.");
+    showToast("Invalid response from payment server.", "error");
     return;
   }
 
@@ -529,7 +563,7 @@ localStorage.setItem('pendingPayment', JSON.stringify({
   console.error("Payment error:", err);
   const msg = err?.message || "Payment failed. Please try again.";
   setPaymentError(msg);
-  alert(msg);
+  showToast(msg, "error");
 }
 
   };
@@ -538,7 +572,10 @@ localStorage.setItem('pendingPayment', JSON.stringify({
    *  Loading / error UI
    * ------------------------- */
   if (isLoading) {
-    return (
+
+    return  (
+
+      
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="110dvh" sx={{ background: "#0b0e13" }}>
         <CircularProgress size={70} sx={{ color: "#04BFBF" }} />
       </Box>
@@ -560,17 +597,34 @@ const deviceStatus = (deviceDetails.status || "").toString().toLowerCase();
    *  UI render
    * ------------------------- */
 return (
-  <Box
-    sx={{
-      height: "100dvh",
-      display: "flex",
-      flexDirection: "column",
-      background:
-        "radial-gradient(circle at top, rgba(4,191,191,0.10), transparent 35%), linear-gradient(145deg, #0b0e13, #111a21)",
-      boxShadow: "0 0 20px rgba(4, 191, 191, 0.3)",
-      color: "#e1f5f5",
-    }}
-  >
+  <>
+    <style>
+      {`
+        @keyframes slideUpFade {
+          from {
+            opacity: 0;
+            transform: translate(-50%, 20px);
+          }
+
+          to {
+            opacity: 1;
+            transform: translate(-50%, 0);
+          }
+        }
+      `}
+    </style>
+
+    <Box
+      sx={{
+        height: "100dvh",
+        display: "flex",
+        flexDirection: "column",
+        background:
+          "radial-gradient(circle at top, rgba(4,191,191,0.10), transparent 35%), linear-gradient(145deg, #0b0e13, #111a21)",
+        boxShadow: "0 0 20px rgba(4, 191, 191, 0.3)",
+        color: "#e1f5f5",
+      }}
+    >
     <Box
       sx={{
         flex: 1,
@@ -660,19 +714,28 @@ return (
 
 
 {/* SMART CHARGE BUILDER */}
+{/* SMART CHARGE BUILDER */}
 <Box
-  mt={1}
-  width={{ xs: "100%", sm: "80%" }}
+  mt={0.5}
+  width={{ xs: "100%", sm: "82%" }}
   sx={{
-    maxWidth: 600,
+    maxWidth: 580,
     mx: "auto",
     p: 2,
-    borderRadius: "20px",
+    borderRadius: "18px",
     background: "linear-gradient(180deg, #121b22 0%, #0f161d 100%)",
-    boxShadow: "inset 0 0 0 1px rgba(4, 191, 191, 0.14)",
+    boxShadow: "inset 0 0 0 1px rgba(4, 191, 191, 0.12)",
   }}
 >
-  <Typography sx={{ color: "#ffffff", fontWeight: 600 , textAlign: "Center" }}>
+  <Typography
+    sx={{
+      color: "#ffffff",
+      fontWeight: 600,
+      textAlign: "center",
+      fontSize: "0.98rem",
+      mb: 1.2,
+    }}
+  >
     Choose how you want to charge
   </Typography>
 
@@ -680,10 +743,9 @@ return (
   <Box
     sx={{
       display: "flex",
-      mt: 1.5,
       background: "#0c1319",
       borderRadius: "999px",
-      p: 0.5,
+      p: 0.4,
     }}
   >
     <Button
@@ -691,11 +753,13 @@ return (
       onClick={() => handleOptionSelect("amount")}
       sx={{
         borderRadius: "999px",
+        minHeight: 42,
         background:
           selectedOption === "amount"
             ? "linear-gradient(135deg,#04BFBF,#029a9a)"
             : "transparent",
         color: selectedOption === "amount" ? "#000" : "#7de0dd",
+        fontWeight: 700,
       }}
     >
       Amount
@@ -706,11 +770,13 @@ return (
       onClick={() => handleOptionSelect("energy")}
       sx={{
         borderRadius: "999px",
+        minHeight: 42,
         background:
           selectedOption === "energy"
             ? "linear-gradient(135deg,#04BFBF,#029a9a)"
             : "transparent",
         color: selectedOption === "energy" ? "#000" : "#7de0dd",
+        fontWeight: 700,
       }}
     >
       Energy
@@ -718,18 +784,31 @@ return (
   </Box>
 
   {/* MAIN VALUE */}
-  <Box textAlign="center" mt={3}>
-    <Typography color="#7de0dd">
+  <Box textAlign="center" mt={2}>
+    <Typography color="#7de0dd" fontSize="0.88rem">
       {selectedOption === "amount" ? "Amount" : "Energy"}
     </Typography>
 
-    <Typography variant="h3" color="#F2A007" fontWeight={700}>
+    <Typography
+      variant="h3"
+      color="#F2A007"
+      fontWeight={700}
+      sx={{
+        lineHeight: 1.1,
+        mt: 0.4,
+      }}
+    >
       {selectedOption === "amount"
         ? `₹${sliderValue}`
         : `${sliderValue} kWh`}
     </Typography>
 
-    <Typography mt={1} variant="h5" color="#aaa" fontWeight={600}>
+    <Typography
+      mt={0.8}
+      variant="subtitle1"
+      color="#aaa"
+      fontWeight={600}
+    >
       {selectedOption === "amount"
         ? `≈ ${estimatedEnergy} kWh`
         : `≈ ₹${estimatedCost}`}
@@ -745,15 +824,16 @@ return (
     step={selectedOption === "amount" ? amountStep : energyStep}
     sx={{
       mt: 1,
+      mb: 0.5,
       color: "#04BFBF",
     }}
   />
 
   {/* PRESETS */}
   <Box
-    mt={2}
+    mt={1}
     display="flex"
-    gap={1}
+    gap={0.8}
     flexWrap="wrap"
     justifyContent="center"
   >
@@ -768,137 +848,231 @@ return (
         sx={{
           borderRadius: "999px",
           color: "#7de0dd",
-          border: "1px solid rgba(4,191,191,.3)",
+          border: "1px solid rgba(4,191,191,.25)",
+          minWidth: "unset",
+          px: 1.8,
+          py: 0.45,
+          fontSize: "0.78rem",
         }}
       >
         {selectedOption === "amount" ? `₹${v}` : `${v} kWh`}
       </Button>
     ))}
   </Box>
-
 </Box>
       {/* Proceed to Payment */}
-<Box mt={2} mb={6} textAlign="center" width="100%">
+{/* Proceed */}
+<Box
+  mt={2}
+  width="100%"
+  sx={{
+    display: "flex",
+    justifyContent: "center",
+  }}
+>
   <Button
     variant="contained"
     onClick={handleProceedToPayment}
     disabled={
       !selectedOption ||
       sliderValue === 0 ||
-      (deviceDetails.status || "").toString().toLowerCase() === "occupied"
+      (deviceDetails.status || "")
+        .toString()
+        .toLowerCase() === "occupied"
     }
-    fullWidth
     sx={{
-      maxWidth: 320,
-      mx: "auto",
-      py: 1.4,
-      px: 3,
-      fontSize: "0.95rem",
-      borderRadius: "999px",
+      width: {
+        xs: "100%",
+        sm: 420,
+      },
+      maxWidth: 420,
+      py: 1.25,
+      borderRadius: "14px",
       backgroundColor:
-        (deviceDetails.status || "").toString().toLowerCase() === "occupied"
+        (deviceDetails.status || "")
+          .toString()
+          .toLowerCase() === "occupied"
           ? "#6c757d"
           : "#F2A007",
       color: "#fff",
-      boxShadow:
-        (deviceDetails.status || "").toString().toLowerCase() === "occupied"
-          ? "none"
-          : "0 0 12px rgba(242, 160, 7, 0.6)",
-      textTransform: "none",
+      fontSize: "0.95rem",
       fontWeight: 700,
+      textTransform: "none",
+      boxShadow:
+        (deviceDetails.status || "")
+          .toString()
+          .toLowerCase() === "occupied"
+          ? "none"
+          : "0 0 14px rgba(242,160,7,.35)",
       "&:hover": {
         backgroundColor:
-          (deviceDetails.status || "").toString().toLowerCase() === "occupied"
+          (deviceDetails.status || "")
+            .toString()
+            .toLowerCase() === "occupied"
             ? "#6c757d"
             : "#f4af2d",
       },
     }}
   >
-    {(deviceDetails.status || "").toString().toLowerCase() === "occupied"
+    {(deviceDetails.status || "")
+      .toString()
+      .toLowerCase() === "occupied"
       ? "Device Occupied"
-      : "Proceed"}
+      : "Proceed to Payment"}
   </Button>
 </Box>
 
       {/* Coupon input & Apply (styled to match) */}
-<Box mt={2.5} textAlign="center" width="100%" sx={{ px: { xs: 0, sm: 0 } }}>
+{/* Coupon Section */}
+<Box
+  mt={1.8}
+  width="100%"
+  sx={{
+    display: "flex",
+    justifyContent: "center",
+  }}
+>
   <Box
     sx={{
-      display: "flex",
-      justifyContent: "center",
-      gap: 1,
-      alignItems: "stretch",
-      flexWrap: "wrap",
-      flexDirection: { xs: "column", sm: "row" },
+      width: {
+        xs: "100%",
+        sm: 420,
+      },
     }}
   >
-    <TextField
-      placeholder="Enter coupon code"
-      value={couponCode}
-      onChange={(e) => setCouponCode(e.target.value)}
-      disabled={couponApplied || applyingCoupon}
-      size="small"
-      fullWidth
+    <Box
       sx={{
-        maxWidth: { xs: "100%", sm: 320 },
-        input: { color: "#e1f5f5" },
-        background: "#243745",
-        borderRadius: "10px",
-        "& .MuiOutlinedInput-root": {
-          borderRadius: "10px",
-        },
-      }}
-    />
-    <Button
-      variant="contained"
-      onClick={applyCoupon}
-      disabled={!couponCode.trim() || couponApplied || applyingCoupon}
-      sx={{
-        backgroundColor: couponApplied ? "#6c757d" : "#F2A007",
-        px: 3,
-        py: 1.1,
-        borderRadius: "12px",
-        minWidth: { xs: "100%", sm: "120px" },
-        textTransform: "none",
-        fontWeight: 700,
+        display: "flex",
+        gap: 1,
+        alignItems: "center",
       }}
     >
-      {applyingCoupon ? "Applying..." : couponApplied ? "Applied" : "Apply"}
-    </Button>
-  </Box>
+      <TextField
+        placeholder="Coupon code"
+        value={couponCode}
+        onChange={(e) => setCouponCode(e.target.value)}
+        disabled={couponApplied || applyingCoupon}
+        size="small"
+        fullWidth
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            height: 46,
+            borderRadius: "14px",
+            background: "#243745",
+            color: "#fff",
+          },
+          input: {
+            color: "#fff",
+            px: 1.6,
+          },
+        }}
+      />
 
-  <Box mt={1.5} mb={2.5}>
-    {couponErrorMsg && (
-      <Alert severity="error" sx={{ mt: 2, mb: 2 }}>
-        {couponErrorMsg}
-      </Alert>
-    )}
-    {couponApplied && discountedPrice !== null && (
-      <>
-        <Alert severity="success" sx={{ mt: 1, mb: 2 }}>
-          Coupon applied successfully!
-        </Alert>
-        <Typography variant="h6" color="#07c400" sx={{ mt: 1, mb: 2 }}>
-          Payable Amount: ₹{discountedPrice.toFixed(2)}
-        </Typography>
-      </>
-    )}
+      <Button
+        variant="contained"
+        onClick={applyCoupon}
+        disabled={
+          !couponCode.trim() ||
+          couponApplied ||
+          applyingCoupon
+        }
+        sx={{
+          minWidth: 110,
+          height: 46,
+          borderRadius: "14px",
+          backgroundColor: couponApplied
+            ? "#6c757d"
+            : "#04BFBF",
+          color: "#011F26",
+          fontWeight: 700,
+          textTransform: "none",
+          boxShadow: "none",
+          "&:hover": {
+            backgroundColor: couponApplied
+              ? "#6c757d"
+              : "#03a9a9",
+          },
+        }}
+      >
+        {applyingCoupon
+          ? "Applying..."
+          : couponApplied
+          ? "Applied"
+          : "Apply"}
+      </Button>
+    </Box>
+
+
   </Box>
 </Box>
 
-      {paymentError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {paymentError}
-        </Alert>
-      )}
 
 
 
        </Box>
+{/* Floating Toast */}
+{toast.open && (
+  <Box
+    sx={{
+      position: "fixed",
+      bottom: 120,
+      left: "50%",
+      transform: "translateX(-50%)",
+      zIndex: 9999,
+      animation: "slideUpFade 0.3s ease",
+      width: "calc(100% - 32px)",
+      maxWidth: 420,
+    }}
+  >
+    <Box
+sx={{
+  px: 2.2,
+  py: 1.6,
+  borderRadius: "18px",
+  backdropFilter: "blur(18px)",
+  WebkitBackdropFilter: "blur(18px)",
 
-      <FooterNav />
+  background:
+    toast.type === "success"
+      ? "rgba(14, 184, 84, 0.88)"
+      : toast.type === "warning"
+      ? "rgba(245, 158, 11, 0.90)"
+      : "rgba(253, 70, 70, 0.7)",
+
+  color: "#fff",
+
+  border:
+    toast.type === "success"
+      ? "1px solid rgba(74, 222, 128, 0.45)"
+      : toast.type === "warning"
+      ? "1px solid rgba(251, 191, 36, 0.45)"
+      : "1px solid rgba(252, 165, 165, 0.35)",
+
+  boxShadow:
+    toast.type === "success"
+      ? "0 12px 30px rgba(14,184,84,.35)"
+      : toast.type === "warning"
+      ? "0 12px 30px rgba(245,158,11,.30)"
+      : "0 12px 30px rgba(239,68,68,.28)",
+}}
+    >
+      <Typography
+        sx={{
+          color: "#fff",
+          fontWeight: 600,
+          fontSize: "0.92rem",
+          textAlign: "center",
+        }}
+      >
+        {toast.message}
+      </Typography>
     </Box>
-  );
+  </Box>
+)}
+      <FooterNav />
+</Box>
+</>
+);
 }
 
 export default ChargingOptions;

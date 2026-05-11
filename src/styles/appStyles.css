@@ -126,9 +126,10 @@ html, body, #root {
 .bottom-bar button svg {
   width: 20px;
   height: 20px;
-  margin-bottom: 4px; /* gap between icon and text */
+  margin-bottom: 4px;
+  stroke: rgba(205, 235, 245, 0.5);   /* ← inactive: soft white-blue */
+  color: rgba(205, 235, 245, 0.5);    /* ← fallback for currentColor */
 }
-
 .bottom-bar button span {
   font-family: 'Open Sans', sans-serif;
   font-size: 9px;
@@ -138,11 +139,10 @@ html, body, #root {
 .bottom-bar button.active span {
   color: #04BFBF;
 }
-
-.bottom-bar button.active svg path {
-  stroke: #04BFBF;
+.bottom-bar button.active svg {
+  stroke: #04BFBF;                    /* ← active: your teal */
+  color: #04BFBF;
 }
-
 .bottom-buttons {
   position: fixed;
   right: 16px;
