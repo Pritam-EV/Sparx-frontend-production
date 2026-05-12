@@ -57,17 +57,16 @@ const CURRENT_YEAR = new Date().getFullYear();
 const YEARS        = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 
 const EMPTY_FORM = {
-  ownerId:        "",
-  projectId:      "",
-  month:          new Date().getMonth() + 1,
-  year:           CURRENT_YEAR,
+  project:         "",           // project string, not projectId
+  month:           new Date().getMonth() + 1,
+  year:            CURRENT_YEAR,
   wheelingCharges: "",
   demandCharges:   "",
   energyCharges:   "",
   fac:             "",
   fixedCharges:    "",
   totalBillAmount: "",
-  otherCharges:    [],   // [{ label: "", amount: "" }]
+  otherCharges:    [],
   pdfFile:         null,
 };
 
@@ -127,10 +126,8 @@ export default function EBManagement() {
   // ── Filter state for list ──
   const [filterMonth, setFilterMonth] = useState("");
   const [filterYear,  setFilterYear]  = useState("");
-  const [filterOwner, setFilterOwner] = useState("");
 
   // ── Owners & projects (for dropdowns) ──
-  const [owners,   setOwners]   = useState([]);
   const [projects, setProjects] = useState([]);
 
   // ── Drawer / form state ──
@@ -144,34 +141,11 @@ export default function EBManagement() {
   // ── PDF file ref ──
   const fileInputRef = useRef(null);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // Load owners list (for dropdown)
-  // ─────────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    apiFetch("/api/users?role=owner")
-      .then((res) => setOwners(Array.isArray(res) ? res : res?.users || []))
-      .catch(() => {});
-  }, []);
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // Load projects when owner changes in form
-  // ─────────────────────────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!form.ownerId) { setProjects([]); return; }
-    apiFetch(`/api/partner/devices/${form.ownerId}`)
-      .then((res) => {
-        // Deduplicate projects from devices list
-        const devices = Array.isArray(res?.devices) ? res.devices : [];
-        const seen    = new Set();
-        const proj    = [];
-        devices.forEach((d) => {
-          const pId = d.projectId || d.project_id;
-          if (pId && !seen.has(pId)) { seen.add(pId); proj.push({ id: pId, name: d.projectName || pId }); }
-        });
-        setProjects(proj);
-      })
-      .catch(() => setProjects([]));
-  }, [form.ownerId]);
+useEffect(() => {
+  apiFetch("/api/eb/admin/projects")
+    .then((res) => setProjects(Array.isArray(res?.projects) ? res.projects : []))
+    .catch(() => setProjects([]));
+}, []);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Fetch EB records list
@@ -181,19 +155,19 @@ const fetchRecords = useCallback(async () => {
     setListLoading(true);
     setListErr(null);
 
-    const params = new URLSearchParams();
-    if (filterMonth && filterYear)
-      params.set("month", `${filterYear}-${String(filterMonth).padStart(2, "0")}`);
-    if (filterOwner) params.set("project", filterOwner); // or keep for later
+const params = new URLSearchParams();
+if (filterMonth && filterYear)
+  params.set("month", `${filterYear}-${String(filterMonth).padStart(2, "0")}`);
+const res = await apiFetch(`/api/eb/admin/list?${params.toString()}`);
+setRecords(Array.isArray(res?.ebs) ? res.ebs : []);
 
-    const res = await apiFetch(`/api/eb/admin/list?${params.toString()}`);
-    setRecords(Array.isArray(res?.ebs) ? res.ebs : []);
+
   } catch (e) {
     setListErr(e.message || "Failed to load records");
   } finally {
     setListLoading(false);
   }
-}, [filterMonth, filterYear, filterOwner]);
+}, [filterMonth, filterYear]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
@@ -208,13 +182,15 @@ const fetchRecords = useCallback(async () => {
     setDrawerOpen(true);
   };
 
+// ✅ NEW — backend list returns: record.project, record.month="YYYY-MM",
+//          record.charges.X.amount, record.totalEBAmount
 const openEdit = (record) => {
   setEditRecord(record);
+  const [yearStr, monthStr] = (record.month || "").split("-");
   setForm({
-    ownerId:         "",  // not used in upload, keep for display only
-    projectId:       record.project || "",   // ← backend stores as "project"
-    month:           Number((record.month || "").split("-")[1]) || new Date().getMonth() + 1,
-    year:            Number((record.month || "").split("-")[0]) || CURRENT_YEAR,
+    project:         record.project || "",
+    month:           Number(monthStr) || (new Date().getMonth() + 1),
+    year:            Number(yearStr)  || CURRENT_YEAR,
     wheelingCharges: record.charges?.wheelingCharges?.amount ?? "",
     demandCharges:   record.charges?.demandCharges?.amount   ?? "",
     energyCharges:   record.charges?.energyCharges?.amount   ?? "",
@@ -250,9 +226,10 @@ const openEdit = (record) => {
   // ─────────────────────────────────────────────────────────────────────────
   // Submit (create or update)
   // ─────────────────────────────────────────────────────────────────────────
+// ✅ FULL REPLACEMENT for handleSubmit
 const handleSubmit = async () => {
-  if (!form.ownerId || !form.projectId || !form.totalBillAmount) {
-    setSubmitErr("Owner, Project, and Total Bill Amount are required.");
+  if (!form.project || !form.totalBillAmount) {
+    setSubmitErr("Project and Total Bill Amount are required.");
     return;
   }
 
@@ -260,31 +237,38 @@ const handleSubmit = async () => {
     setSubmitLoading(true);
     setSubmitErr(null);
 
-    // Format month as YYYY-MM for backend
+    // Backend expects month as "YYYY-MM"
     const monthStr = `${form.year}-${String(form.month).padStart(2, "0")}`;
 
     const fd = new FormData();
-    fd.append("project",         form.projectId);   // ← was "projectId", backend needs "project"
-    fd.append("month",           monthStr);          // ← was two separate fields, now "YYYY-MM"
+    fd.append("project",         form.project);   // ← key field for upsert
+    fd.append("month",           monthStr);        // ← "YYYY-MM" format
     fd.append("wheelingCharges", Number(form.wheelingCharges) || 0);
     fd.append("demandCharges",   Number(form.demandCharges)   || 0);
     fd.append("energyCharges",   Number(form.energyCharges)   || 0);
     fd.append("fac",             Number(form.fac)             || 0);
     fd.append("fixedCharges",    Number(form.fixedCharges)    || 0);
     fd.append("totalBillAmount", Number(form.totalBillAmount));
-    form.otherCharges
-      .filter((o) => o.label.trim() && o.amount !== "")
-      .forEach((o, i) => {
-        fd.append(`otherCharges[${i}][label]`,  o.label.trim());
-        fd.append(`otherCharges[${i}][amount]`, Number(o.amount));
-      });
+    fd.append(
+      "otherCharges",
+      JSON.stringify(
+        form.otherCharges
+          .filter((o) => o.label.trim() && o.amount !== "")
+          .map((o) => ({ label: o.label.trim(), amount: Number(o.amount) }))
+      )
+    );
     if (form.pdfFile) fd.append("ebPdf", form.pdfFile);
 
     const token = localStorage.getItem("token");
-    const BASE  = (process.env.REACT_APP_Backend_API_Base_URL || process.env.REACT_APP_API_BASE || "").replace(/\/+$/, "");
+    const BASE  = (
+      process.env.REACT_APP_Backend_API_Base_URL ||
+      process.env.REACT_APP_API_BASE ||
+      ""
+    ).replace(/\/+$/, "");
 
+    // Always POST — backend does findOneAndUpdate upsert on (project + month)
     const res = await fetch(`${BASE}/api/eb/admin/upload`, {
-      method:  "POST",   // always POST — backend does upsert
+      method:  "POST",
       headers: { Authorization: `Bearer ${token}` },
       body:    fd,
     });
@@ -377,16 +361,6 @@ const handleSubmit = async () => {
                 ))}
               </Select>
             </FormControl>
-
-            <FormControl size="small" sx={{ minWidth: 200 }}>
-              <InputLabel sx={{ fontSize: 13, fontFamily: FONT }}>Owner</InputLabel>
-              <Select label="Owner" value={filterOwner} onChange={(e) => setFilterOwner(e.target.value)} sx={selectSx}>
-                <MenuItem value="" sx={{ fontSize: 13 }}>All Owners</MenuItem>
-                {owners.map((o) => (
-                  <MenuItem key={o._id} value={o._id} sx={{ fontSize: 13 }}>{o.name} ({o.mobile})</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
           </Stack>
         </CardContent>
       </Card>
@@ -438,10 +412,10 @@ const handleSubmit = async () => {
                         {monthLabel(rec.month, rec.year)}
                       </Typography>
                       <Typography sx={{ fontSize: 12, color: "#64748b", fontFamily: FONT }}>
-                        {rec.projectName || rec.projectId || "—"}
+                        {rec.project || "—"}
                       </Typography>
                       <Typography sx={{ fontSize: 11, color: "#94a3b8", fontFamily: FONT }}>
-                        Owner: {rec.ownerName || rec.ownerId || "—"}
+                       
                       </Typography>
                     </Box>
                     <StatusChip status={rec.status || "EB_UPLOADED"} />
@@ -451,11 +425,11 @@ const handleSubmit = async () => {
 
                   {/* Charge rows */}
                   {[
-                    ["Energy Charges",  rec.energyCharges],
-                    ["Wheeling Charges", rec.wheelingCharges],
-                    ["Demand Charges",  rec.demandCharges],
-                    ["Fixed Charges",   rec.fixedCharges],
-                    ["FAC",             rec.fac],
+                    ["Energy Charges",  rec.charges?.energyCharges?.amount],
+                    ["Wheeling Charges", rec.charges?.wheelingCharges?.amount],
+                    ["Demand Charges",  rec.charges?.demandCharges?.amount],
+                    ["Fixed Charges",   rec.charges?.fixedCharges?.amount],
+                    ["FAC",             rec.charges?.fac?.amount],
                   ].map(([label, val]) => (
                     <Box key={label} sx={{ display: "flex", justifyContent: "space-between", mb: 0.4 }}>
                       <Typography sx={{ fontSize: 11, color: "#64748b", fontFamily: FONT }}>{label}</Typography>
@@ -474,7 +448,7 @@ const handleSubmit = async () => {
 
                   <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#000", fontFamily: FONT }}>Total EB</Typography>
-                    <Typography sx={{ fontSize: 14, fontWeight: 800, color: "#04BFBF", fontFamily: FONT }}>{fmtMoney(rec.totalBillAmount)}</Typography>
+                    <Typography sx={{ fontSize: 14, fontWeight: 800, color: "#04BFBF", fontFamily: FONT }}>{fmtMoney(rec.totalEBAmount)}</Typography>
                   </Box>
 
                   {/* Footer actions */}
@@ -569,31 +543,32 @@ const handleSubmit = async () => {
                   </Stack>
                 </Box>
 
-                {/* ── Owner & Project ──────────────────────────────── */}
-                <Box>
-                  <SectionHeading>Owner & Project</SectionHeading>
-                  <Stack spacing={1.5}>
-                    <FormControl size="small" fullWidth required disabled={!!editRecord}>
-                      <InputLabel sx={{ fontSize: 13 }}>Owner *</InputLabel>
-                      <Select label="Owner *" value={form.ownerId} onChange={(e) => { setField("ownerId", e.target.value); setField("projectId", ""); }} sx={selectSx}>
-                        <MenuItem value="" sx={{ fontSize: 13 }}>Select owner</MenuItem>
-                        {owners.map((o) => (
-                          <MenuItem key={o._id} value={o._id} sx={{ fontSize: 13 }}>{o.name} ({o.mobile})</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-
-                    <FormControl size="small" fullWidth required disabled={!form.ownerId || !!editRecord}>
-                      <InputLabel sx={{ fontSize: 13 }}>Project *</InputLabel>
-                      <Select label="Project *" value={form.projectId} onChange={(e) => setField("projectId", e.target.value)} sx={selectSx}>
-                        <MenuItem value="" sx={{ fontSize: 13 }}>{form.ownerId ? "Select project" : "Select owner first"}</MenuItem>
-                        {projects.map((p) => (
-                          <MenuItem key={p.id} value={p.id} sx={{ fontSize: 13 }}>{p.name}</MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Stack>
-                </Box>
+<Box>
+  <SectionHeading>Project</SectionHeading>
+  <FormControl size="small" fullWidth required disabled={!!editRecord}>
+    <InputLabel sx={{ fontSize: 13 }}>Project *</InputLabel>
+    <Select
+      label="Project *"
+      value={form.project}
+      onChange={(e) => setField("project", e.target.value)}
+      sx={selectSx}
+    >
+      <MenuItem value="" sx={{ fontSize: 13 }}>Select project</MenuItem>
+      {projects.map((p) => (
+        <MenuItem key={p.project} value={p.project} sx={{ fontSize: 13 }}>
+          {p.project}
+          <Typography
+            component="span"
+            sx={{ ml: 1, fontSize: 11, color: "#94a3b8" }}
+          >
+            ({p.deviceCount} device{p.deviceCount !== 1 ? "s" : ""}
+            {p.ownerNames?.length ? ` · ${p.ownerNames.join(", ")}` : ""})
+          </Typography>
+        </MenuItem>
+      ))}
+    </Select>
+  </FormControl>
+</Box>
 
                 {/* ── EB Charge Breakdown ──────────────────────────── */}
                 <Box>
