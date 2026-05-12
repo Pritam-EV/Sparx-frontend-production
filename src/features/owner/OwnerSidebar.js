@@ -8,12 +8,13 @@ import AnalyticsIcon from "@mui/icons-material/Analytics";
 import PersonIcon from "@mui/icons-material/Person";
 import BatteryChargingFullIcon from "@mui/icons-material/BatteryChargingFull";
 import HistoryIcon from "@mui/icons-material/History";
-
+import AssessmentIcon               from "@mui/icons-material/Assessment";
+import { apiFetch } from "../../utils/apiFetch";
 
 const OwnerSidebar = ({ isOpen, onClose }) => {
   // ✅ ADD: Track if desktop view
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
-
+  const [hasVjraDevices, setHasVjraDevices] = useState(false);
   // ✅ ADD: Listen to window resize
   useEffect(() => {
     const handleResize = () => {
@@ -22,6 +23,22 @@ const OwnerSidebar = ({ isOpen, onClose }) => {
     
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+
+  useEffect(() => {
+    // Fetch owner's devices and check electricityBearer
+    apiFetch("/api/partner/my-devices")
+      .then((res) => {
+        const devices = Array.isArray(res?.devices) ? res.devices : Array.isArray(res) ? res : [];
+        const hasVjra = devices.some(
+          (d) => d.electricityBearer === "VJRA" || d.electricity_bearer === "VJRA"
+        );
+        setHasVjraDevices(hasVjra);
+      })
+      .catch(() => {
+        // silently fail — Reports tab just won't show
+      });
   }, []);
 
   const navStyle = ({ isActive }) =>
@@ -78,6 +95,16 @@ const OwnerSidebar = ({ isOpen, onClose }) => {
               Analytics
             </NavLink>
           </li>
+
+          {hasVjraDevices && (
+            <li>
+              <NavLink to="/owner/reports" style={navStyle} onClick={onClose}>
+                <AssessmentIcon style={styles.icon} />
+                Reports
+              </NavLink>
+            </li>
+          )}
+
           <li>
             <NavLink to="/profile" style={navStyle} onClick={onClose}>
               <PersonIcon style={styles.icon} />

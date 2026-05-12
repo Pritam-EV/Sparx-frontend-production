@@ -31,6 +31,7 @@ import LiveMonitoring from "./features/admin/LiveMonitoring";
 import UsersManagement from "./features/admin/UsersManagement";
 import SessionsOverview from "./features/admin/SessionsOverview";
 import Analytics from "./features/admin/Analytics";
+import EBManagement  from "./features/admin/EBManagement";
 import ReceiptsOverview from "./features/admin/ReceiptsOverview.js";
 import OwnerDashboard from "./features/owner/OwnerDashboard";
 import MyDevices from "./features/owner/MyDevices";
@@ -38,6 +39,7 @@ import OwnerAnalytics from "./features/owner/OwnerAnalytics";
 import LiveCharging from "./features/owner/LiveCharging";
 import PastSessions from "./features/owner/PastSessions";
 import ConfigureWifi from "./features/owner/ConfigureWifi";
+import OwnerReports  from "./features/owner/OwnerReports";  
 
 import UserList from "./pages/users/UserList";
 import UserCreate from "./pages/users/UserCreate";
@@ -166,6 +168,7 @@ useEffect(() => {
           <Route path="users" element={<UsersManagement />} />
           <Route path="sessions" element={<SessionsOverview />} />
           <Route path="receipts" element={<ReceiptsOverview />} />
+          <Route path="eb-management"  element={<EBManagement />} />
           <Route path="crud/users" element={<UserList />} />
           <Route path="crud/users/create" element={<UserCreate />} />
           <Route path="crud/users/edit/:id" element={<UserEdit />} />
@@ -180,6 +183,7 @@ useEffect(() => {
             <Route index element={<MyDevices />} />
             <Route path="devices" element={<MyDevices />} />
             <Route path="analytics" element={<OwnerAnalytics />} />
+            <Route path="reports"        element={<OwnerReports />} /> 
             <Route path="live-charging" element={<LiveCharging />} />
             <Route path="past-sessions" element={<PastSessions />} />
             <Route path="/owner/devices/:deviceId/configure-wifi" element={<ConfigureWifi />}/>

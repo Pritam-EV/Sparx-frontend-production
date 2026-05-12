@@ -175,7 +175,7 @@ const ActiveCard = ({ s, navigate }) => (
           border: "1px solid rgba(255,145,0,0.28)",
           borderRadius: "10px",
           padding: "9px 12px",
-          marginBottom: "12px",
+          marginBottom: "10px",
           display: "flex",
           alignItems: "center",
           gap: "6px",
@@ -187,7 +187,41 @@ const ActiveCard = ({ s, navigate }) => (
         </div>
       )}
 
-      {/* Time row */}
+      {/* ── ETA row — sits between refund and time row ── */}
+      {s.estimatedEndTime && (() => {
+        const eta = fmtEta(s.estimatedEndTime);
+        return eta ? (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            background: "rgba(242,160,7,0.07)",
+            border: "1px solid rgba(242,160,7,0.22)",
+            borderRadius: "10px",
+            padding: "9px 12px",
+            marginBottom: "10px",
+          }}>
+            <span style={{
+              width: "7px", height: "7px", borderRadius: "50%", flexShrink: 0,
+              background: "#f2a007",
+              boxShadow: "0 0 6px rgba(242,160,7,0.7)",
+              animation: "etaDot 2s ease-in-out infinite",
+              display: "inline-block",
+            }} />
+            <span style={{ fontSize: "12px", fontWeight: 600, color: "#8a7a55" }}>
+              Est. ends by
+            </span>
+            <span style={{ marginLeft: "auto", fontSize: "13px", fontWeight: 800, color: "#c27f00" }}>
+              {eta.timeStr}
+              <span style={{ fontWeight: 500, color: "#a08030", fontSize: "11px", marginLeft: "5px" }}>
+                ({eta.remaining})
+              </span>
+            </span>
+          </div>
+        ) : null;
+      })()}
+
+      {/* Time row — started at */}
       <div style={{
         display: "flex",
         alignItems: "center",
@@ -197,40 +231,6 @@ const ActiveCard = ({ s, navigate }) => (
         padding: "9px 12px",
         border: "1px solid rgba(4,191,191,0.14)",
       }}>
-
-        {/* ── ETA pill (only when estimatedEndTime exists) ── */}
-{s.estimatedEndTime && (() => {
-  const eta = fmtEta(s.estimatedEndTime);
-  return eta ? (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      background: 'rgba(242,160,7,0.07)',
-      border: '1px solid rgba(242,160,7,0.22)',
-      borderRadius: '10px',
-      padding: '9px 12px',
-      marginBottom: '10px',
-    }}>
-      {/* pulsing amber dot */}
-      <span style={{
-        width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0,
-        background: '#f2a007', boxShadow: '0 0 6px rgba(242,160,7,0.7)',
-        animation: 'etaDot 2s ease-in-out infinite',
-        display: 'inline-block',
-      }} />
-      <span style={{ fontSize: '12px', fontWeight: 600, color: '#8a7a55' }}>
-        Est. Available:
-      </span>
-      <span style={{ fontSize: '13px', fontWeight: 800, color: '#c27f00', marginLeft: 'auto' }}>
-        {eta.timeStr}
-        <span style={{ fontWeight: 500, color: '#a08030', fontSize: '11px', marginLeft: '5px' }}>
-          ({eta.remaining})
-        </span>
-      </span>
-    </div>
-  ) : null;
-})()}
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#04bfbf" strokeWidth="2">
           <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
         </svg>

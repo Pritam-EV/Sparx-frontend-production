@@ -9,6 +9,7 @@ import BarChartIcon from "@mui/icons-material/BarChart";
 import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import PersonIcon from '@mui/icons-material/Person'; 
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
+import ElectricBoltIcon from "@mui/icons-material/ElectricBolt"; 
 
 const NavItem = ({ to, icon, label, onClick }) => (
   <NavLink
@@ -65,6 +66,7 @@ const AdminSidebar = ({ isOpen, onClose }) => (
       <NavItem to="sessions" icon={<BarChartIcon />} label="Sessions" onClick={onClose} />
       <NavItem to="receipts" icon={<ReceiptIcon />} label="Receipts" onClick={onClose} />
       <NavItem to="analytics" icon={<QueryStatsIcon />} label="Analytics" onClick={onClose} />
+      <NavItem to="eb-management"  icon={<ElectricBoltIcon />} label="EB Management"  onClick={onClose} />
       <NavItem to="profile" icon={<PersonIcon />} label="Profile" onClick={onClose} />
     </Box>
 
