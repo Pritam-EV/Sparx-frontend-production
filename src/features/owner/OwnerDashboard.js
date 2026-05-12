@@ -25,7 +25,7 @@ const OwnerDashboard = () => {
       </div>
 
       {/* Sidebar Overlay for Mobile */}
-      {sidebarOpen && <div style={styles.overlay} onClick={toggleSidebar} />}
+      {sidebarOpen && !isDesktop && <div style={styles.overlay} onClick={toggleSidebar} />}
       
       {/* Sidebar */}
       <OwnerSidebar isOpen={sidebarOpen} onClose={toggleSidebar} />

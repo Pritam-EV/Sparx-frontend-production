@@ -31,9 +31,12 @@ const OwnerSidebar = ({ isOpen, onClose }) => {
     apiFetch("/api/partner/my-devices")
       .then((res) => {
         const devices = Array.isArray(res?.devices) ? res.devices : Array.isArray(res) ? res : [];
-        const hasVjra = devices.some(
-          (d) => d.electricityBearer === "VJRA" || d.electricity_bearer === "VJRA"
-        );
+const hasVjra = devices.some(
+  (d) =>
+    d?.commercial?.electricityBearer === "VJRA" ||
+    d?.electricityBearer === "VJRA" ||
+    d?.electricity_bearer === "VJRA"
+);
         setHasVjraDevices(hasVjra);
       })
       .catch(() => {

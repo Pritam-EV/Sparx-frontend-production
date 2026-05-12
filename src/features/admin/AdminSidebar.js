@@ -59,7 +59,7 @@ const AdminSidebar = ({ isOpen, onClose }) => (
       )}
     </Box>
     <Box component="nav" sx={{ flex: 1 }}>
-      <NavItem to="" icon={<DashboardIcon />} label="Dashboard" onClick={onClose} />
+      <NavItem to="/admin" icon={<DashboardIcon />} label="Dashboard" onClick={onClose} />
       <NavItem to="devices" icon={<DevicesIcon />} label="Devices" onClick={onClose} />
       <NavItem to="users" icon={<PersonIcon />} label="Users" onClick={onClose} />
       <NavItem to="LiveMonitoring" icon={<MonitorHeartIcon />} label="Live Monitoring" onClick={onClose} />
@@ -67,7 +67,7 @@ const AdminSidebar = ({ isOpen, onClose }) => (
       <NavItem to="receipts" icon={<ReceiptIcon />} label="Receipts" onClick={onClose} />
       <NavItem to="analytics" icon={<QueryStatsIcon />} label="Analytics" onClick={onClose} />
       <NavItem to="eb-management"  icon={<ElectricBoltIcon />} label="EB Management"  onClick={onClose} />
-      <NavItem to="profile" icon={<PersonIcon />} label="Profile" onClick={onClose} />
+      <NavItem to="/profile" icon={<PersonIcon />} label="Profile" onClick={onClose} />
     </Box>
 
     
