@@ -337,9 +337,9 @@ const handleSubmit = async () => {
           </Button>
         </Stack>
       </Stack>
-
+ mb={3}
       {/* ── List Filters ───────────────────────────────────────────── */}
-      <Card sx={cardSx} mb={3}>
+      <Card sx={{cardSx,  mb=3}}>
         <CardContent sx={{ p: 1.5 }}>
           <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5} flexWrap="wrap">
             <FormControl size="small" sx={{ minWidth: 150 }}>
