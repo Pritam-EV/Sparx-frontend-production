@@ -176,24 +176,24 @@ export default function EBManagement() {
   // ─────────────────────────────────────────────────────────────────────────
   // Fetch EB records list
   // ─────────────────────────────────────────────────────────────────────────
-  const fetchRecords = useCallback(async () => {
-    try {
-      setListLoading(true);
-      setListErr(null);
+const fetchRecords = useCallback(async () => {
+  try {
+    setListLoading(true);
+    setListErr(null);
 
-      const params = new URLSearchParams();
-      if (filterMonth) params.set("month",   filterMonth);
-      if (filterYear)  params.set("year",    filterYear);
-      if (filterOwner) params.set("ownerId", filterOwner);
+    const params = new URLSearchParams();
+    if (filterMonth && filterYear)
+      params.set("month", `${filterYear}-${String(filterMonth).padStart(2, "0")}`);
+    if (filterOwner) params.set("project", filterOwner); // or keep for later
 
-      const res = await apiFetch(`/api/electricity-bills/list?${params.toString()}`);
-      setRecords(Array.isArray(res?.bills) ? res.bills : Array.isArray(res) ? res : []);
-    } catch (e) {
-      setListErr(e.message || "Failed to load records");
-    } finally {
-      setListLoading(false);
-    }
-  }, [filterMonth, filterYear, filterOwner]);
+    const res = await apiFetch(`/api/eb/admin/list?${params.toString()}`);
+    setRecords(Array.isArray(res?.ebs) ? res.ebs : []);
+  } catch (e) {
+    setListErr(e.message || "Failed to load records");
+  } finally {
+    setListLoading(false);
+  }
+}, [filterMonth, filterYear, filterOwner]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
 
@@ -208,28 +208,26 @@ export default function EBManagement() {
     setDrawerOpen(true);
   };
 
-  const openEdit = (record) => {
-    setEditRecord(record);
-    setForm({
-      ownerId:         record.ownerId   || "",
-      projectId:       record.projectId || "",
-      month:           record.month,
-      year:            record.year,
-      wheelingCharges: record.wheelingCharges ?? "",
-      demandCharges:   record.demandCharges   ?? "",
-      energyCharges:   record.energyCharges   ?? "",
-      fac:             record.fac             ?? "",
-      fixedCharges:    record.fixedCharges    ?? "",
-      totalBillAmount: record.totalBillAmount ?? "",
-      otherCharges:    Array.isArray(record.otherCharges)
-                         ? record.otherCharges.map((o) => ({ label: o.label, amount: o.amount }))
-                         : [],
-      pdfFile:         null,
-    });
-    setSubmitErr(null);
-    setSubmitSuccess(false);
-    setDrawerOpen(true);
-  };
+const openEdit = (record) => {
+  setEditRecord(record);
+  setForm({
+    ownerId:         "",  // not used in upload, keep for display only
+    projectId:       record.project || "",   // ← backend stores as "project"
+    month:           Number((record.month || "").split("-")[1]) || new Date().getMonth() + 1,
+    year:            Number((record.month || "").split("-")[0]) || CURRENT_YEAR,
+    wheelingCharges: record.charges?.wheelingCharges?.amount ?? "",
+    demandCharges:   record.charges?.demandCharges?.amount   ?? "",
+    energyCharges:   record.charges?.energyCharges?.amount   ?? "",
+    fac:             record.charges?.fac?.amount             ?? "",
+    fixedCharges:    record.charges?.fixedCharges?.amount    ?? "",
+    totalBillAmount: record.totalEBAmount ?? "",
+    otherCharges:    [],
+    pdfFile:         null,
+  });
+  setSubmitErr(null);
+  setSubmitSuccess(false);
+  setDrawerOpen(true);
+};
 
   // ─────────────────────────────────────────────────────────────────────────
   // Form field helpers
@@ -252,59 +250,57 @@ export default function EBManagement() {
   // ─────────────────────────────────────────────────────────────────────────
   // Submit (create or update)
   // ─────────────────────────────────────────────────────────────────────────
-  const handleSubmit = async () => {
-    // Basic validation
-    if (!form.ownerId || !form.projectId || !form.totalBillAmount) {
-      setSubmitErr("Owner, Project, and Total Bill Amount are required.");
-      return;
-    }
+const handleSubmit = async () => {
+  if (!form.ownerId || !form.projectId || !form.totalBillAmount) {
+    setSubmitErr("Owner, Project, and Total Bill Amount are required.");
+    return;
+  }
 
-    try {
-      setSubmitLoading(true);
-      setSubmitErr(null);
+  try {
+    setSubmitLoading(true);
+    setSubmitErr(null);
 
-      // Use FormData because we may have a PDF file
-      const fd = new FormData();
-      fd.append("ownerId",         form.ownerId);
-      fd.append("projectId",       form.projectId);
-      fd.append("month",           form.month);
-      fd.append("year",            form.year);
-      fd.append("wheelingCharges", Number(form.wheelingCharges) || 0);
-      fd.append("demandCharges",   Number(form.demandCharges)   || 0);
-      fd.append("energyCharges",   Number(form.energyCharges)   || 0);
-      fd.append("fac",             Number(form.fac)             || 0);
-      fd.append("fixedCharges",    Number(form.fixedCharges)    || 0);
-      fd.append("totalBillAmount", Number(form.totalBillAmount));
-      fd.append("otherCharges",    JSON.stringify(
-        form.otherCharges
-          .filter((o) => o.label.trim() && o.amount !== "")
-          .map((o) => ({ label: o.label.trim(), amount: Number(o.amount) }))
-      ));
-      if (form.pdfFile) fd.append("ebPdf", form.pdfFile);
+    // Format month as YYYY-MM for backend
+    const monthStr = `${form.year}-${String(form.month).padStart(2, "0")}`;
 
-      const token = localStorage.getItem("token");
-      const url   = editRecord
-        ? `${process.env.REACT_APP_Backend_API_Base_URL}/api/electricity-bills/${editRecord._id}`
-        : `${process.env.REACT_APP_Backend_API_Base_URL}/api/electricity-bills/upload`;
-
-      const res = await fetch(url, {
-        method:  editRecord ? "PUT" : "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body:    fd,
+    const fd = new FormData();
+    fd.append("project",         form.projectId);   // ← was "projectId", backend needs "project"
+    fd.append("month",           monthStr);          // ← was two separate fields, now "YYYY-MM"
+    fd.append("wheelingCharges", Number(form.wheelingCharges) || 0);
+    fd.append("demandCharges",   Number(form.demandCharges)   || 0);
+    fd.append("energyCharges",   Number(form.energyCharges)   || 0);
+    fd.append("fac",             Number(form.fac)             || 0);
+    fd.append("fixedCharges",    Number(form.fixedCharges)    || 0);
+    fd.append("totalBillAmount", Number(form.totalBillAmount));
+    form.otherCharges
+      .filter((o) => o.label.trim() && o.amount !== "")
+      .forEach((o, i) => {
+        fd.append(`otherCharges[${i}][label]`,  o.label.trim());
+        fd.append(`otherCharges[${i}][amount]`, Number(o.amount));
       });
+    if (form.pdfFile) fd.append("ebPdf", form.pdfFile);
 
-      const result = await res.json();
-      if (!res.ok) throw new Error(result?.error || result?.message || "Failed to save");
+    const token = localStorage.getItem("token");
+    const BASE  = (process.env.REACT_APP_Backend_API_Base_URL || process.env.REACT_APP_API_BASE || "").replace(/\/+$/, "");
 
-      setSubmitSuccess(true);
-      fetchRecords();
-      setTimeout(() => { setDrawerOpen(false); setSubmitSuccess(false); }, 1600);
-    } catch (e) {
-      setSubmitErr(e.message || "Failed to save EB record");
-    } finally {
-      setSubmitLoading(false);
-    }
-  };
+    const res = await fetch(`${BASE}/api/eb/admin/upload`, {
+      method:  "POST",   // always POST — backend does upsert
+      headers: { Authorization: `Bearer ${token}` },
+      body:    fd,
+    });
+
+    const result = await res.json();
+    if (!res.ok) throw new Error(result?.error || result?.message || "Failed to save");
+
+    setSubmitSuccess(true);
+    fetchRecords();
+    setTimeout(() => { setDrawerOpen(false); setSubmitSuccess(false); }, 1600);
+  } catch (e) {
+    setSubmitErr(e.message || "Failed to save EB record");
+  } finally {
+    setSubmitLoading(false);
+  }
+};
 
   // ─────────────────────────────────────────────────────────────────────────
   // Computed total from fields (live preview)
