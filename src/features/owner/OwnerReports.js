@@ -89,6 +89,8 @@ const getUserId = () => {
   }
 };
 
+
+
 /** Authenticated fetch */
 const authFetch = async (url) => {
   const token = localStorage.getItem("token");
@@ -193,83 +195,108 @@ export default function OwnerReports() {
   const [dlExcel,  setDlExcel]  = useState(false);
   const [dlPdf,    setDlPdf]    = useState(false);
   const [dlEbPdf,  setDlEbPdf]  = useState(false);
-
+const [projectName, setProjectName] = useState(null);  // stores the VJRA project slug
   // ─────────────────────────────────────────────────────────────────────────
   // Fetch report for selected month/year
   // ─────────────────────────────────────────────────────────────────────────
-  const fetchReport = useCallback(async () => {
-    const userId = getUserId();
-    if (!userId) return;
+const fetchReport = useCallback(async () => {
+  try {
+    setLoading(true);
+    setErr(null);
+    setReport(null);
 
-    try {
-      setLoading(true);
-      setErr(null);
-      setReport(null);
+    const base = process.env.REACT_APP_Backend_API_Base_URL;
+    const token = localStorage.getItem("token");
+    const headers = { Authorization: `Bearer ${token}` };
 
-      const base = process.env.REACT_APP_Backend_API_Base_URL;
-      const data = await authFetch(
-        `${base}/api/owner/reports?ownerId=${userId}&month=${month}&year=${year}`
-      );
-      setReport(data);
-    } catch (e) {
-      setErr(e.message || "Failed to load report");
-    } finally {
-      setLoading(false);
+    // Step 1: get owner's VJRA projects (only needed once, cache in state)
+    let proj = projectName;
+    if (!proj) {
+      const projRes = await fetch(`${base}/api/eb/owner/projects`, { headers });
+      const projData = await projRes.json();
+      if (!projRes.ok || !projData?.projects?.length) {
+        setErr("No VJRA projects found for your account.");
+        setLoading(false);
+        return;
+      }
+      proj = projData.projects[0].project;   // use first project
+      setProjectName(proj);
     }
-  }, [month, year]);
+
+    // Step 2: build YYYY-MM and fetch EB report
+    const mm = String(month).padStart(2, "0");
+    const monthStr = `${year}-${mm}`;
+
+    const res = await fetch(
+      `${base}/api/eb/owner/${encodeURIComponent(proj)}/${monthStr}`,
+      { headers }
+    );
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data?.error || "Failed to load report");
+    setReport(data);
+  } catch (e) {
+    setErr(e.message || "Failed to load report");
+  } finally {
+    setLoading(false);
+  }
+}, [month, year, projectName]);
 
   useEffect(() => { fetchReport(); }, [fetchReport]);
 
   // ─────────────────────────────────────────────────────────────────────────
   // Record owner payment to VJRA
   // ─────────────────────────────────────────────────────────────────────────
-  const handleRecordPayment = async () => {
-    if (!txnId.trim() || !amountPaid) {
-      setPayErr("Transaction ID and amount are required.");
-      return;
-    }
+// ─── Replace handleRecordPayment ──────────────────────────────────────────
+const handleRecordPayment = async () => {
+  if (!txnId.trim() || !amountPaid) {
+    setPayErr("Transaction ID and amount are required.");
+    return;
+  }
 
-    try {
-      setPayLoading(true);
-      setPayErr(null);
+  // Backend needs the EB document _id — comes from report.ebId
+  const ebId = report?.ebId;
+  if (!ebId) {
+    setPayErr("EB record not found. Please refresh.");
+    return;
+  }
 
-      const userId = getUserId();
-      const token  = localStorage.getItem("token");
-      const base   = process.env.REACT_APP_Backend_API_Base_URL;
+  try {
+    setPayLoading(true);
+    setPayErr(null);
 
-      const res = await fetch(`${base}/api/owner/reports/payment`, {
-        method:  "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization:  `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          ownerId:       userId,
-          month,
-          year,
-          transactionId: txnId.trim(),
-          amountPaid:    Number(amountPaid),
-        }),
-      });
+    const token = localStorage.getItem("token");
+    const base  = process.env.REACT_APP_Backend_API_Base_URL;
 
-      const result = await res.json();
-      if (!res.ok) throw new Error(result?.error || result?.message || "Failed to record payment");
+    const res = await fetch(`${base}/api/eb/owner/${ebId}/record-payment`, {
+      method:  "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization:  `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        txnId:      txnId.trim(),
+        amountPaid: Number(amountPaid),
+      }),
+    });
 
-      setPaySuccess(true);
-      // Refresh report after 1.5s and close
-      setTimeout(() => {
-        setPayDialog(false);
-        setPaySuccess(false);
-        setTxnId("");
-        setAmountPaid("");
-        fetchReport();
-      }, 1600);
-    } catch (e) {
-      setPayErr(e.message || "Failed to record payment");
-    } finally {
-      setPayLoading(false);
-    }
-  };
+    const result = await res.json();
+    if (!res.ok) throw new Error(result?.error || "Failed to record payment");
+
+    setPaySuccess(true);
+    setTimeout(() => {
+      setPayDialog(false);
+      setPaySuccess(false);
+      setTxnId("");
+      setAmountPaid("");
+      fetchReport();
+    }, 1600);
+  } catch (e) {
+    setPayErr(e.message || "Failed to record payment");
+  } finally {
+    setPayLoading(false);
+  }
+};
 
   // ─────────────────────────────────────────────────────────────────────────
   // Download Excel (CSV) — build client-side from report data
@@ -383,11 +410,27 @@ export default function OwnerReports() {
   // ─────────────────────────────────────────────────────────────────────────
   // Derived state
   // ─────────────────────────────────────────────────────────────────────────
-  const status      = report?.status;          // "NO_DATA" | "EB_UPLOADED" | "EB_PROCESSED"
-  const eb          = report?.ebData   || {};
-  const rd          = report?.reportData || {};
-  const hasReport   = status === "EB_PROCESSED";
-  const hasEB       = status === "EB_UPLOADED" || hasReport;
+// ─── Replace the derived state block ──────────────────────────────────────
+// The backend returns the raw EB doc OR { status: "NO_DATA" }
+const status    = report?.status || (report?._id ? "EB_UPLOADED" : "NO_DATA");
+const eb        = {
+  wheelingCharges:  report?.charges?.wheelingCharges?.amount,
+  demandCharges:    report?.charges?.demandCharges?.amount,
+  energyCharges:    report?.charges?.energyCharges?.amount,
+  fac:              report?.charges?.fac?.amount,
+  fixedCharges:     report?.charges?.fixedCharges?.amount,
+  electricityDuty:  report?.charges?.electricityDuty?.amount,
+  meterRent:        report?.charges?.meterRent?.amount,
+  powerFactorAdjustment: report?.charges?.powerFactorAdjustment?.amount,
+  delayedPaymentCharges: report?.charges?.delayedPaymentCharges?.amount,
+  regulatoryCharges: report?.charges?.regulatoryCharges?.amount,
+  otherCharges:     report?.extraCharges || [],
+  totalBillAmount:  report?.totalEBAmount,
+  pdfUrl:           report?.pdfSignedUrl || report?.ebPdfPath,
+};
+const rd        = report?.reportData || {};
+const hasReport = status === "EB_PROCESSED";
+const hasEB     = status === "EB_UPLOADED" || hasReport;
 
   const selectSx = {
     bgcolor: "#f9fafb",
@@ -581,7 +624,7 @@ export default function OwnerReports() {
                   Amount Due to VJRA
                 </Typography>
                 <Typography sx={{ fontSize: 22, fontWeight: 900, color: "#04BFBF", fontFamily: FONT }}>
-                  {fmtMoney(report?.amountOwnerOwesVjra)}
+                  {fmtMoney(report?.totalOwnerPayable)}
                 </Typography>
               </Box>
 

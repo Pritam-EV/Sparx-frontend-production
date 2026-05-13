@@ -26,23 +26,13 @@ const OwnerSidebar = ({ isOpen, onClose }) => {
   }, []);
 
 
-  useEffect(() => {
-    // Fetch owner's devices and check electricityBearer
-    apiFetch("/api/partner/my-devices")
-      .then((res) => {
-        const devices = Array.isArray(res?.devices) ? res.devices : Array.isArray(res) ? res : [];
-const hasVjra = devices.some(
-  (d) =>
-    d?.commercial?.electricityBearer === "VJRA" ||
-    d?.electricityBearer === "VJRA" ||
-    d?.electricity_bearer === "VJRA"
-);
-        setHasVjraDevices(hasVjra);
-      })
-      .catch(() => {
-        // silently fail — Reports tab just won't show
-      });
-  }, []);
+useEffect(() => {
+  apiFetch("/api/eb/owner/projects")
+    .then((res) => {
+      setHasVjraDevices(Array.isArray(res?.projects) && res.projects.length > 0);
+    })
+    .catch(() => {});
+}, []);
 
   const navStyle = ({ isActive }) =>
     isActive ? { ...styles.link, ...styles.activeLink } : styles.link;
