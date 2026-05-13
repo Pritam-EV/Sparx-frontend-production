@@ -431,18 +431,27 @@ const handleSubmit = async () => {
                   <Divider sx={{ mb: 1.5 }} />
 
                   {/* Charge rows */}
-                  {[
-                    ["Energy Charges",  rec.charges?.energyCharges?.amount],
-                    ["Wheeling Charges", rec.charges?.wheelingCharges?.amount],
-                    ["Demand Charges",  rec.charges?.demandCharges?.amount],
-                    ["Fixed Charges",   rec.charges?.fixedCharges?.amount],
-                    ["FAC",             rec.charges?.fac?.amount],
-                  ].map(([label, val]) => (
+                {[
+                ["Energy Charges",           rec.charges?.energyCharges?.amount],
+                ["Wheeling Charges",         rec.charges?.wheelingCharges?.amount],
+                ["Demand Charges",           rec.charges?.demandCharges?.amount],
+                ["Fixed Charges",            rec.charges?.fixedCharges?.amount],
+                ["FAC",                      rec.charges?.fac?.amount],
+                ["Electricity Duty",         rec.charges?.electricityDuty?.amount],
+                ["Meter Rent",               rec.charges?.meterRent?.amount],
+                ["Power Factor Adjustment",  rec.charges?.powerFactorAdjustment?.amount],
+                ["Delayed Payment Charges",  rec.charges?.delayedPaymentCharges?.amount],
+                ["Regulatory Charges",       rec.charges?.regulatoryCharges?.amount],
+                ["Other Charges",            rec.charges?.otherCharges?.amount],
+                ]
+                .filter(([, val]) => val > 0)   // ← hide zero-value rows to keep card clean
+                .map(([label, val]) => (
                     <Box key={label} sx={{ display: "flex", justifyContent: "space-between", mb: 0.4 }}>
-                      <Typography sx={{ fontSize: 11, color: "#64748b", fontFamily: FONT }}>{label}</Typography>
-                      <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#0f172a", fontFamily: FONT }}>{fmtMoney(val)}</Typography>
+                    <Typography sx={{ fontSize: 11, color: "#64748b", fontFamily: FONT }}>{label}</Typography>
+                    <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#0f172a", fontFamily: FONT }}>{fmtMoney(val)}</Typography>
                     </Box>
-                  ))}
+                ))
+                }
 
                   {rec.otherCharges?.length > 0 && rec.otherCharges.map((o, i) => (
                     <Box key={i} sx={{ display: "flex", justifyContent: "space-between", mb: 0.4 }}>
