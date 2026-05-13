@@ -61,9 +61,10 @@ const YEARS         = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 // ── Sample VJRA bank account (replace when live) ──────────────────────────────
 const VJRA_BANK = {
   accountName:   "Vjra Technologies LLP",
-  bankName:      "HDFC Bank",
-  accountNumber: "XXXXXXXXXXXX1234",
-  ifsc:          "HDFC0001234",
+  bankName:      "Axis Bank",
+  accountNumber: "926020005858870",
+  ifsc:          "UTIB0000350",
+  branch:        "Sahakarnagar",
   accountType:   "Current Account",
 };
 
@@ -234,7 +235,7 @@ const fetchReport = useCallback(async () => {
     const data = await res.json();
 
     if (!res.ok) throw new Error(data?.error || "Failed to load report");
-    setReport(data);
+    setReport(data.eb ?? data);
   } catch (e) {
     setErr(e.message || "Failed to load report");
   } finally {
@@ -379,24 +380,29 @@ const handleRecordPayment = async () => {
   // ─────────────────────────────────────────────────────────────────────────
   // Download EB PDF — direct link from report.ebData.pdfUrl
   // ─────────────────────────────────────────────────────────────────────────
-  const handleDownloadEbPdf = async () => {
-    const pdfUrl = report?.ebData?.pdfUrl;
-    if (!pdfUrl) return;
-    try {
-      setDlEbPdf(true);
-      const token = localStorage.getItem("token");
-      const res   = await fetch(pdfUrl, { headers: { Authorization: `Bearer ${token}` } });
-      if (!res.ok) throw new Error("Failed to fetch EB PDF");
-      const blob = await res.blob();
-      downloadBlob(blob, `EB_${monthLabel(month, year).replace(" ", "_")}.pdf`);
-      setSnack({ open: true, msg: "EB PDF downloaded!" });
-    } catch {
-      // Fallback: open in new tab
-      window.open(pdfUrl, "_blank");
-    } finally {
-      setDlEbPdf(false);
-    }
-  };
+const handleDownloadEbPdf = async () => {
+  if (!report?._id || !report?.hasPdf) return;
+  try {
+    setDlEbPdf(true);
+    const token = localStorage.getItem("token");
+    const base  = process.env.REACT_APP_Backend_API_Base_URL;
+
+    // Step 1: get the signed URL from backend
+    const res  = await fetch(`${base}/api/eb/${report._id}/download-pdf`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Failed to get PDF URL");
+
+    // Step 2: open in new tab (signed URL is temporary, direct open is cleanest)
+    window.open(data.url, "_blank");
+    setSnack({ open: true, msg: "EB PDF opened!" });
+  } catch {
+    setSnack({ open: true, msg: "PDF download failed. Please try again." });
+  } finally {
+    setDlEbPdf(false);
+  }
+};
 
   // ─────────────────────────────────────────────────────────────────────────
   // Copy bank detail to clipboard
@@ -412,21 +418,27 @@ const handleRecordPayment = async () => {
   // ─────────────────────────────────────────────────────────────────────────
 // ─── Replace the derived state block ──────────────────────────────────────
 // The backend returns the raw EB doc OR { status: "NO_DATA" }
-const status    = report?.status || (report?._id ? "EB_UPLOADED" : "NO_DATA");
-const eb        = {
-  wheelingCharges:  report?.charges?.wheelingCharges?.amount,
-  demandCharges:    report?.charges?.demandCharges?.amount,
-  energyCharges:    report?.charges?.energyCharges?.amount,
-  fac:              report?.charges?.fac?.amount,
-  fixedCharges:     report?.charges?.fixedCharges?.amount,
-  electricityDuty:  report?.charges?.electricityDuty?.amount,
-  meterRent:        report?.charges?.meterRent?.amount,
-  powerFactorAdjustment: report?.charges?.powerFactorAdjustment?.amount,
-  delayedPaymentCharges: report?.charges?.delayedPaymentCharges?.amount,
-  regulatoryCharges: report?.charges?.regulatoryCharges?.amount,
-  otherCharges:     report?.extraCharges || [],
-  totalBillAmount:  report?.totalEBAmount,
-  pdfUrl:           report?.pdfSignedUrl || report?.ebPdfPath,
+const beStatus = report?.status;   // "not_generated" | "uploaded" | "payment_submitted" | "payment_verified" | "eb_paid_to_mseb"
+const status =
+  !report || beStatus === "not_generated"
+    ? "NO_DATA"
+    : beStatus === "payment_verified" || beStatus === "eb_paid_to_mseb"
+    ? "EB_PROCESSED"
+    : "EB_UPLOADED";   // "uploaded" or "payment_submitted"
+const eb = {
+  wheelingCharges:           report?.charges?.wheelingCharges?.amount,
+  demandCharges:             report?.charges?.demandCharges?.amount,
+  energyCharges:             report?.charges?.energyCharges?.amount,
+  fac:                       report?.charges?.fac?.amount,
+  fixedCharges:              report?.charges?.fixedCharges?.amount,
+  electricityDuty:           report?.charges?.electricityDuty?.amount,
+  meterRent:                 report?.charges?.meterRent?.amount,
+  powerFactorAdjustment:     report?.charges?.powerFactorAdjustment?.amount,
+  delayedPaymentCharges:     report?.charges?.delayedPaymentCharges?.amount,
+  regulatoryCharges:         report?.charges?.regulatoryCharges?.amount,
+  otherCharges:              report?.extraCharges || [],
+  totalBillAmount:           report?.totalEBAmount,
+  pdfUrl:                    report?.pdfSignedUrl || (report?.hasPdf ? report?._id : null),
 };
 const rd        = report?.reportData || {};
 const hasReport = status === "EB_PROCESSED";
@@ -577,7 +589,7 @@ const hasEB     = status === "EB_UPLOADED" || hasReport;
               />
 
               {/* EB PDF download */}
-              {eb.pdfUrl && (
+              {report?.hasPdf && ( 
                 <Box mt={1.5}>
                   <Button
                     size="small"
@@ -591,7 +603,7 @@ const hasEB     = status === "EB_UPLOADED" || hasReport;
                       "&:hover": { borderColor: "#b91c1c", bgcolor: "#fef2f2" },
                     }}
                   >
-                    Download MSEB EB PDF
+                    Download MSEB Bill
                   </Button>
                 </Box>
               )}
@@ -609,8 +621,7 @@ const hasEB     = status === "EB_UPLOADED" || hasReport;
               </Stack>
 
               <Typography sx={{ fontSize: 13, color: "#64748b", mb: 1.5, fontFamily: FONT }}>
-                As per the agreement, the owner bears all fixed and other charges. Please pay the
-                following amount to VJRA before the due date for this month's EB settlement.
+                Please pay the following amount to VJRA before the due date for this month's electricity bill settlement.
               </Typography>
 
               {/* Amount due */}
@@ -636,6 +647,7 @@ const hasEB     = status === "EB_UPLOADED" || hasReport;
                 { label: "Bank",           value: VJRA_BANK.bankName },
                 { label: "Account Number", value: VJRA_BANK.accountNumber },
                 { label: "IFSC Code",      value: VJRA_BANK.ifsc },
+                { label: "Branch",         value: VJRA_BANK.branch },
                 { label: "Account Type",   value: VJRA_BANK.accountType },
               ].map(({ label, value }) => (
                 <Box
