@@ -22,6 +22,7 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AddIcon          from "@mui/icons-material/Add";
 import CloseIcon        from "@mui/icons-material/Close";
 import DeleteIcon       from "@mui/icons-material/Delete";
@@ -32,6 +33,9 @@ import UploadFileIcon   from "@mui/icons-material/UploadFile";
 import CheckCircleIcon  from "@mui/icons-material/CheckCircle";
 import ElectricBoltIcon from "@mui/icons-material/ElectricBolt";
 
+import PaymentsIcon from "@mui/icons-material/Payments";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import { apiFetch } from "../../utils/apiFetch";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -71,7 +75,32 @@ const EMPTY_FORM = {
 };
 
 const fmtMoney = (n) =>
-  `₹${Number(n || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  `₹${Number(n || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+function Row({ label, value, strong = false }) {
+  return (
+    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <Typography sx={{ fontSize: 13, color: "#64748b" }}>{label}</Typography>
+      <Typography sx={{ fontSize: 13, fontWeight: strong ? 800 : 600, color: "#111827" }}>
+        {fmtMoney(value)}
+      </Typography>
+    </Box>
+  );
+}
+
+function RowText({ label, value }) {
+  return (
+    <Box sx={{ display: "flex", justifyContent: "space-between", gap: 2 }}>
+      <Typography sx={{ fontSize: 13, color: "#64748b" }}>{label}</Typography>
+      <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827", textAlign: "right" }}>
+        {value}
+      </Typography>
+    </Box>
+  );
+}
 
 const monthLabel = (m, y) => `${MONTHS.find((x) => x.value === m)?.label} ${y}`;
 
@@ -139,6 +168,15 @@ export default function EBManagement() {
   const [submitErr,     setSubmitErr]     = useState(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
+  const [detailOpen, setDetailOpen] = useState(false);
+const [selectedEbId, setSelectedEbId] = useState(null);
+const [detailLoading, setDetailLoading] = useState(false);
+const [detailErr, setDetailErr] = useState(null);
+const [selectedEb, setSelectedEb] = useState(null);
+
+const [verifyLoading, setVerifyLoading] = useState(false);
+const [markPaidLoading, setMarkPaidLoading] = useState(false);
+
   // ── PDF file ref ──
   const fileInputRef = useRef(null);
 
@@ -171,9 +209,34 @@ setRecords(Array.isArray(res?.ebs) ? res.ebs : []);
   } finally {
     setListLoading(false);
   }
-}, [filterMonth, filterYear]);
+}, [filterMonth, filterYear, filterProject]);
 
   useEffect(() => { fetchRecords(); }, [fetchRecords]);
+
+  const fetchEbDetail = async (ebId) => {
+  try {
+    setDetailLoading(true);
+    setDetailErr(null);
+    setSelectedEbId(ebId);
+    setDetailOpen(true);
+
+    const token = localStorage.getItem("token");
+    const base = process.env.REACT_APP_Backend_API_Base_URL;
+
+    const res = await fetch(`${base}/api/eb/admin/${ebId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Failed to fetch EB detail");
+
+    setSelectedEb(data.eb);
+  } catch (e) {
+    setDetailErr(e.message || "Failed to fetch EB detail");
+  } finally {
+    setDetailLoading(false);
+  }
+};
 
   // ─────────────────────────────────────────────────────────────────────────
   // Open drawer for create / edit
@@ -290,6 +353,62 @@ const handleSubmit = async () => {
   }
 };
 
+const handleVerifyPayment = async () => {
+  if (!selectedEb?._id) return;
+
+  try {
+    setVerifyLoading(true);
+    const token = localStorage.getItem("token");
+    const base = process.env.REACT_APP_Backend_API_Base_URL;
+
+    const res = await fetch(`${base}/api/eb/admin/${selectedEb._id}/verify-payment`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Failed to verify payment");
+
+setSelectedEb(data.eb);
+fetchRecords();
+  } catch (e) {
+    setDetailErr(e.message || "Failed to verify payment");
+  } finally {
+    setVerifyLoading(false);
+  }
+};
+
+const handleMarkMsebPaid = async () => {
+  if (!selectedEb?._id) return;
+
+  try {
+    setMarkPaidLoading(true);
+    const token = localStorage.getItem("token");
+    const base = process.env.REACT_APP_Backend_API_Base_URL;
+
+    const res = await fetch(`${base}/api/eb/admin/${selectedEb._id}/mark-eb-paid`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data?.error || "Failed to mark MSEB payment");
+
+setSelectedEb(data.eb);
+fetchRecords();
+  } catch (e) {
+    setDetailErr(e.message || "Failed to mark MSEB payment");
+  } finally {
+    setMarkPaidLoading(false);
+  }
+};
+
   // ─────────────────────────────────────────────────────────────────────────
   // Computed total from fields (live preview)
   // ─────────────────────────────────────────────────────────────────────────
@@ -382,8 +501,8 @@ const handleSubmit = async () => {
       )}
 
       {/* ── Records Grid ──────────────────────────────────────────── */}
-      {!listLoading && records.length === 0 && (
-        <Card sx={cardSx}>
+{!listLoading && records.length === 0 && (
+  <Card sx={cardSx}>
           <CardContent sx={{ textAlign: "center", py: 7 }}>
             <ElectricBoltIcon sx={{ fontSize: 48, color: "#04BFBF", mb: 1 }} />
             <Typography sx={{ fontWeight: 700, fontSize: 16, color: "#000", mb: 0.5, fontFamily: FONT }}>
@@ -400,14 +519,15 @@ const handleSubmit = async () => {
         <Grid container spacing={2}>
           {records.map((rec) => (
             <Grid item xs={12} sm={6} md={4} key={rec._id}>
-              <Card
-                sx={{
-                  ...cardSx,
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  "&:hover": { transform: "translateY(-3px)", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" },
-                }}
-              >
+<Card
+  sx={{
+    ...cardSx,
+    cursor: "pointer",
+    transition: "all 0.2s",
+    "&:hover": { transform: "translateY(-3px)", boxShadow: "0 4px 16px rgba(0,0,0,0.12)" },
+  }}
+  onClick={() => fetchEbDetail(rec._id)}
+>
                 <CardContent sx={{ p: 2 }}>
                   {/* Card header */}
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1.5}>
@@ -490,11 +610,11 @@ const handleSubmit = async () => {
                     <Typography sx={{ fontSize: 11, color: "#94a3b8", fontFamily: FONT }}>No PDF</Typography>
                     )}
 
-                    <IconButton
-                      size="small"
-                      onClick={() => openEdit(rec)}
-                      sx={{ color: "#04BFBF", "&:hover": { bgcolor: "#f0fdfd" } }}
-                    >
+                            <IconButton
+                            size="small"
+                            onClick={(e) => { e.stopPropagation(); openEdit(rec); }}
+                            sx={{ color: '#04BFBF', '&:hover': { bgcolor: '#f0fdfd' } }}
+                            >
                       <EditIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                   </Stack>
@@ -564,22 +684,7 @@ const handleSubmit = async () => {
                         ))}
                       </Select>
                     </FormControl>
-                    <FormControl size="small" sx={{ minWidth: 180 }}>
-                    <InputLabel sx={{ fontSize: 13, fontFamily: FONT }}>Project</InputLabel>
-                    <Select
-                        label="Project"
-                        value={filterProject}
-                        onChange={(e) => setFilterProject(e.target.value)}
-                        sx={selectSx}
-                    >
-                        <MenuItem value="" sx={{ fontSize: 13 }}>All Projects</MenuItem>
-                        {projects.map((p) => (
-                        <MenuItem key={p.project} value={p.project} sx={{ fontSize: 13 }}>
-                            {p.project}
-                        </MenuItem>
-                        ))}
-                    </Select>
-                    </FormControl>
+
                   </Stack>
                 </Box>
 
@@ -786,6 +891,188 @@ const handleSubmit = async () => {
 
         </Box>
       </Drawer>
+
+<Drawer
+  anchor="right"
+  open={detailOpen}
+  onClose={() => setDetailOpen(false)}
+  PaperProps={{
+    sx: {
+      width: { xs: "100%", sm: 480, md: 560 },
+      p: 0,
+      bgcolor: "#ffffff",
+    },
+  }}
+>
+  <Box sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+<Box
+  sx={{
+    px: 2,
+    pt: { xs: 7, sm: 1.5 },
+    pb: 1.5,
+    borderBottom: "1px solid #e5e7eb",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+  }}
+>
+  <Stack direction="row" alignItems="center" spacing={1}>
+    <IconButton
+      onClick={() => setDetailOpen(false)}
+      size="small"
+      sx={{ color: "#04BFBF", "&:hover": { bgcolor: "#f0fdfd" } }}
+    >
+      <ArrowBackIcon sx={{ fontSize: 20 }} />
+    </IconButton>
+    <Box>
+      <Typography sx={{ fontWeight: 800, fontSize: 18 }}>
+        EB Details
+      </Typography>
+      <Typography sx={{ fontSize: 12, color: "#64748b" }}>
+        Full electricity bill and payment workflow
+      </Typography>
+    </Box>
+  </Stack>
+
+  <IconButton onClick={() => setDetailOpen(false)} size="small">
+    <CloseIcon />
+  </IconButton>
+</Box>
+
+    <Box sx={{ flex: 1, overflowY: "auto", p: 2 }}>
+      {detailLoading && (
+        <Box sx={{ py: 8, display: "flex", justifyContent: "center" }}>
+          <CircularProgress sx={{ color: "#04BFBF" }} />
+        </Box>
+      )}
+
+      {!detailLoading && detailErr && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {detailErr}
+        </Alert>
+      )}
+
+      {!detailLoading && selectedEb && (
+        <Stack spacing={2}>
+          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent>
+              <Stack spacing={0.5}>
+                <Typography sx={{ fontSize: 12, color: "#64748b" }}>Project</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{selectedEb.project}</Typography>
+                <Typography sx={{ fontSize: 12, color: "#64748b", mt: 1 }}>Month</Typography>
+                <Typography sx={{ fontWeight: 700 }}>{selectedEb.month}</Typography>
+              </Stack>
+            </CardContent>
+          </Card>
+
+          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent>
+              <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                <ReceiptLongIcon sx={{ color: "#04BFBF" }} />
+                <Typography sx={{ fontWeight: 800 }}>Bill Breakdown</Typography>
+              </Stack>
+
+              <Stack spacing={1}>
+                <Row label="Energy Charges" value={selectedEb?.charges?.energyCharges?.amount} />
+                <Row label="Wheeling Charges" value={selectedEb?.charges?.wheelingCharges?.amount} />
+                <Row label="Demand Charges" value={selectedEb?.charges?.demandCharges?.amount} />
+                <Row label="FAC" value={selectedEb?.charges?.fac?.amount} />
+                <Row label="Fixed Charges" value={selectedEb?.charges?.fixedCharges?.amount} />
+                <Row label="Electricity Duty" value={selectedEb?.charges?.electricityDuty?.amount} />
+                <Row label="Meter Rent" value={selectedEb?.charges?.meterRent?.amount} />
+                <Row label="Power Factor Adjustment" value={selectedEb?.charges?.powerFactorAdjustment?.amount} />
+                <Row label="Delayed Payment Charges" value={selectedEb?.charges?.delayedPaymentCharges?.amount} />
+                <Row label="Regulatory Charges" value={selectedEb?.charges?.regulatoryCharges?.amount} />
+
+                {(selectedEb?.extraCharges || []).map((item, idx) => (
+                  <Row key={idx} label={item.label} value={item.amount} />
+                ))}
+
+                <Divider sx={{ my: 1 }} />
+
+                <Row label="Total Owner Payable" value={selectedEb?.totalOwnerPayable} strong />
+                <Row label="Total EB Amount" value={selectedEb?.totalEBAmount} strong />
+              </Stack>
+            </CardContent>
+          </Card>
+
+          <Card variant="outlined" sx={{ borderRadius: 2 }}>
+            <CardContent>
+              <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                <PaymentsIcon sx={{ color: "#04BFBF" }} />
+                <Typography sx={{ fontWeight: 800 }}>Owner Payment Status</Typography>
+              </Stack>
+
+              <Chip
+                label={selectedEb?.paymentStatusLabel || selectedEb?.status}
+                size="small"
+                sx={{
+                  bgcolor:
+                    selectedEb?.status === "payment_submitted" ? "#fef3c7" :
+                    selectedEb?.status === "payment_verified" ? "#dbeafe" :
+                    selectedEb?.status === "eb_paid_to_mseb" ? "#dcfce7" :
+                    "#f3f4f6",
+                  color:
+                    selectedEb?.status === "payment_submitted" ? "#b45309" :
+                    selectedEb?.status === "payment_verified" ? "#1d4ed8" :
+                    selectedEb?.status === "eb_paid_to_mseb" ? "#15803d" :
+                    "#475569",
+                  fontWeight: 700,
+                  mb: 1.5,
+                }}
+              />
+
+              <Stack spacing={1}>
+                <RowText label="Txn ID" value={selectedEb?.ownerPayment?.txnId || "—"} />
+                <RowText label="Amount Paid" value={selectedEb?.ownerPayment?.amountPaid != null ? `₹${Number(selectedEb.ownerPayment.amountPaid).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "—"} />
+                <RowText label="Submitted At" value={selectedEb?.ownerPayment?.submittedAt ? new Date(selectedEb.ownerPayment.submittedAt).toLocaleString() : "—"} />
+                <RowText label="Verified At" value={selectedEb?.ownerPayment?.verifiedAt ? new Date(selectedEb.ownerPayment.verifiedAt).toLocaleString() : "—"} />
+                <RowText label="MSEB Paid At" value={selectedEb?.msebPaidAt ? new Date(selectedEb.msebPaidAt).toLocaleString() : "—"} />
+              </Stack>
+
+              <Stack spacing={1.2} mt={2}>
+                {selectedEb?.status === "payment_submitted" && (
+                  <Button
+                    variant="contained"
+                    startIcon={verifyLoading ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : <CheckCircleIcon />}
+                    onClick={handleVerifyPayment}
+                    disabled={verifyLoading}
+                    sx={{
+                      bgcolor: "#04BFBF",
+                      textTransform: "none",
+                      fontWeight: 700,
+                      "&:hover": { bgcolor: "#03a6a6" },
+                    }}
+                  >
+                    Verify Owner Payment
+                  </Button>
+                )}
+
+                {(selectedEb?.status === "payment_verified" || selectedEb?.status === "payment_submitted") && (
+                  <Button
+                    variant="outlined"
+                    startIcon={markPaidLoading ? <CircularProgress size={16} /> : <AccountBalanceIcon />}
+                    onClick={handleMarkMsebPaid}
+                    disabled={markPaidLoading}
+                    sx={{
+                      textTransform: "none",
+                      fontWeight: 700,
+                      borderColor: "#16a34a",
+                      color: "#16a34a",
+                      "&:hover": { borderColor: "#15803d", bgcolor: "#f0fdf4" },
+                    }}
+                  >
+                    Mark Paid to MSEB
+                  </Button>
+                )}
+              </Stack>
+            </CardContent>
+          </Card>
+        </Stack>
+      )}
+    </Box>
+  </Box>
+</Drawer>
 
     </Box>
   );
