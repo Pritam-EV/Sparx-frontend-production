@@ -256,7 +256,7 @@ const handleRecordPayment = async () => {
   }
 
   // Backend needs the EB document _id — comes from report.ebId
-  const ebId = report?.ebId;
+  const ebId = report?._id;
   if (!ebId) {
     setPayErr("EB record not found. Please refresh.");
     return;
@@ -677,18 +677,20 @@ const hasEB     = status === "EB_UPLOADED" || hasReport;
 
               {/* Payment status + record button */}
               <Box mt={2}>
-                {report?.paymentStatus === "PAID" ? (
+                {(report?.status === "payment_submitted" ||
+                report?.status === "payment_verified" ||
+                report?.status === "eb_paid_to_mseb") ? (
                   <Stack direction="row" alignItems="center" spacing={1} sx={{ p: 1.5, bgcolor: "#dcfce7", borderRadius: 1.5 }}>
                     <CheckCircleIcon sx={{ fontSize: 18, color: "#16a34a" }} />
                     <Box>
                       <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#16a34a", fontFamily: FONT }}>
                         Payment Recorded
                       </Typography>
-                      {report?.paymentRecord?.transactionId && (
+                        {report?.ownerPayment?.txnId && (
                         <Typography sx={{ fontSize: 11, color: "#15803d", fontFamily: FONT }}>
-                          Txn ID: {report.paymentRecord.transactionId}
+                            Txn ID: {report.ownerPayment.txnId}
                         </Typography>
-                      )}
+                        )}
                     </Box>
                   </Stack>
                 ) : (
