@@ -84,6 +84,7 @@ function StatusChip({ status }) {
     NO_DATA:      { label: "No Data",      bg: "#f1f5f9", color: "#64748b" },
   };
   const s = map[status] || map.NO_DATA;
+
   return (
     <Chip
       size="small"
@@ -141,6 +142,8 @@ export default function EBManagement() {
   // ── PDF file ref ──
   const fileInputRef = useRef(null);
 
+    const [filterProject, setFilterProject] = useState("");
+    
 useEffect(() => {
   apiFetch("/api/eb/admin/projects")
     .then((res) => setProjects(Array.isArray(res?.projects) ? res.projects : []))
@@ -156,6 +159,7 @@ const fetchRecords = useCallback(async () => {
     setListErr(null);
 
 const params = new URLSearchParams();
+if (filterProject) params.set("project", filterProject);
 if (filterMonth && filterYear)
   params.set("month", `${filterYear}-${String(filterMonth).padStart(2, "0")}`);
 const res = await apiFetch(`/api/eb/admin/list?${params.toString()}`);
@@ -539,6 +543,22 @@ const handleSubmit = async () => {
                           <MenuItem key={y} value={y} sx={{ fontSize: 13 }}>{y}</MenuItem>
                         ))}
                       </Select>
+                    </FormControl>
+                    <FormControl size="small" sx={{ minWidth: 180 }}>
+                    <InputLabel sx={{ fontSize: 13, fontFamily: FONT }}>Project</InputLabel>
+                    <Select
+                        label="Project"
+                        value={filterProject}
+                        onChange={(e) => setFilterProject(e.target.value)}
+                        sx={selectSx}
+                    >
+                        <MenuItem value="" sx={{ fontSize: 13 }}>All Projects</MenuItem>
+                        {projects.map((p) => (
+                        <MenuItem key={p.project} value={p.project} sx={{ fontSize: 13 }}>
+                            {p.project}
+                        </MenuItem>
+                        ))}
+                    </Select>
                     </FormControl>
                   </Stack>
                 </Box>
