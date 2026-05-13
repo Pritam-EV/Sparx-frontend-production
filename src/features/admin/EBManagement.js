@@ -143,7 +143,7 @@ export default function EBManagement() {
   const fileInputRef = useRef(null);
 
     const [filterProject, setFilterProject] = useState("");
-    
+
 useEffect(() => {
   apiFetch("/api/eb/admin/projects")
     .then((res) => setProjects(Array.isArray(res?.projects) ? res.projects : []))
@@ -309,7 +309,7 @@ const handleSubmit = async () => {
     <Box sx={{ maxWidth: 1280, mx: "auto", py: 3, px: { xs: 2, md: 3 }, fontFamily: FONT }}>
 
       {/* ── Page Header ───────────────────────────────────────────── */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3} flexWrap="wrap" gap={1.5}>
+      <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={1.5}>
         <Box>
           <Typography sx={{ fontWeight: 900, fontSize: { xs: 22, sm: 26 }, color: "#000", letterSpacing: "-0.5px", fontFamily: FONT }}>
             EB Management
@@ -341,7 +341,7 @@ const handleSubmit = async () => {
           </Button>
         </Stack>
       </Stack>
- mb={3}
+
       {/* ── List Filters ───────────────────────────────────────────── */}
       <Card sx={{ ...cardSx, mb: 3 }}>
         <CardContent sx={{ p: 1.5 }}>
@@ -412,9 +412,12 @@ const handleSubmit = async () => {
                   {/* Card header */}
                   <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1.5}>
                     <Box>
-                      <Typography sx={{ fontWeight: 700, fontSize: 14, color: "#000", fontFamily: FONT }}>
-                        {monthLabel(rec.month, rec.year)}
-                      </Typography>
+                        <Typography sx={{ fontWeight: 700, fontSize: 14 }}>
+                        {(() => {
+                            const [y, m] = (rec.month || "").split("-");
+                            return `${MONTHS.find(x => x.value === Number(m))?.label || ""} ${y || ""}`;
+                        })()}
+                        </Typography>
                       <Typography sx={{ fontSize: 12, color: "#64748b", fontFamily: FONT }}>
                         {rec.project || "—"}
                       </Typography>
@@ -457,17 +460,25 @@ const handleSubmit = async () => {
 
                   {/* Footer actions */}
                   <Stack direction="row" justifyContent="space-between" alignItems="center" mt={1.5}>
-                    {rec.pdfUrl ? (
-                      <Button
+                    {rec.ebPdfPath ? (
+                    <Button
                         size="small"
                         startIcon={<PictureAsPdfIcon sx={{ fontSize: 14 }} />}
-                        onClick={(e) => { e.stopPropagation(); window.open(rec.pdfUrl, "_blank"); }}
+                        onClick={async (e) => {
+                        e.stopPropagation();
+                        try {
+                            const res = await apiFetch(`/api/eb/${rec._id}/download-pdf`);
+                            if (res?.url) window.open(res.url, "_blank");
+                        } catch {
+                            alert("Could not load PDF. Please try again.");
+                        }
+                        }}
                         sx={{ fontSize: 11, color: "#dc2626", textTransform: "none", fontFamily: FONT, p: 0, minWidth: 0 }}
-                      >
+                    >
                         View PDF
-                      </Button>
+                    </Button>
                     ) : (
-                      <Typography sx={{ fontSize: 11, color: "#94a3b8", fontFamily: FONT }}>No PDF</Typography>
+                    <Typography sx={{ fontSize: 11, color: "#94a3b8", fontFamily: FONT }}>No PDF</Typography>
                     )}
 
                     <IconButton
