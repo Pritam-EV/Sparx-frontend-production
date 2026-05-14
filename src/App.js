@@ -25,6 +25,7 @@ import PaymentSuccess from "./components/PaymentSuccess";
 import TransactionHistory from "./components/TransactionHistory";
 import WalletDashboard from "./components/WalletDashboard";
 import WalletTopupSuccess from "./components/WalletTopupSuccess";
+import WalletTopup from "./components/WalletTopup";
 
 import AdminAnalytics from "./features/admin/AdminAnalytics";
 import AdminDashboard from "./features/admin/AdminDashboard";
@@ -262,6 +263,7 @@ useEffect(() => {
         <Route path="/payment-success" element={<PaymentSuccess />} />
         <Route path="/wallet" element={<PrivateRoute><WalletDashboard /></PrivateRoute>} />
         <Route path="/wallet/topup-success" element={<PrivateRoute><WalletTopupSuccess /></PrivateRoute>} />
+        <Route path="/wallet/topup" element={<PrivateRoute><WalletTopup /></PrivateRoute>} />
         <Route path="/onboard-device" element={<DeviceOnboarding />} />
 
         {/* Catch-all */}

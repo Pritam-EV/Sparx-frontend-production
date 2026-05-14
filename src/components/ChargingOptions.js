@@ -521,7 +521,8 @@ async function consumeCoupon() {
 
     if (walletBalance < payableNum) {
       // Redirect to topup — pass shortfall as hint
-      navigate("/wallet/topup");
+      const shortfall = payableNum - walletBalance;
+navigate(`/wallet/topup?need=${shortfall.toFixed(2)}`);
       return;
     }
 
