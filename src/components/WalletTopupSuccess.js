@@ -11,38 +11,52 @@ export default function WalletTopupSuccess() {
   const [amount, setAmount] = useState(null);
   const orderId = searchParams.get("order_id");
 
-  useEffect(() => {
-    if (!orderId) { setStatus("failed"); return; }
+useEffect(() => {
+  if (!orderId) { setStatus("failed"); return; }
 
-    const token = localStorage.getItem("token");
-    let attempts = 0;
-    const maxAttempts = 12;
+  const token = localStorage.getItem("token");
+  let attempts = 0;
+  const maxAttempts = 18; // 18 attempts × ~1.5s avg = ~27s total
 
-    const poll = async () => {
-      try {
-        const res = await fetch(
-          `${BASE}/api/wallet/topup-status?orderId=${orderId}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        const data = await res.json();
-        if (data.status === "SUCCESS") {
-          setAmount(data.amount);
-          setStatus("success");
-        } else if (data.status === "FAILED") {
-          setStatus("failed");
-        } else {
-          attempts++;
-          if (attempts < maxAttempts) setTimeout(poll, 1000);
-          else setStatus("failed");
-        }
-      } catch {
-        attempts++;
-        if (attempts < maxAttempts) setTimeout(poll, 1500);
-        else setStatus("failed");
+  const poll = async () => {
+    try {
+      const res = await fetch(
+        `${BASE}/api/wallet/topup-status?orderId=${orderId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+
+      if (data.status === "SUCCESS") {
+        setAmount(data.amount);
+        setStatus("success");
+        return; // done
       }
-    };
-    poll();
-  }, [orderId]);
+      if (data.status === "FAILED") {
+        setStatus("failed");
+        return;
+      }
+
+      // Still PENDING
+      attempts++;
+      if (attempts < maxAttempts) {
+        // Back-off: first 3 attempts fast (1s), then slow (2s)
+        const delay = attempts <= 3 ? 1000 : 2000;
+        setTimeout(poll, delay);
+      } else {
+        // Timed out — but payment may still complete via webhook later
+        // Show "pending" UI, not hard failure
+        setStatus("failed");
+      }
+    } catch {
+      attempts++;
+      if (attempts < maxAttempts) setTimeout(poll, 2000);
+      else setStatus("failed");
+    }
+  };
+
+  // Small initial delay — let Cashfree webhook arrive
+  setTimeout(poll, 1500);
+}, [orderId]);
 
   return (
     <>
