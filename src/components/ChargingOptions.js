@@ -61,6 +61,11 @@ const [etaDisplay, setEtaDisplay] = useState(null);         // { timeStr, remain
 
   const [paymentError, setPaymentError] = useState(null);
 
+  // ── Wallet ──
+const [walletBalance, setWalletBalance] = useState(0);
+const [showPaymentSheet, setShowPaymentSheet] = useState(false);
+const [walletPayLoading, setWalletPayLoading] = useState(false);
+
   const [toast, setToast] = useState({
   open: false,
   message: "",
@@ -195,6 +200,22 @@ const showToast = (
     }));
   }, 2800);
 };
+
+
+  // ── Fetch wallet balance ──
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/wallet/balance`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d.balance === "number") setWalletBalance(d.balance);
+      })
+      .catch(() => {}); // silent fail — wallet balance is non-critical for page load
+  }, []);
+
   /* -------------------------
    *  Fetch device details
    * ------------------------- */
@@ -365,7 +386,7 @@ const handleEnergyInputChange = (e) => {
    *  Coupon apply -> server validation
    *  - Sends (code, deviceId, amount) to backend
    *  - backend returns { newAmount, coupon? }
-   *  - If newAmount === 0 -> generate sparxpay_ ID and immediately navigate
+   *  - If newAmount === 0 -> generate viz_ ID and immediately navigate
    * ------------------------- */
 async function applyCoupon() {
   if (couponApplied) return;
@@ -474,166 +495,195 @@ async function consumeCoupon() {
    *  - If payable === 0 (edge case), generate transaction id and navigate
    *  - Otherwise create Razorpay order and open modal; on success navigate to session-start passing transaction id from Razorpay
    * ------------------------- */
+  // Opens the payment method selector sheet (does NOT go to Cashfree directly)
   const handleProceedToPayment = async () => {
     if (!selectedOption || sliderValue === 0) {
       showToast("Please select a charging option and value!", "error");
       return;
     }
-
-    // ensure we have device details
     if (!deviceDetails) {
       showToast("Device not loaded. Try again.", "error");
       return;
     }
+    const currentDeviceStatus = (deviceDetails?.status || "").toString().toLowerCase();
+    if (currentDeviceStatus !== "available") {
+      showToast(`Device is not available. Current status: ${currentDeviceStatus}`, "error");
+      return;
+    }
+    // Show the payment method sheet — actual payment triggered from there
+    setShowPaymentSheet(true);
+  };
 
-    // If device is occupied, block
-
-const currentDeviceStatus = (deviceDetails?.status || "").toString().toLowerCase();
-if (currentDeviceStatus !== "available") {
-  showToast(`Device is not available. Current status: ${currentDeviceStatus}`, "error");
-  return;
-}
-
-    // Determine payable amount (use discounted price if available)
+  // ── Called when user picks WALLET in the sheet ──
+  const handlePayWithWallet = async () => {
     const payable = couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost;
-
-    // Safety: ensure positive numeric
     const payableNum = Number(payable || 0);
 
-if (payableNum === 0) {
-  const fakeOrderId = shortId(10);
-
-  localStorage.setItem("pendingPayment", JSON.stringify({
-    deviceId,
-    amountPaid: 0,
-    amountSelected: originalSelectedAmount,
-    discountApplied: originalSelectedAmount,
-    chargingOption: selectedOption,
-    energySelected: selectedOption === "energy" ? sliderValue : estimatedEnergy,
-    couponCode: appliedCouponObj?.code || null,
-    paymentGateway: "free"
-  }));
-
-  navigate(`/payment-success?order_id=${fakeOrderId}`);
-  return;
-}
-
-
-    // Paid flow -> Cashfree
-// Paid flow -> Cashfree
-try {
-  setPaymentError(null);
-
-  console.log("Requesting to create Order." + "returning to url" + `${window.location.origin}/charging-options/${deviceId}`);
-
-  const orderResp = await fetch(
-    `${process.env.REACT_APP_Backend_API_Base_URL}/api/payment/order`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${localStorage.getItem("token")}`
-      },
-      body: JSON.stringify({
-        amount: payableNum,
-        // BE will append orderId as param to this returnUrl
-        returnUrl: `${window.location.origin}/charging-options/${deviceId}`,
-        // customer: {
-        //   id: localStorage.getItem("userId") || "guest_user",
-        //   email: "user@example.com",
-        //   phone: "9999999999",
-        // },
-        gateway: "Cashfree"
-      }),
+    if (walletBalance < payableNum) {
+      // Redirect to topup — pass shortfall as hint
+      navigate("/wallet/topup");
+      return;
     }
-  );
 
-  console.log("Order Created at BE.");
+    setWalletPayLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      const resp = await fetch(
+        `${process.env.REACT_APP_Backend_API_Base_URL}/api/wallet/pay`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            deviceId,
+            amount: payableNum,
+            chargingOption: selectedOption,
+            energySelected: selectedOption === "energy" ? sliderValue : estimatedEnergy,
+            couponCode: appliedCouponObj?.code || null,
+          }),
+        }
+      );
 
-  let orderData = null;
-  let contentType = orderResp.headers.get("content-type") || "";
+      const data = await resp.json();
 
-  if (contentType.includes("application/json")) {
-    orderData = await orderResp.json();
-  } else {
-    // Non‑JSON (e.g. HTML or blank) – generic handling
-    const text = await orderResp.text();
-    if (!orderResp.ok) {
-      throw new Error("Something went wrong while creating the order. Please try again.");
-    } else {
-      throw new Error("Unexpected response from server.");
+      if (!resp.ok || !data.success) {
+        showToast(data.message || "Wallet payment failed.", "error");
+        setWalletPayLoading(false);
+        return;
+      }
+
+      // Consume coupon if applied
+      if (couponApplied) await consumeCoupon();
+
+      // Store pendingPayment exactly like Cashfree flow
+      localStorage.setItem(
+        "pendingPayment",
+        JSON.stringify({
+          deviceId,
+          amountPaid: payableNum,
+          amountSelected: originalSelectedAmount,
+          discountApplied: originalSelectedAmount - payableNum,
+          chargingOption: selectedOption,
+          energySelected: selectedOption === "energy" ? sliderValue : estimatedEnergy,
+          couponCode: appliedCouponObj?.code || null,
+          paymentGateway: "wallet",
+        })
+      );
+
+      setShowPaymentSheet(false);
+      navigate(`/payment-success?order_id=${data.orderId}`);
+    } catch (err) {
+      showToast(err.message || "Wallet payment failed.", "error");
+    } finally {
+      setWalletPayLoading(false);
     }
-  }
+  };
 
-  if (!orderResp.ok) {
-    // Backend error with JSON body
-    const alertObj = orderData?.alert;
-    const msgFromAlert = alertObj?.message;
-    const msgFromBody = orderData?.message;
+  // ── Called when user picks UPI/CARD in the sheet ──
+  const handlePayWithCashfree = async () => {
+    const payable = couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost;
+    const payableNum = Number(payable || 0);
 
-    if (msgFromAlert) {
-      setPaymentError(msgFromAlert);
-      showToast(msgFromAlert, "error");
-    } else if (msgFromBody) {
-      setPaymentError(msgFromBody);
-      showToast(msgFromBody);
-    } else {
-      setPaymentError("Kindly login to continue.", "error");
-      showToast("Kindly login to continue.", "error");
+    // Free / zero-amount edge case
+    if (payableNum === 0) {
+      const fakeOrderId = shortId(10);
+      localStorage.setItem(
+        "pendingPayment",
+        JSON.stringify({
+          deviceId,
+          amountPaid: 0,
+          amountSelected: originalSelectedAmount,
+          discountApplied: originalSelectedAmount,
+          chargingOption: selectedOption,
+          energySelected: selectedOption === "energy" ? sliderValue : estimatedEnergy,
+          couponCode: appliedCouponObj?.code || null,
+          paymentGateway: "free",
+        })
+      );
+      setShowPaymentSheet(false);
+      navigate(`/payment-success?order_id=${fakeOrderId}`);
+      return;
     }
-    return;
-  }
 
-  // resp.ok === true
-  // Expected: { paymentSessionId: "...", ... } or similar
-  const paymentSessionId =
-    orderData?.paymentSessionId ||
-    orderData?.order?.payment_session_id;
+    try {
+      setPaymentError(null);
 
-  const orderId =
-    orderData?.orderId ||
-    orderData?.order?.order_id;
+      const orderResp = await fetch(
+        `${process.env.REACT_APP_Backend_API_Base_URL}/api/payment/order`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: JSON.stringify({
+            amount: payableNum,
+            returnUrl: `${window.location.origin}/charging-options/${deviceId}`,
+            gateway: "Cashfree",
+          }),
+        }
+      );
 
-  if (!paymentSessionId || !orderId) {
-    setPaymentError("Invalid response from payment server.");
-    showToast("Invalid response from payment server.", "error");
-    return;
-  }
+      let orderData = null;
+      const contentType = orderResp.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        orderData = await orderResp.json();
+      } else {
+        throw new Error("Something went wrong while creating the order. Please try again.");
+      }
 
-  // Store orderId & pending state locally
-  localStorage.setItem("cashfreeOrderId", orderId);
-// Around line with localStorage.setItem('pendingPayment'...
-localStorage.setItem('pendingPayment', JSON.stringify({
-  deviceId,
-  amountPaid: payableNum,
-  amountSelected: originalSelectedAmount,
-  discountApplied: originalSelectedAmount - payableNum,
-  chargingOption: selectedOption,
-  energySelected: selectedOption === 'energy' ? sliderValue : estimatedEnergy,
-  couponCode: appliedCouponObj?.code || null,
-  paymentGateway: 'cashfree'
-}));
+      if (!orderResp.ok) {
+        const alertObj = orderData?.alert;
+        const msg = alertObj?.message || orderData?.message || "Kindly login to continue.";
+        setPaymentError(msg);
+        showToast(msg, "error");
+        return;
+      }
 
-  localStorage.setItem("deviceId", deviceId);
+      const paymentSessionId =
+        orderData?.paymentSessionId || orderData?.order?.payment_session_id;
+      const orderId =
+        orderData?.orderId || orderData?.order?.order_id;
 
-  if (typeof window.Cashfree === "undefined") {
-    throw new Error("Cashfree SDK not loaded");
-  }
+      if (!paymentSessionId || !orderId) {
+        showToast("Invalid response from payment server.", "error");
+        return;
+      }
 
-  const cashfree = new window.Cashfree({ mode: "production" }); // use "production" in prod
+      localStorage.setItem("cashfreeOrderId", orderId);
+      localStorage.setItem(
+        "pendingPayment",
+        JSON.stringify({
+          deviceId,
+          amountPaid: payableNum,
+          amountSelected: originalSelectedAmount,
+          discountApplied: originalSelectedAmount - payableNum,
+          chargingOption: selectedOption,
+          energySelected: selectedOption === "energy" ? sliderValue : estimatedEnergy,
+          couponCode: appliedCouponObj?.code || null,
+          paymentGateway: "cashfree",
+        })
+      );
+      localStorage.setItem("deviceId", deviceId);
 
-  cashfree.checkout({
-    paymentSessionId,
-    returnUrl: `${window.location.origin}/payment-success?order_id={order_id}`,
-     redirectTarget: "_self",
-  });
-} catch (err) {
-  console.error("Payment error:", err);
-  const msg = err?.message || "Payment failed. Please try again.";
-  setPaymentError(msg);
-  showToast(msg, "error");
-}
+      if (typeof window.Cashfree === "undefined") {
+        throw new Error("Cashfree SDK not loaded");
+      }
 
+      const cashfree = new window.Cashfree({ mode: "production" });
+      setShowPaymentSheet(false);
+      cashfree.checkout({
+        paymentSessionId,
+        returnUrl: `${window.location.origin}/payment-success?order_id={order_id}`,
+        redirectTarget: "_self",
+      });
+    } catch (err) {
+      const msg = err?.message || "Payment failed. Please try again.";
+      setPaymentError(msg);
+      showToast(msg, "error");
+    }
   };
 
   /* -------------------------
@@ -1177,6 +1227,164 @@ sx={{
     </Box>
   </Box>
 )}
+
+{/* ── Payment Method Sheet ── */}
+{showPaymentSheet && (
+  <Box
+    sx={{
+      position: "fixed",
+      inset: 0,
+      zIndex: 9000,
+      background: "rgba(0,0,0,0.78)",
+      display: "flex",
+      alignItems: "flex-end",
+      justifyContent: "center",
+    }}
+  >
+    <Box
+      sx={{
+        width: "100%",
+        maxWidth: 480,
+        borderRadius: "24px 24px 0 0",
+        background: "linear-gradient(180deg,#121b22 0%,#0f161d 100%)",
+        border: "1px solid rgba(4,191,191,0.15)",
+        p: 3,
+        pb: 5,
+      }}
+    >
+      {/* Header */}
+      <Typography
+        sx={{
+          color: "#ffffff",
+          fontWeight: 700,
+          fontSize: "1.05rem",
+          mb: 0.5,
+          textAlign: "center",
+        }}
+      >
+        Select Payment Method
+      </Typography>
+      <Typography
+        sx={{ color: "#7de0dd", fontSize: "0.78rem", textAlign: "center", mb: 2.5 }}
+      >
+        Paying ₹{(couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost).toFixed(2)}
+      </Typography>
+
+      {/* ── Wallet Option ── */}
+      <Box
+        onClick={!walletPayLoading ? handlePayWithWallet : undefined}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          p: 2,
+          borderRadius: "16px",
+          background:
+            walletBalance >= (couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost)
+              ? "rgba(4,191,191,0.08)"
+              : "rgba(255,100,100,0.06)",
+          border:
+            walletBalance >= (couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost)
+              ? "1px solid rgba(4,191,191,0.25)"
+              : "1px solid rgba(255,100,100,0.22)",
+          cursor: walletPayLoading ? "not-allowed" : "pointer",
+          mb: 1.5,
+          transition: "opacity 0.2s",
+          "&:active": { opacity: 0.75 },
+        }}
+      >
+        <Box>
+          <Typography sx={{ color: "#ffffff", fontWeight: 600, fontSize: "0.95rem" }}>
+             Wallet
+          </Typography>
+          {walletBalance < (couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost) ? (
+            <Typography sx={{ color: "#f77", fontSize: "0.78rem", mt: 0.3 }}>
+              Low balance — tap to Top Up ₹
+              {(
+                (couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost) -
+                walletBalance
+              ).toFixed(2)}{" "}
+
+            </Typography>
+          ) : (
+            <Typography sx={{ color: "#7de0dd", fontSize: "0.78rem", mt: 0.3 }}>
+              Instant • No redirect
+            </Typography>
+          )}
+        </Box>
+        <Box sx={{ textAlign: "right" }}>
+          <Typography
+            sx={{
+              fontWeight: 700,
+              fontSize: "1rem",
+              color:
+                walletBalance >= (couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost)
+                  ? "#04BFBF"
+                  : "#f77",
+            }}
+          >
+            ₹{walletBalance.toFixed(2)}
+          </Typography>
+          <Typography sx={{ color: "#aaa", fontSize: "0.7rem" }}>Available</Typography>
+        </Box>
+      </Box>
+
+      {/* ── UPI / Card Option ── */}
+      <Box
+        onClick={!walletPayLoading ? handlePayWithCashfree : undefined}
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          p: 2,
+          borderRadius: "16px",
+          background: "rgba(242,160,7,0.07)",
+          border: "1px solid rgba(242,160,7,0.22)",
+          cursor: walletPayLoading ? "not-allowed" : "pointer",
+          mb: 2.5,
+          "&:active": { opacity: 0.75 },
+        }}
+      >
+        <Box>
+          <Typography sx={{ color: "#ffffff", fontWeight: 600, fontSize: "0.95rem" }}>
+            UPI / Debit / Credit Card
+          </Typography>
+          <Typography sx={{ color: "#aaa", fontSize: "0.78rem", mt: 0.3 }}>
+            Redirects to Payment Gateway
+          </Typography>
+        </Box>
+        <Typography sx={{ color: "#F2A007", fontWeight: 700, fontSize: "0.88rem" }}>
+          Pay →
+        </Typography>
+      </Box>
+
+      {/* ── Cancel ── */}
+      <Box sx={{ display: "flex", justifyContent: "center" }}>
+        <Button
+          onClick={() => !walletPayLoading && setShowPaymentSheet(false)}
+          sx={{
+            color: "#7de0dd",
+            textTransform: "none",
+            fontSize: "0.85rem",
+            fontWeight: 500,
+          }}
+        >
+          Cancel
+        </Button>
+      </Box>
+
+      {walletPayLoading && (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 1.5 }}>
+          <CircularProgress size={22} sx={{ color: "#04BFBF" }} />
+          <Typography sx={{ color: "#7de0dd", ml: 1.5, fontSize: "0.85rem", alignSelf: "center" }}>
+            Processing wallet payment…
+          </Typography>
+        </Box>
+      )}
+    </Box>
+  </Box>
+)}
+
       <FooterNav />
 </Box>
 </>

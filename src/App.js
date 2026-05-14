@@ -23,6 +23,8 @@ import SessionStart from "./components/SessionStart";
 import LiveSession from "./components/LiveSession";
 import PaymentSuccess from "./components/PaymentSuccess";
 import TransactionHistory from "./components/TransactionHistory";
+import WalletDashboard from "./components/WalletDashboard";
+import WalletTopupSuccess from "./components/WalletTopupSuccess";
 
 import AdminAnalytics from "./features/admin/AdminAnalytics";
 import AdminDashboard from "./features/admin/AdminDashboard";
@@ -88,14 +90,15 @@ const AppContent = () => {
       !["/", "/home", "/welcome", "/login", "/signup"].includes(target);
 
     // 🔐 Allow Cashfree redirect to bypass splash logic
-    const isPaymentSuccess = target.startsWith("/payment-success");
+const isPaymentSuccess = target.startsWith("/payment-success");
+const isWalletReturn   = target.startsWith("/wallet/topup-success");
 
-    if (isPaymentSuccess) {
-      console.log("Payment success deep link ->", target);
-      navigate(target, { replace: true });
-      firstLoadRef.current = false;
-      return;
-    }
+if (isPaymentSuccess || isWalletReturn) {
+  console.log("Payment/wallet return deep link ->", target);
+  navigate(target, { replace: true });
+  firstLoadRef.current = false;
+  return;
+}
 
 
       if (deepLink) {
@@ -257,6 +260,8 @@ useEffect(() => {
         />
         <Route path="/devices/create" element={<DeviceCreate />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
+        <Route path="/wallet" element={<PrivateRoute><WalletDashboard /></PrivateRoute>} />
+        <Route path="/wallet/topup-success" element={<PrivateRoute><WalletTopupSuccess /></PrivateRoute>} />
         <Route path="/onboard-device" element={<DeviceOnboarding />} />
 
         {/* Catch-all */}

@@ -61,7 +61,8 @@ const startChargingSession = async ({ sessionId, deviceId, orderId }) => {
       body: JSON.stringify({
         sessionId,
         deviceId,
-        transactionId: pending.paymentGateway === "free" ? undefined : orderId,
+                transactionId: (pending.paymentGateway === "free") ? undefined : orderId,
+        paymentGateway: pending.paymentGateway,   // ← add this line
         startTime: new Date().toISOString(),
         startDate: new Date().toISOString().split("T")[0],
         energySelected: pending.energySelected,
@@ -144,7 +145,10 @@ pendingRef.current = pending;
         /* ------------------------------------------------
          * VERIFY PAYMENT (SKIP FOR FREE)
          * ------------------------------------------------ */
-        if (paymentGateway !== "free") {
+        if (paymentGateway === "wallet") {
+          // Wallet payments are already debited atomically on backend — no verify needed
+          console.log("👛 Wallet flow → skipping external verification");
+        } else if (paymentGateway !== "free") {
           console.log("💰 Paid flow → verifying payment");
 
           const verifyResp = await fetch(

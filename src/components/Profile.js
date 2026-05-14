@@ -13,7 +13,7 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import FooterNav from "../components/FooterNav";
-
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -32,6 +32,8 @@ const Profile = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [operatorOpen, setOperatorOpen] = useState(false);
+
+  const [walletBalance, setWalletBalance] = useState(null);
 
   const [updatedUserData, setUpdatedUserData] = useState({
     name: userData?.name || "",
@@ -73,6 +75,18 @@ const Profile = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [menuOpen]);
+
+  // Inside Profile.js useEffect or as a new one:
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  if (!token) return;
+  fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/wallet/balance`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
+    .then(r => r.json())
+    .then(d => { if (typeof d.balance === "number") setWalletBalance(d.balance); })
+    .catch(() => {});
+}, []);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -640,6 +654,34 @@ const Profile = () => {
                 />
               </Box>
             </Box>
+
+{/* ── Wallet Balance Widget ── */}
+<Box
+  onClick={() => navigate("/wallet")}
+  sx={{
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    mx: 2, mt: 2, p: 2,
+    borderRadius: "16px",
+    background: "linear-gradient(135deg,#0f4c52,#0b3338)",
+    border: "1px solid rgba(4,191,191,0.2)",
+    cursor: "pointer",
+    "&:active": { opacity: 0.8 },
+  }}
+>
+  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+    <AccountBalanceWalletIcon sx={{ color: "#04BFBF", fontSize: 22 }} />
+    <Box>
+      <Typography sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>Sparx Wallet</Typography>
+      <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: "1.1rem" }}>
+        ₹{walletBalance !== null ? Number(walletBalance).toFixed(2) : "—"}
+      </Typography>
+    </Box>
+  </Box>
+  <Typography sx={{ color: "#04BFBF", fontSize: "0.82rem", fontWeight: 600 }}>
+    View →
+  </Typography>
+</Box>
+
 
             {/* Email */}
             <Box sx={{ mb: 1.5 }}>
