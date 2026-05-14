@@ -23,7 +23,6 @@ import SessionStart from "./components/SessionStart";
 import LiveSession from "./components/LiveSession";
 import PaymentSuccess from "./components/PaymentSuccess";
 import TransactionHistory from "./components/TransactionHistory";
-import WalletDashboard from "./components/WalletDashboard";
 import WalletTopupSuccess from "./components/WalletTopupSuccess";
 import WalletTopup from "./components/WalletTopup";
 
@@ -261,7 +260,6 @@ useEffect(() => {
         />
         <Route path="/devices/create" element={<DeviceCreate />} />
         <Route path="/payment-success" element={<PaymentSuccess />} />
-        <Route path="/wallet" element={<PrivateRoute><WalletDashboard /></PrivateRoute>} />
         <Route path="/wallet/topup-success" element={<PrivateRoute><WalletTopupSuccess /></PrivateRoute>} />
         <Route path="/wallet/topup" element={<PrivateRoute><WalletTopup /></PrivateRoute>} />
         <Route path="/onboard-device" element={<DeviceOnboarding />} />

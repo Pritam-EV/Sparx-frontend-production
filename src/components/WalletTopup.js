@@ -67,7 +67,7 @@ export default function WalletTopup() {
     if (!token) { showToast("Please login to continue"); return; }
     setLoading(true);
     try {
-      const res  = await fetch(`${BASE}/api/wallet/topup`, {
+      const res  = await fetch(`${BASE}/api/wallet/topup/order`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ amount: numAmt }),
