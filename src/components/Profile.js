@@ -657,7 +657,7 @@ useEffect(() => {
 
 {/* ── Wallet Balance Widget ── */}
 <Box
-  onClick={() => navigate("/wallet")}
+ onClick={() => navigate("/transactions")}
   sx={{
     display: "flex", alignItems: "center", justifyContent: "space-between",
     mx: 2, mt: 2, p: 2,
