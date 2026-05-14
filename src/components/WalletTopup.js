@@ -1,80 +1,85 @@
-// src/components/WalletTopup.js
 import React, { useState, useEffect, useRef } from "react";
-import { Box, Typography, Button, CircularProgress } from "@mui/material";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
 import { useNavigate, useLocation } from "react-router-dom";
+import FooterNav from "../components/FooterNav";
 
 const BASE = process.env.REACT_APP_Backend_API_Base_URL;
 const QUICK_AMOUNTS = [100, 200, 500, 1000];
 
 export default function WalletTopup() {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const token = localStorage.getItem("token");
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const inputRef  = useRef(null);
+  const toastRef  = useRef(null);
 
-  // Read hint shortfall from query param e.g. /wallet/topup?need=120
-  const params = new URLSearchParams(location.search);
-  const shortfallHint = Number(params.get("need") || 0);
+  const params       = new URLSearchParams(location.search);
+  const shortfall    = Number(params.get("need") || 0);
 
-  const [balance, setBalance] = useState(null);
-  const [balLoading, setBalLoading] = useState(true);
-  const [selectedAmt, setSelectedAmt] = useState(
-    shortfallHint > 0
-      ? QUICK_AMOUNTS.find((q) => q >= shortfallHint) || 500
-      : 200
+  const [balance,   setBalance]   = useState(null);
+  const [amount,    setAmount]    = useState(
+    shortfall > 0
+      ? String(QUICK_AMOUNTS.find(q => q >= shortfall) || 500)
+      : "200"
   );
-  const [customAmt, setCustomAmt] = useState("");
-  const [isCustom, setIsCustom] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [toast, setToast] = useState({ open: false, message: "", type: "error" });
-  const toastRef = useRef(null);
+  const [editing,   setEditing]   = useState(false);
+  const [loading,   setLoading]   = useState(false);
+  const [balLoading,setBalLoading]= useState(true);
+  const [toast,     setToast]     = useState({ open: false, msg: "", type: "error" });
 
-  const showToast = (message, type = "error") => {
+  const numAmt   = Number(amount) || 0;
+  const isValid  = numAmt >= 10;
+  const afterBal = balance !== null && isValid ? (balance + numAmt).toFixed(2) : null;
+
+  const showToast = (msg, type = "error") => {
     if (toastRef.current) clearTimeout(toastRef.current);
-    setToast({ open: true, message, type });
-    toastRef.current = setTimeout(() => setToast((p) => ({ ...p, open: false })), 2800);
+    setToast({ open: true, msg, type });
+    toastRef.current = setTimeout(() => setToast(p => ({ ...p, open: false })), 2800);
   };
 
-  // Fetch current balance
+  // Fetch wallet balance
   useEffect(() => {
-    if (!token) return;
+    const token = localStorage.getItem("token");
+    if (!token) { setBalLoading(false); return; }
     fetch(`${BASE}/api/wallet/balance`, {
       headers: { Authorization: `Bearer ${token}` },
     })
-      .then((r) => r.json())
-      .then((d) => {
-        if (typeof d.balance === "number") setBalance(d.balance);
-      })
+      .then(r => r.json())
+      .then(d => { if (typeof d.balance === "number") setBalance(d.balance); })
       .catch(() => {})
       .finally(() => setBalLoading(false));
-  }, [token]);
+  }, []);
 
-  const payableAmt = isCustom ? Number(customAmt) || 0 : selectedAmt;
-  const isValid = payableAmt >= 10;
+  // Auto-focus input when editing
+  useEffect(() => {
+    if (editing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [editing]);
+
+  const handleQuickSelect = (q) => {
+    setAmount(String(q));
+    setEditing(false);
+  };
 
   const handleTopup = async () => {
-    if (!isValid) { setError("Minimum top-up is ₹10"); return; }
-    setError("");
+    if (!isValid) { showToast("Minimum top-up is ₹10"); return; }
+    const token = localStorage.getItem("token");
+    if (!token) { showToast("Please login to continue"); return; }
     setLoading(true);
     try {
-      const res = await fetch(`${BASE}/api/wallet/topup`, {
+      const res  = await fetch(`${BASE}/api/wallet/topup`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ amount: payableAmt }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ amount: numAmt }),
       });
       const data = await res.json();
       if (!res.ok || !data.paymentSessionId) {
-        showToast(data.message || "Failed to initiate top-up. Try again.", "error");
+        showToast(data.message || "Failed to initiate top-up. Try again.");
         setLoading(false);
         return;
       }
       if (typeof window.Cashfree === "undefined") {
-        showToast("Payment SDK not loaded. Please refresh.", "error");
+        showToast("Payment SDK not loaded. Please refresh.");
         setLoading(false);
         return;
       }
@@ -85,310 +90,332 @@ export default function WalletTopup() {
         redirectTarget: "_self",
       });
     } catch (e) {
-      showToast(e.message || "Top-up failed. Try again.", "error");
+      showToast(e.message || "Top-up failed. Try again.");
       setLoading(false);
     }
   };
 
-  const afterTopup = balance !== null ? (balance + payableAmt).toFixed(2) : null;
-
   return (
     <>
       <style>{`
-        @keyframes slideUpFade {
-          from { opacity:0; transform:translate(-50%,20px); }
+        @keyframes slideUp {
+          from { opacity:0; transform:translate(-50%,16px); }
           to   { opacity:1; transform:translate(-50%,0); }
         }
-        @keyframes pulseGlow {
-          0%,100% { box-shadow: 0 0 0 0 rgba(4,191,191,0); }
-          50%      { box-shadow: 0 0 0 8px rgba(4,191,191,0.12); }
-        }
+        @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        .wt-quick:active  { transform:scale(0.93); }
+        .wt-pay:active    { transform:scale(0.983); }
+        .wt-amount:active { opacity:0.8; }
         input[type=number]::-webkit-inner-spin-button,
-        input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; margin:0; }
-        input[type=number] { -moz-appearance: textfield; }
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance:none; }
+        input[type=number] { -moz-appearance:textfield; }
       `}</style>
 
-      <Box sx={{
-        minHeight: "100dvh",
-        background: "radial-gradient(circle at top, rgba(4,191,191,0.08), transparent 40%), linear-gradient(145deg,#0b0e13,#111a21)",
-        color: "#e1f5f5",
+      {/* ── TOP BAR ── */}
+      <div className="top-bar">
+        <img src="/logo.png" alt="VIZ Logo" className="top-bar-logo" />
+      </div>
+
+      <div style={{
+        minHeight: "100vh",
+        background: "#f4f6f8",
+        paddingTop: 56,
+        paddingBottom: 90,
+        fontFamily: "'Segoe UI', system-ui, sans-serif",
         display: "flex",
         flexDirection: "column",
-        pb: "40px",
       }}>
 
-        {/* ── HEADER ── */}
-        <Box sx={{ display:"flex", alignItems:"center", gap:1.5, px:2, pt:5.5, pb:2 }}>
-          <Box
+        {/* ── PAGE HEADER ── */}
+        <div style={{ display:"flex", alignItems:"center", gap:10, padding:"18px 16px 0" }}>
+          <button
             onClick={() => navigate(-1)}
-            sx={{
-              width:38, height:38, borderRadius:"50%",
-              background:"rgba(4,191,191,0.10)", border:"1px solid rgba(4,191,191,0.20)",
+            style={{
+              width:36, height:36, borderRadius:"50%", flexShrink:0,
+              background:"rgba(1,31,38,0.06)", border:"1.5px solid rgba(1,31,38,0.10)",
               display:"flex", alignItems:"center", justifyContent:"center",
-              cursor:"pointer", color:"#04BFBF", transition:"all 0.18s",
-              "&:active":{ background:"rgba(4,191,191,0.22)" },
+              cursor:"pointer", color:"#011F26", padding:0,
+              transition:"background 0.15s",
+            }}
+            aria-label="Back"
+          >
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M19 12H5M12 5l-7 7 7 7"/>
+            </svg>
+          </button>
+          <div>
+            <h2 style={{ margin:0, fontSize:20, fontWeight:800, color:"#011F26", letterSpacing:"-0.3px" }}>
+              Add Money
+            </h2>
+            <p style={{ margin:0, fontSize:11, color:"#7a9090" }}>Top up your VIZ Wallet</p>
+          </div>
+
+          {/* Live balance badge */}
+          {!balLoading && balance !== null && (
+            <div style={{
+              marginLeft:"auto", display:"flex", alignItems:"center", gap:5,
+              padding:"6px 12px", borderRadius:999,
+              background:"rgba(4,191,191,0.09)", border:"1.5px solid rgba(4,191,191,0.22)",
+              flexShrink:0,
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#04BFBF" strokeWidth="2">
+                <rect x="2" y="7" width="20" height="14" rx="3"/>
+                <path d="M16 14a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" fill="#04BFBF" stroke="none"/>
+              </svg>
+              <span style={{ fontSize:12, fontWeight:800, color:"#04BFBF" }}>
+                ₹{Number(balance).toFixed(2)}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* ── SHORTFALL BANNER ── */}
+        {shortfall > 0 && (
+          <div style={{
+            margin:"14px 16px 0",
+            background:"rgba(242,160,7,0.08)",
+            border:"1px solid rgba(242,160,7,0.22)",
+            borderRadius:14, padding:"12px 14px",
+            display:"flex", alignItems:"center", gap:12,
+          }}>
+            <div style={{
+              width:34, height:34, borderRadius:"50%", flexShrink:0,
+              background:"rgba(242,160,7,0.14)",
+              display:"flex", alignItems:"center", justifyContent:"center", fontSize:16,
+            }}>⚡</div>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:"#cc8800" }}>Low balance for charging</div>
+              <div style={{ fontSize:11, color:"#9a7a00", marginTop:2 }}>
+                Need ₹{shortfall.toFixed(2)} more to start your session.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── AMOUNT DISPLAY (tap to edit) ── */}
+        <div style={{
+          margin:"22px 16px 0",
+          background:"#fff",
+          borderRadius:20,
+          border: editing
+            ? "2px solid #04BFBF"
+            : "1.5px solid rgba(4,191,191,0.18)",
+          boxShadow: editing
+            ? "0 0 0 4px rgba(4,191,191,0.10)"
+            : "0 2px 14px rgba(0,0,0,0.06)",
+          padding:"22px 20px 18px",
+          transition:"border 0.18s, box-shadow 0.18s",
+        }}>
+          <div style={{ fontSize:11, fontWeight:600, color:"#7a9090", marginBottom:10, letterSpacing:"0.04em", textTransform:"uppercase" }}>
+            Amount to Add
+          </div>
+
+          {/* Editable amount row */}
+          <div
+            className="wt-amount"
+            onClick={() => setEditing(true)}
+            style={{
+              display:"flex", alignItems:"center", gap:4,
+              cursor:"text", marginBottom:6,
             }}
           >
-            <ArrowBackIcon sx={{ fontSize:18 }} />
-          </Box>
-          <Typography sx={{ color:"#fff", fontWeight:700, fontSize:"1.1rem", flex:1 }}>
-            Add Money
-          </Typography>
-          {/* Current balance badge */}
-          {!balLoading && balance !== null && (
-            <Box sx={{
-              px:1.6, py:0.6, borderRadius:"999px",
-              background:"rgba(4,191,191,0.10)", border:"1px solid rgba(4,191,191,0.22)",
-              display:"flex", alignItems:"center", gap:0.6,
-            }}>
-              <AccountBalanceWalletIcon sx={{ fontSize:13, color:"#04BFBF" }} />
-              <Typography sx={{ color:"#04BFBF", fontWeight:700, fontSize:"0.8rem" }}>
-                ₹{Number(balance).toFixed(2)}
-              </Typography>
-            </Box>
-          )}
-        </Box>
+            <span style={{
+              fontSize:38, fontWeight:800, color:"#04BFBF",
+              lineHeight:1, letterSpacing:"-1px", flexShrink:0,
+            }}>₹</span>
 
-        <Box sx={{ flex:1, overflowY:"auto", px:2, pt:0.5 }}>
-
-          {/* ── SHORTFALL BANNER ── */}
-          {shortfallHint > 0 && (
-            <Box sx={{
-              display:"flex", alignItems:"center", gap:1.5,
-              p:1.6, borderRadius:"14px", mb:2.5,
-              background:"rgba(255,100,100,0.07)",
-              border:"1px solid rgba(255,120,120,0.18)",
-            }}>
-              <Box sx={{
-                width:32, height:32, borderRadius:"50%",
-                background:"rgba(255,100,100,0.12)",
-                display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
-              }}>
-                <Typography sx={{ fontSize:"0.9rem" }}>⚡</Typography>
-              </Box>
-              <Box>
-                <Typography sx={{ color:"#f99", fontWeight:700, fontSize:"0.85rem" }}>
-                  Low balance for charging
-                </Typography>
-                <Typography sx={{ color:"#c99", fontSize:"0.75rem", mt:0.2 }}>
-                  Need ₹{shortfallHint.toFixed(2)} more to proceed. Add money to continue.
-                </Typography>
-              </Box>
-            </Box>
-          )}
-
-          {/* ── AMOUNT DISPLAY ── */}
-          <Box sx={{
-            textAlign:"center", mb:3, pt:1,
-          }}>
-            <Typography sx={{ color:"#7de0dd", fontSize:"0.8rem", mb:0.5 }}>
-              You're adding
-            </Typography>
-            <Typography sx={{
-              fontSize:"3.2rem", fontWeight:800, color:"#F2A007",
-              letterSpacing:"-2px", lineHeight:1,
-            }}>
-              ₹{payableAmt || "—"}
-            </Typography>
-            {afterTopup && isValid && (
-              <Typography sx={{ color:"#7de0dd", fontSize:"0.78rem", mt:0.8 }}>
-                Wallet balance after: ₹{afterTopup}
-              </Typography>
-            )}
-          </Box>
-
-          {/* ── QUICK AMOUNT PILLS ── */}
-          <Box sx={{ display:"flex", gap:1, mb:1.8, flexWrap:"wrap", justifyContent:"center" }}>
-            {QUICK_AMOUNTS.map((q) => {
-              const isActive = !isCustom && selectedAmt === q;
-              return (
-                <Box
-                  key={q}
-                  onClick={() => { setSelectedAmt(q); setIsCustom(false); setError(""); }}
-                  sx={{
-                    px:2.5, py:1, borderRadius:"999px", cursor:"pointer",
-                    border: isActive
-                      ? "1.5px solid #F2A007"
-                      : "1.5px solid rgba(255,255,255,0.10)",
-                    background: isActive
-                      ? "rgba(242,160,7,0.14)"
-                      : "rgba(255,255,255,0.04)",
-                    color: isActive ? "#F2A007" : "#ccc",
-                    fontWeight: isActive ? 700 : 500,
-                    fontSize:"0.88rem",
-                    transition:"all 0.15s",
-                    animation: isActive ? "pulseGlow 2.4s ease-in-out infinite" : "none",
-                    "&:active":{ opacity:0.75 },
-                  }}
-                >
-                  ₹{q}
-                </Box>
-              );
-            })}
-            {/* Custom pill */}
-            <Box
-              onClick={() => { setIsCustom(true); setError(""); }}
-              sx={{
-                px:2.5, py:1, borderRadius:"999px", cursor:"pointer",
-                border: isCustom
-                  ? "1.5px solid #04BFBF"
-                  : "1.5px solid rgba(255,255,255,0.10)",
-                background: isCustom
-                  ? "rgba(4,191,191,0.12)"
-                  : "rgba(255,255,255,0.04)",
-                color: isCustom ? "#04BFBF" : "#ccc",
-                fontWeight: isCustom ? 700 : 500,
-                fontSize:"0.88rem",
-                transition:"all 0.15s",
-                "&:active":{ opacity:0.75 },
-              }}
-            >
-              Custom
-            </Box>
-          </Box>
-
-          {/* ── CUSTOM INPUT ── */}
-          {isCustom && (
-            <Box sx={{
-              display:"flex", alignItems:"center",
-              background:"rgba(255,255,255,0.05)",
-              border: error
-                ? "1.5px solid rgba(255,100,100,0.5)"
-                : "1.5px solid rgba(4,191,191,0.25)",
-              borderRadius:"16px",
-              px:2, py:0.6, mb:1, mx:"auto",
-              maxWidth:340,
-            }}>
-              <Typography sx={{ color:"#7de0dd", fontSize:"1.2rem", mr:1, fontWeight:700 }}>₹</Typography>
+            {editing ? (
               <input
-                autoFocus
+                ref={inputRef}
                 type="number"
-                value={customAmt}
-                onChange={(e) => { setCustomAmt(e.target.value); setError(""); }}
-                placeholder="Enter amount (min ₹10)"
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                onBlur={() => { if (!amount || Number(amount) <= 0) setAmount("200"); setEditing(false); }}
+                onKeyDown={e => { if (e.key === "Enter") { setEditing(false); inputRef.current?.blur(); } }}
                 style={{
-                  flex:1, background:"transparent", border:"none", outline:"none",
-                  color:"#fff", fontSize:"1.1rem", padding:"10px 0",
+                  fontSize:38, fontWeight:800, color:"#011F26",
+                  background:"transparent", border:"none", outline:"none",
+                  width:"100%", padding:0, letterSpacing:"-1px", lineHeight:1,
                   fontFamily:"inherit",
                 }}
               />
-              {customAmt && (
-                <Box
-                  onClick={() => { setCustomAmt(""); setError(""); }}
-                  sx={{ color:"#555", cursor:"pointer", fontSize:"1rem", ml:1, "&:active":{ opacity:0.6 } }}
-                >✕</Box>
-              )}
-            </Box>
-          )}
-          {error && (
-            <Typography sx={{ color:"#f77", fontSize:"0.76rem", textAlign:"center", mb:1 }}>
-              {error}
-            </Typography>
-          )}
-
-          {/* ── INFO STRIP ── */}
-          <Box sx={{
-            display:"flex", gap:1.5, justifyContent:"center",
-            mb:3, mt:0.5, flexWrap:"wrap",
-          }}>
-            {["Instant credit", "No expiry", "Use for charging"].map((t) => (
-              <Box key={t} sx={{
-                display:"flex", alignItems:"center", gap:0.5,
-                px:1.4, py:0.55, borderRadius:"999px",
-                background:"rgba(4,191,191,0.06)",
-                border:"1px solid rgba(4,191,191,0.14)",
+            ) : (
+              <span style={{
+                fontSize:38, fontWeight:800, color:"#011F26",
+                lineHeight:1, letterSpacing:"-1px",
+                borderBottom:"2px dashed rgba(4,191,191,0.35)",
+                minWidth:80,
               }}>
-                <Box sx={{ width:5, height:5, borderRadius:"50%", background:"#04BFBF" }} />
-                <Typography sx={{ color:"#7de0dd", fontSize:"0.73rem", fontWeight:500 }}>{t}</Typography>
-              </Box>
-            ))}
-          </Box>
+                {numAmt > 0 ? numAmt.toLocaleString("en-IN") : "0"}
+              </span>
+            )}
 
-          {/* ── PAY BUTTON ── */}
-          <Box sx={{ maxWidth:420, mx:"auto" }}>
-            <Button
-              fullWidth
-              onClick={handleTopup}
-              disabled={loading || !isValid}
-              sx={{
-                py:1.6, borderRadius:"16px",
-                background: loading || !isValid
-                  ? "rgba(255,255,255,0.08)"
-                  : "linear-gradient(135deg,#F2A007,#e08c00)",
-                color: loading || !isValid ? "#555" : "#fff",
-                fontWeight:700, fontSize:"1rem",
-                textTransform:"none",
-                boxShadow: loading || !isValid ? "none" : "0 0 20px rgba(242,160,7,0.30)",
-                transition:"all 0.2s",
-                "&:hover":{
-                  background: loading || !isValid
-                    ? "rgba(255,255,255,0.08)"
-                    : "linear-gradient(135deg,#e08c00,#cc7a00)",
-                },
-                "&:active":{ transform:"scale(0.985)" },
-              }}
-            >
-              {loading ? (
-                <Box sx={{ display:"flex", alignItems:"center", gap:1.5 }}>
-                  <CircularProgress size={18} sx={{ color:"#fff" }} />
-                  <span>Redirecting to payment…</span>
-                </Box>
-              ) : (
-                `Pay ₹${payableAmt || "—"} via UPI / Card`
-              )}
-            </Button>
+            {/* Edit pencil */}
+            {!editing && (
+              <div style={{
+                marginLeft:6, width:26, height:26, borderRadius:8,
+                background:"rgba(4,191,191,0.10)", border:"1px solid rgba(4,191,191,0.22)",
+                display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0,
+              }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#04BFBF" strokeWidth="2.5">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </div>
+            )}
+          </div>
 
-            <Button
-              fullWidth
-              onClick={() => navigate(-1)}
-              sx={{
-                mt:1.2, color:"#7de0dd", textTransform:"none",
-                fontSize:"0.85rem", fontWeight:500,
-              }}
-            >
-              Cancel
-            </Button>
-          </Box>
+          {/* Validation */}
+          {!isValid && numAmt > 0 && (
+            <div style={{ fontSize:11, color:"#d93025", fontWeight:600, marginBottom:4 }}>
+              Minimum top-up amount is ₹10
+            </div>
+          )}
 
-          {/* ── SECURE BADGE ── */}
-          <Box sx={{ display:"flex", justifyContent:"center", mt:2.5, gap:0.8, alignItems:"center" }}>
-            <Typography sx={{ fontSize:"0.7rem", color:"#444" }}>🔒</Typography>
-            <Typography sx={{ fontSize:"0.72rem", color:"#444" }}>
-              Secured by Cashfree Payments
-            </Typography>
-          </Box>
+          {/* After-topup preview */}
+          {afterBal && (
+            <div style={{
+              fontSize:11, color:"#7a9090", marginTop:2,
+              display:"flex", alignItems:"center", gap:4,
+            }}>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#04BFBF" strokeWidth="2.5">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+              Wallet balance after: <strong style={{ color:"#04BFBF" }}>₹{afterBal}</strong>
+            </div>
+          )}
 
-        </Box>
-      </Box>
+
+        </div>
+
+        {/* ── QUICK AMOUNT PILLS ── */}
+        <div style={{ padding:"16px 16px 0" }}>
+          <div style={{ fontSize:11, fontWeight:600, color:"#7a9090", marginBottom:10, letterSpacing:"0.04em", textTransform:"uppercase" }}>
+            Quick Select
+          </div>
+          <div style={{ display:"flex", gap:10 }}>
+            {QUICK_AMOUNTS.map(q => {
+              const active = !editing && numAmt === q;
+              return (
+                <button
+                  key={q}
+                  className="wt-quick"
+                  onClick={() => handleQuickSelect(q)}
+                  style={{
+                    flex:1, padding:"12px 0", borderRadius:14, cursor:"pointer",
+                    border: active
+                      ? "2px solid #04BFBF"
+                      : "1.5px solid rgba(0,0,0,0.09)",
+                    background: active ? "rgba(4,191,191,0.10)" : "#fff",
+                    color: active ? "#04BFBF" : "#55777a",
+                    fontWeight:800, fontSize:14,
+                    boxShadow: active ? "0 4px 14px rgba(4,191,191,0.18)" : "0 1px 4px rgba(0,0,0,0.05)",
+                    transition:"all 0.15s",
+                  }}
+                >
+                  ₹{q}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ── INFO STRIP ── */}
+        <div style={{ display:"flex", gap:8, padding:"14px 16px 0", flexWrap:"wrap" }}>
+          {[
+            { icon:"⚡", text:"Instant credit" },
+            { icon:"♾️",  text:"No expiry"      },
+            { icon:"🔒", text:"Secure payment"  },
+          ].map(item => (
+            <div key={item.text} style={{
+              display:"flex", alignItems:"center", gap:6,
+              padding:"7px 12px", borderRadius:999,
+              background:"#fff", border:"1px solid rgba(4,191,191,0.18)",
+              boxShadow:"0 1px 4px rgba(0,0,0,0.04)",
+            }}>
+              <span style={{ fontSize:12 }}>{item.icon}</span>
+              <span style={{ fontSize:11, fontWeight:600, color:"#55777a" }}>{item.text}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* ── PAY BUTTON ── */}
+        <div style={{ padding:"20px 16px 0", marginTop:"auto" }}>
+          <button
+            className="wt-pay"
+            onClick={handleTopup}
+            disabled={loading || !isValid}
+            style={{
+              width:"100%", padding:"16px", borderRadius:16,
+              background: loading || !isValid
+                ? "rgba(0,0,0,0.08)"
+                : "#04BFBF",
+              color: loading || !isValid ? "#999" : "#011F26",
+              fontWeight:800, fontSize:16,
+              border:"none", cursor: loading || !isValid ? "not-allowed" : "pointer",
+              boxShadow: loading || !isValid ? "none" : "0 6px 20px rgba(4,191,191,0.38)",
+              display:"flex", alignItems:"center", justifyContent:"center", gap:10,
+              transition:"all 0.2s",
+              letterSpacing:"-0.2px",
+            }}
+          >
+            {loading ? (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+                  style={{ animation:"spin 0.8s linear infinite" }}>
+                  <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+                </svg>
+                Redirecting to payment…
+              </>
+            ) : (
+              <>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <rect x="2" y="7" width="20" height="14" rx="3"/>
+                  <path d="M16 14a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" fill="#011F26" stroke="none"/>
+                  <path d="M2 11h20"/>
+                </svg>
+                Pay ₹{isValid ? numAmt.toLocaleString("en-IN") : "—"} via UPI / Card
+              </>
+            )}
+          </button>
+
+          <div style={{ textAlign:"center", marginTop:10 }}>
+            <span style={{ fontSize:11, color:"#b0c0c0" }}>🔒 Secured by Cashfree Payments</span>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── FOOTER NAV ── */}
+      <FooterNav />
 
       {/* ── TOAST ── */}
       {toast.open && (
-        <Box sx={{
-          position:"fixed", bottom:100, left:"50%",
+        <div style={{
+          position:"fixed", bottom:90, left:"50%",
           transform:"translateX(-50%)",
           zIndex:9999,
-          animation:"slideUpFade 0.3s ease",
-          width:"calc(100% - 32px)", maxWidth:420,
+          animation:"slideUp 0.28s ease",
+          width:"calc(100% - 32px)", maxWidth:400,
         }}>
-          <Box sx={{
-            px:2.2, py:1.6, borderRadius:"18px",
-            backdropFilter:"blur(18px)", WebkitBackdropFilter:"blur(18px)",
+          <div style={{
+            padding:"13px 18px", borderRadius:16,
             background: toast.type === "success"
-              ? "rgba(14,184,84,0.88)"
-              : "rgba(253,70,70,0.75)",
-            color:"#fff",
-            border: toast.type === "success"
-              ? "1px solid rgba(74,222,128,0.45)"
-              : "1px solid rgba(252,165,165,0.35)",
+              ? "rgba(10,140,80,0.95)"
+              : "rgba(217,48,37,0.92)",
+            backdropFilter:"blur(12px)",
+            color:"#fff", fontWeight:700, fontSize:13,
+            textAlign:"center",
             boxShadow: toast.type === "success"
-              ? "0 12px 30px rgba(14,184,84,.35)"
-              : "0 12px 30px rgba(239,68,68,.28)",
+              ? "0 8px 24px rgba(10,140,80,0.35)"
+              : "0 8px 24px rgba(217,48,37,0.30)",
+            border: toast.type === "success"
+              ? "1px solid rgba(74,222,128,0.30)"
+              : "1px solid rgba(252,165,165,0.25)",
           }}>
-            <Typography sx={{ color:"#fff", fontWeight:600, fontSize:"0.92rem", textAlign:"center" }}>
-              {toast.message}
-            </Typography>
-          </Box>
-        </Box>
+            {toast.msg}
+          </div>
+        </div>
       )}
     </>
   );
