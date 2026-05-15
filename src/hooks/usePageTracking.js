@@ -10,7 +10,7 @@ export const usePageTracking = () => {
     const user = JSON.parse(localStorage.getItem('user') || 'null');
     if (!user) return; // Only track logged-in users
 
-    api.post('/activity/track', {
+    api.post('/api/activity/track', {
       page: location.pathname,
       timestamp: new Date().toISOString(),
       userId: user._id || user.uid,

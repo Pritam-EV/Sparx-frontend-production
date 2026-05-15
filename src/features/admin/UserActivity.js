@@ -22,8 +22,8 @@ export default function UserActivity() {
 
   useEffect(() => {
     Promise.all([
-      apiFetch('/api/activity/summary'),
-      apiFetch('/api/activity/dropoffs'),
+apiFetch('/api/activity/summary')
+apiFetch('/api/activity/dropoffs')
     ]).then(([s, d]) => {
       setSummary(Array.isArray(s) ? s : []);
       setDropoffs(Array.isArray(d) ? d : []);

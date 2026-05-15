@@ -25,7 +25,7 @@ import PaymentSuccess from "./components/PaymentSuccess";
 import TransactionHistory from "./components/TransactionHistory";
 import WalletTopupSuccess from "./components/WalletTopupSuccess";
 import WalletTopup from "./components/WalletTopup";
-import  usePageTracking  from './hooks/usePageTracking';
+import { usePageTracking } from './hooks/usePageTracking';
 
 import AdminAnalytics from "./features/admin/AdminAnalytics";
 import AdminDashboard from "./features/admin/AdminDashboard";
@@ -146,10 +146,8 @@ useEffect(() => {
   return () => clearInterval(intervalId);
 }, []); // empty deps = runs once forever
   
-  if (showSplash) return <SplashScreen />;
-
-  usePageTracking();
-
+usePageTracking();  // ← always called, every render
+if (showSplash) return <SplashScreen />;
   // Show main app
   return (
     <div className="app-container">
