@@ -71,7 +71,6 @@ const AdminSidebar = ({ isOpen, onClose }) => (
       <NavItem to="analytics" icon={<QueryStatsIcon />} label="Analytics" onClick={onClose} />
       <NavItem to="eb-management"  icon={<ElectricBoltIcon />} label="EB Management"  onClick={onClose} />
       <NavItem to="/profile" icon={<PersonIcon />} label="Profile" onClick={onClose} />
-      / After (add the user-activity line in between):
       <NavItem to="eb-management"  icon={<ElectricBoltIcon />} label="EB Management"  onClick={onClose} />
       <NavItem to="user-activity"  icon={<TrackChangesIcon />} label="User Activity"  onClick={onClose} />
       <NavItem to="/profile" icon={<PersonIcon />} label="Profile" onClick={onClose} />
