@@ -21,10 +21,10 @@ export default function UserActivity() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([
-apiFetch('/api/activity/summary')
-apiFetch('/api/activity/dropoffs')
-    ]).then(([s, d]) => {
+Promise.all([
+  apiFetch('/api/activity/summary'),  // ← comma added
+  apiFetch('/api/activity/dropoffs'),
+]).then(([s, d]) => {
       setSummary(Array.isArray(s) ? s : []);
       setDropoffs(Array.isArray(d) ? d : []);
       setLoading(false);
