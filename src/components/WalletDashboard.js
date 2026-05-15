@@ -101,7 +101,7 @@ export default function WalletDashboard() {
           <ArrowBackIcon />
         </IconButton>
         <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: "1.1rem" }}>
-          Sparx Wallet
+          VIZ Wallet
         </Typography>
       </Box>
 

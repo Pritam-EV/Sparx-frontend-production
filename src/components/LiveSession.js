@@ -1457,7 +1457,7 @@ useEffect(() => {
 
       <div className="ev-screen">
         <div className="top-bar">
-          <img src="/logo.png" alt="Sparx Logo" className="top-bar-logo" />
+          <img src="/logo.png" alt="VIZ Logo" className="top-bar-logo" />
         </div>
 
         <div className="content-wrapper">

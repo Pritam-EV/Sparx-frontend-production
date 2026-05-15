@@ -134,6 +134,7 @@ const TransactionHistory = () => {
         .txn-card:active { transform: scale(0.99); }
         .add-btn { transition: all 0.18s ease; }
         .add-btn:active { transform: scale(0.93); }
+        .pill-scroll { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
 
       {/* TOP BAR */}
@@ -141,12 +142,17 @@ const TransactionHistory = () => {
         <img src="/logo.png" alt="VIZ Logo" className="top-bar-logo" />
       </div>
 
-      <div style={{
-        minHeight: "100vh", background: "#f4f6f8",
-        paddingTop: 56, paddingBottom: 90,
-        fontFamily: "'Segoe UI', system-ui, sans-serif",
-      }}>
-
+<div style={{
+  height: "100dvh",
+  background: "#f4f6f8",
+  paddingTop: 56,
+  fontFamily: "'Segoe UI', system-ui, sans-serif",
+  overflowY: "hidden",       // ← outer does NOT scroll
+  overflowX: "hidden",
+  display: "flex",           // ← NEW
+  flexDirection: "column",   // ← NEW
+}}>
+<div style={{ flexShrink: 0, background: "#f4f6f8", boxShadow: "0 2px 6px rgba(0,0,0,0.05)" }}>
         {/* PAGE HEADER */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 16px 0" }}>
           <div>
@@ -258,7 +264,6 @@ const TransactionHistory = () => {
         {/* FILTER PILLS */}
         <div className="pill-scroll" style={{
           display: "flex", gap: 8, overflowX: "auto", padding: "14px 16px 10px",
-          position: "sticky", top: 46, zIndex: 50, background: "#f4f6f8",
         }}>
           {FILTER_ORDER.map(key => {
             const cfg = CAT[key];
@@ -298,7 +303,14 @@ const TransactionHistory = () => {
             );
           })}
         </div>
+</div>
 
+<div style={{
+  flex: 1,
+  overflowY: "auto",
+  overflowX: "hidden",
+  WebkitOverflowScrolling: "touch",
+}}>
         {/* SKELETON */}
         {loading && (
           <div style={{ padding: "4px 16px", display: "flex", flexDirection: "column", gap: 10 }}>
@@ -340,11 +352,11 @@ const TransactionHistory = () => {
         )}
 
         {/* TRANSACTION CARDS */}
-        <div style={{ padding: "4px 16px 0", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ padding: "4px 16px 24px", display: "flex", flexDirection: "column", gap: 10 }}>
           {!loading && filtered.map(txn => <TxnCard key={txn._id} txn={txn} />)}
         </div>
       </div>
-
+</div>
       <FooterNav />
     </>
   );
@@ -374,7 +386,7 @@ const TxnCard = ({ txn }) => {
   const methodVal = cat === "SUCCESS"
     ? (fmtGroup(txn.paymentGroup) || txn.paymentMethod || null)
     : cat === "WALLET_DEBIT"
-      ? "Sparx Wallet"
+      ? "VIZ Wallet"
       : null;
 
   return (

@@ -255,7 +255,7 @@ useEffect(() => {
       `}</style>
 
       <div className="top-bar">
-        <img src="/logo.png" alt="Sparx Logo" className="top-bar-logo" />
+        <img src="/logo.png" alt="VIZ Logo" className="top-bar-logo" />
       </div>
 
       <Box
@@ -671,7 +671,7 @@ useEffect(() => {
   <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
     <AccountBalanceWalletIcon sx={{ color: "#04BFBF", fontSize: 22 }} />
     <Box>
-      <Typography sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>Sparx Wallet</Typography>
+      <Typography sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>VIZ Wallet</Typography>
       <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: "1.1rem" }}>
         ₹{walletBalance !== null ? Number(walletBalance).toFixed(2) : "—"}
       </Typography>
