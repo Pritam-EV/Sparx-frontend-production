@@ -4,7 +4,7 @@ import {
   Box, Typography, Card, Table, TableHead, TableBody,
   TableRow, TableCell, CircularProgress, Tabs, Tab, Chip,
   TextField, InputAdornment, Avatar, Tooltip, Collapse,
-  IconButton, Badge
+  Badge
 } from '@mui/material';
 import PeopleIcon        from '@mui/icons-material/People';
 import TrendingDownIcon  from '@mui/icons-material/TrendingDown';
@@ -135,9 +135,11 @@ Promise.all([
           </Box>} />
         <Tab icon={<TimelineIcon sx={{ fontSize:16 }} />} iconPosition="start"
           label={journey ? `Journey: ${journey.split(' ')[0]}` : 'User Journey'} />
-      </Tabs>
-      // Add to your tab list:
+
+        <Tab icon={<TimelineIcon sx={{ fontSize:16 }} />} iconPosition="start"
+          label={journey ? `Journey: ${journey.split(' ')[0]}` : 'User Journey'} />
         <Tab icon={<LocationOnIcon sx={{ fontSize:16 }} />} iconPosition="start" label="Location Heatmap" />
+      </Tabs>  
 
       {/* ── TAB 0: Top Pages ─────────────────────────────────────────────────── */}
       {tab === 0 && (
@@ -380,8 +382,6 @@ Promise.all([
       )}
 
 
-
-// Tab content — charger table ranked by nearby users:
 {tab === 4 && (
   <Card sx={cardSx}>
     <Typography sx={{ color:'#04bfbf', fontWeight:600, mb:0.5 }}>
