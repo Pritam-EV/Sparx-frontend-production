@@ -8,6 +8,7 @@ import {
 } from '@mui/material';
 import PeopleIcon        from '@mui/icons-material/People';
 import TrendingDownIcon  from '@mui/icons-material/TrendingDown';
+import LocationOnIcon    from '@mui/icons-material/LocationOn';
 import BarChartIcon      from '@mui/icons-material/BarChart';
 import TimelineIcon      from '@mui/icons-material/Timeline';
 import SearchIcon        from '@mui/icons-material/Search';
@@ -57,6 +58,7 @@ export default function UserActivity() {
   const [summary,  setSummary]  = useState([]);
   const [dropoffs, setDropoffs] = useState([]);
   const [users,    setUsers]    = useState([]);
+  const [heatmap,  setHeatmap]  = useState({ chargerStats: [], pings: [] });
   const [journey,  setJourney]  = useState(null);   // selected user's journey
   const [journeyData, setJourneyData] = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -64,16 +66,18 @@ export default function UserActivity() {
   const [expanded, setExpanded] = useState(null);   // expanded day row
 
   useEffect(() => {
-    Promise.all([
-      apiFetch('/api/activity/summary'),
-      apiFetch('/api/activity/dropoffs'),
-      apiFetch('/api/activity/users'),
-    ]).then(([s, d, u]) => {
-      setSummary(Array.isArray(s) ? s : []);
-      setDropoffs(Array.isArray(d) ? d : []);
-      setUsers(Array.isArray(u) ? u : []);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+Promise.all([
+  apiFetch('/api/activity/summary'),
+  apiFetch('/api/activity/dropoffs'),
+  apiFetch('/api/activity/users'),
+  apiFetch('/api/activity/location-heatmap'),
+]).then(([s, d, u, h]) => {
+  setSummary(Array.isArray(s) ? s : []);
+  setDropoffs(Array.isArray(d) ? d : []);
+  setUsers(Array.isArray(u) ? u : []);
+  setHeatmap(h && h.chargerStats ? h : { chargerStats: [], pings: [] });
+  setLoading(false);
+}).catch(() => setLoading(false));
   }, []);
 
   const loadJourney = async (userId, userName) => {
@@ -132,6 +136,8 @@ export default function UserActivity() {
         <Tab icon={<TimelineIcon sx={{ fontSize:16 }} />} iconPosition="start"
           label={journey ? `Journey: ${journey.split(' ')[0]}` : 'User Journey'} />
       </Tabs>
+      // Add to your tab list:
+        <Tab icon={<LocationOnIcon sx={{ fontSize:16 }} />} iconPosition="start" label="Location Heatmap" />
 
       {/* ── TAB 0: Top Pages ─────────────────────────────────────────────────── */}
       {tab === 0 && (
@@ -373,8 +379,7 @@ export default function UserActivity() {
         </Card>
       )}
 
-// Add to your tab list:
-<Tab icon={<LocationOnIcon sx={{ fontSize:16 }} />} iconPosition="start" label="Location Heatmap" />
+
 
 // Tab content — charger table ranked by nearby users:
 {tab === 4 && (
