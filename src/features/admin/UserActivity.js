@@ -372,6 +372,57 @@ export default function UserActivity() {
           )}
         </Card>
       )}
+
+// Add to your tab list:
+<Tab icon={<LocationOnIcon sx={{ fontSize:16 }} />} iconPosition="start" label="Location Heatmap" />
+
+// Tab content — charger table ranked by nearby users:
+{tab === 4 && (
+  <Card sx={cardSx}>
+    <Typography sx={{ color:'#04bfbf', fontWeight:600, mb:0.5 }}>
+      Charger locations ranked by nearby user app opens (within 500m)
+    </Typography>
+    <Typography sx={{ color:'#7aa', fontSize:12, mb:2 }}>
+      High nearby users + low sessions = users are present but not charging → investigate that charger
+    </Typography>
+    <Table size="small">
+      <TableHead>
+        <TableRow>
+          <TableCell sx={headSx}>#</TableCell>
+          <TableCell sx={headSx}>Charger / Area</TableCell>
+          <TableCell sx={headSx} align="right">Nearby Users (500m)</TableCell>
+          <TableCell sx={headSx} align="center">Charger Status</TableCell>
+          <TableCell sx={headSx} align="right">Last User Nearby</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {heatmap.chargerStats?.map((c, i) => (
+          <TableRow key={c.chargerId} sx={rowHover}>
+            <TableCell sx={{ ...cellSx, color:'#7aa' }}>{i+1}</TableCell>
+            <TableCell sx={cellSx}>
+              <Typography sx={{ fontSize:13, fontWeight:600 }}>{c.location}</Typography>
+              <Typography sx={{ fontSize:11, color:'#7aa' }}>{c.area}, {c.city}</Typography>
+            </TableCell>
+            <TableCell sx={cellSx} align="right">
+              <Chip label={c.nearbyUsers} size="small"
+                sx={{ bgcolor: c.nearbyUsers > 10 ? '#22c55e22':'#04bfbf18',
+                      color:   c.nearbyUsers > 10 ? '#22c55e':'#04bfbf', fontWeight:700 }} />
+            </TableCell>
+            <TableCell sx={cellSx} align="center">
+              <Chip label={c.status} size="small"
+                sx={{ bgcolor: c.status==='available'?'#22c55e22':'#f9731622',
+                      color:   c.status==='available'?'#22c55e':'#f97316', fontSize:11 }} />
+            </TableCell>
+            <TableCell sx={{ ...cellSx, fontSize:11, opacity:0.6 }} align="right">
+              {fmtDate(c.lastUserSeen)}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </Card>
+)}
+
     </Box>
   );
 }
