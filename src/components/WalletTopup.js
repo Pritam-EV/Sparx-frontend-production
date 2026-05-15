@@ -289,6 +289,8 @@ export default function WalletTopup() {
           )}
 
 
+
+
         </div>
 
         {/* ── QUICK AMOUNT PILLS ── */}
@@ -341,6 +343,27 @@ export default function WalletTopup() {
             </div>
           ))}
         </div>
+
+
+{/* ── Wallet usage disclaimer ── */}
+<div style={{
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "0 16px",
+  marginTop: 4,
+}}>
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
+    stroke="#c0392b" strokeWidth="2.5" style={{ flexShrink: 0 }}>
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+  <span style={{ fontSize: 10.5, color: "#c0392b", fontWeight: 600, lineHeight: 1.5 }}>
+    Wallet balance can only be used for EV charging. Bank transfer not permitted.
+  </span>
+</div>
+
 
         {/* ── PAY BUTTON ── */}
         <div style={{ padding:"20px 16px 32px", marginTop:"auto" }}>
