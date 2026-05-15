@@ -10,6 +10,9 @@ import QueryStatsIcon from "@mui/icons-material/QueryStats";
 import PersonIcon from '@mui/icons-material/Person'; 
 import MonitorHeartIcon from "@mui/icons-material/MonitorHeart";
 import ElectricBoltIcon from "@mui/icons-material/ElectricBolt"; 
+// Add this line alongside the other icon imports
+import TrackChangesIcon from '@mui/icons-material/TrackChanges';
+
 
 const NavItem = ({ to, icon, label, onClick }) => (
   <NavLink
@@ -68,7 +71,11 @@ const AdminSidebar = ({ isOpen, onClose }) => (
       <NavItem to="analytics" icon={<QueryStatsIcon />} label="Analytics" onClick={onClose} />
       <NavItem to="eb-management"  icon={<ElectricBoltIcon />} label="EB Management"  onClick={onClose} />
       <NavItem to="/profile" icon={<PersonIcon />} label="Profile" onClick={onClose} />
-    </Box>
+      / After (add the user-activity line in between):
+      <NavItem to="eb-management"  icon={<ElectricBoltIcon />} label="EB Management"  onClick={onClose} />
+      <NavItem to="user-activity"  icon={<TrackChangesIcon />} label="User Activity"  onClick={onClose} />
+      <NavItem to="/profile" icon={<PersonIcon />} label="Profile" onClick={onClose} />
+     </Box>
 
     
   </Box>

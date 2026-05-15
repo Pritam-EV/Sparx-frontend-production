@@ -25,6 +25,7 @@ import PaymentSuccess from "./components/PaymentSuccess";
 import TransactionHistory from "./components/TransactionHistory";
 import WalletTopupSuccess from "./components/WalletTopupSuccess";
 import WalletTopup from "./components/WalletTopup";
+import  usePageTracking  from './hooks/usePageTracking';
 
 import AdminAnalytics from "./features/admin/AdminAnalytics";
 import AdminDashboard from "./features/admin/AdminDashboard";
@@ -35,6 +36,8 @@ import SessionsOverview from "./features/admin/SessionsOverview";
 import Analytics from "./features/admin/Analytics";
 import EBManagement  from "./features/admin/EBManagement";
 import ReceiptsOverview from "./features/admin/ReceiptsOverview.js";
+import UserActivity from './features/admin/UserActivity';
+
 import OwnerDashboard from "./features/owner/OwnerDashboard";
 import MyDevices from "./features/owner/MyDevices";
 import OwnerAnalytics from "./features/owner/OwnerAnalytics";
@@ -145,6 +148,8 @@ useEffect(() => {
   
   if (showSplash) return <SplashScreen />;
 
+  usePageTracking();
+
   // Show main app
   return (
     <div className="app-container">
@@ -178,6 +183,7 @@ useEffect(() => {
           <Route path="crud/devices" element={<DeviceList />} />
           <Route path="crud/devices/create" element={<DeviceCreate />} />
           <Route path="crud/devices/edit/:id" element={<DeviceEdit />} />
+          <Route path="user-activity" element={<UserActivity />} />
         </Route>
 
         {/* Owner routes */}
