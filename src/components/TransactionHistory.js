@@ -156,7 +156,7 @@ const TransactionHistory = () => {
         {/* PAGE HEADER */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 16px 0" }}>
           <div>
-            <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#011F26", letterSpacing: "-0.4px" }}>
+            <h2 style={{ margin: 0, textAlign: "center", fontSize: 22, fontWeight: 800, color: "#011F26", letterSpacing: "-0.4px" }}>
               Transactions
             </h2>
             <p style={{ margin: "2px 0 0", fontSize: 12, color: "#7a9090" }}>
@@ -352,7 +352,7 @@ const TransactionHistory = () => {
         )}
 
         {/* TRANSACTION CARDS */}
-        <div style={{ padding: "4px 16px 24px", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ padding: "4px 16px 90px", display: "flex", flexDirection: "column", gap: 8 }}>
           {!loading && filtered.map(txn => <TxnCard key={txn._id} txn={txn} />)}
         </div>
       </div>

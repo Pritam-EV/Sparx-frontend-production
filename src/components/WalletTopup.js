@@ -116,15 +116,18 @@ export default function WalletTopup() {
         <img src="/logo.png" alt="VIZ Logo" className="top-bar-logo" />
       </div>
 
-      <div style={{
-        minHeight: "100vh",
-        background: "#f4f6f8",
-        paddingTop: 56,
-        paddingBottom: 90,
-        fontFamily: "'Segoe UI', system-ui, sans-serif",
-        display: "flex",
-        flexDirection: "column",
-      }}>
+<div style={{
+  height: "100dvh",
+  background: "#f4f6f8",
+  paddingTop: 56,
+  paddingBottom: 0,
+  fontFamily: "'Segoe UI', system-ui, sans-serif",
+  display: "flex",
+  flexDirection: "column",
+  overflowY: "auto",
+  overflowX: "hidden",
+  WebkitOverflowScrolling: "touch",
+}}>
 
         {/* ── PAGE HEADER ── */}
         <div style={{ display:"flex", alignItems:"center", gap:10, padding:"18px 16px 0" }}>
@@ -340,7 +343,7 @@ export default function WalletTopup() {
         </div>
 
         {/* ── PAY BUTTON ── */}
-        <div style={{ padding:"20px 16px 0", marginTop:"auto" }}>
+        <div style={{ padding:"20px 16px 32px", marginTop:"auto" }}>
           <button
             className="wt-pay"
             onClick={handleTopup}
