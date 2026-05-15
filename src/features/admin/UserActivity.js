@@ -4,7 +4,7 @@ import {
   Box, Typography, Card, Table, TableHead, TableBody,
   TableRow, TableCell, CircularProgress, Tabs, Tab, Chip,
   TextField, InputAdornment, Avatar, Tooltip, Collapse,
-  Badge
+  Badge, IconButton
 } from '@mui/material';
 import PeopleIcon        from '@mui/icons-material/People';
 import TrendingDownIcon  from '@mui/icons-material/TrendingDown';
@@ -14,6 +14,7 @@ import TimelineIcon      from '@mui/icons-material/Timeline';
 import SearchIcon        from '@mui/icons-material/Search';
 import ExpandMoreIcon    from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon    from '@mui/icons-material/ExpandLess';
+import RefreshIcon       from '@mui/icons-material/Refresh';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import { apiFetch }      from '../../utils/apiFetch';
 
@@ -65,20 +66,23 @@ export default function UserActivity() {
   const [search,   setSearch]   = useState('');
   const [expanded, setExpanded] = useState(null);   // expanded day row
 
-  useEffect(() => {
-Promise.all([
-  apiFetch('/api/activity/summary'),
-  apiFetch('/api/activity/dropoffs'),
-  apiFetch('/api/activity/users'),
-  apiFetch('/api/activity/location-heatmap'),
-]).then(([s, d, u, h]) => {
-  setSummary(Array.isArray(s) ? s : []);
-  setDropoffs(Array.isArray(d) ? d : []);
-  setUsers(Array.isArray(u) ? u : []);
-  setHeatmap(h && h.chargerStats ? h : { chargerStats: [], pings: [] });
-  setLoading(false);
-}).catch(() => setLoading(false));
-  }, []);
+const fetchData = () => {
+  setLoading(true);
+  Promise.all([
+    apiFetch('/api/activity/summary'),
+    apiFetch('/api/activity/dropoffs'),
+    apiFetch('/api/activity/users'),
+    apiFetch('/api/activity/location-heatmap'),
+  ]).then(([s, d, u, h]) => {
+    setSummary(Array.isArray(s) ? s : []);
+    setDropoffs(Array.isArray(d) ? d : []);
+    setUsers(Array.isArray(u) ? u : []);
+    setHeatmap(h && h.chargerStats ? h : { chargerStats: [], pings: [] });
+    setLoading(false);
+  }).catch(() => setLoading(false));
+};
+
+useEffect(() => { fetchData(); }, []);
 
   const loadJourney = async (userId, userName) => {
     setJourney(userName);
@@ -111,6 +115,26 @@ Promise.all([
           User Activity Tracking
         </Typography>
         <Box sx={{ display:'flex', gap:2 }}>
+            <Tooltip title="Refresh data">
+  <IconButton
+    onClick={fetchData}
+    disabled={loading}
+    size="small"
+    sx={{
+      color: '#04bfbf',
+      border: '1px solid #1a3a3f',
+      borderRadius: 1.5,
+      '&:hover': { bgcolor: '#04bfbf18' },
+      '&.Mui-disabled': { color: '#7aa44', opacity: 0.4 },
+    }}
+  >
+    <RefreshIcon sx={{
+      fontSize: 18,
+      animation: loading ? 'spin 1s linear infinite' : 'none',
+      '@keyframes spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } }
+    }} />
+  </IconButton>
+</Tooltip>
           <Chip icon={<FiberManualRecordIcon sx={{ color:'#22c55e !important', fontSize:10 }} />}
             label={`${onlineCount} Online Now`} size="small"
             sx={{ bgcolor:'#22c55e18', color:'#22c55e', border:'1px solid #22c55e44' }} />
@@ -253,6 +277,8 @@ Promise.all([
                 <TableCell sx={headSx} align="right">Total Visits</TableCell>
                 <TableCell sx={headSx} align="right">Active Days</TableCell>
                 <TableCell sx={headSx} align="right">Total Time</TableCell>
+                <TableCell sx={headSx} align="right">Last Location</TableCell>
+                <TableCell sx={headSx} align="right">Nearest Charger</TableCell>
                 <TableCell sx={headSx} align="center">Journey</TableCell>
               </TableRow>
             </TableHead>
@@ -290,6 +316,64 @@ Promise.all([
                   </TableCell>
                   <TableCell sx={{ ...cellSx, color:'#a3d9dd' }} align="right">{u.activeDays}d</TableCell>
                   <TableCell sx={{ ...cellSx, color:'#f97316' }} align="right">{fmtTime(u.totalTimeSec)}</TableCell>
+                  {/* Last Active Location */}
+<TableCell sx={{ ...cellSx, fontSize:11 }} align="right">
+  {u.lastLocation?.lat ? (
+    <Tooltip title={`Accuracy: ~${u.lastLocation.accuracy || '?'}m`}>
+      <Box sx={{ display:'inline-flex', flexDirection:'column', alignItems:'flex-end', gap:0.2 }}>
+        <Typography sx={{ fontSize:11, color:'#a3d9dd', fontFamily:'monospace' }}>
+          {u.lastLocation.lat.toFixed(4)}, {u.lastLocation.lng.toFixed(4)}
+        </Typography>
+        <Box
+          component="a"
+          href={`https://maps.google.com/?q=${u.lastLocation.lat},${u.lastLocation.lng}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          sx={{ fontSize:10, color:'#04bfbf', textDecoration:'none', '&:hover':{ textDecoration:'underline' } }}
+        >
+          📍 Open Maps
+        </Box>
+      </Box>
+    </Tooltip>
+  ) : (
+    <Typography sx={{ fontSize:11, color:'#7aa44', opacity:0.4 }}>No GPS data</Typography>
+  )}
+</TableCell>
+
+{/* Nearest Charger */}
+<TableCell sx={{ ...cellSx, fontSize:11 }} align="right">
+  {u.nearestCharger ? (
+    <Box sx={{ display:'inline-flex', flexDirection:'column', alignItems:'flex-end', gap:0.2 }}>
+      <Typography sx={{ fontSize:12, color:'#e6f9ff', fontWeight:600, lineHeight:1.2 }}>
+        {u.nearestCharger.location}
+      </Typography>
+      <Typography sx={{ fontSize:10, color:'#7aa' }}>
+        {u.nearestCharger.area}, {u.nearestCharger.city}
+      </Typography>
+      <Box sx={{ display:'flex', alignItems:'center', gap:0.5 }}>
+        <Chip
+          label={u.nearestCharger.distanceM >= 1000
+            ? `${(u.nearestCharger.distanceM/1000).toFixed(1)} km`
+            : `${u.nearestCharger.distanceM} m`}
+          size="small"
+          sx={{
+            fontSize:10, height:16,
+            bgcolor: u.nearestCharger.distanceM < 500 ? '#22c55e22' :
+                     u.nearestCharger.distanceM < 2000 ? '#04bfbf18' : '#ffffff0a',
+            color:   u.nearestCharger.distanceM < 500 ? '#22c55e' :
+                     u.nearestCharger.distanceM < 2000 ? '#04bfbf' : '#7aa',
+          }}
+        />
+        <Chip label={u.nearestCharger.status} size="small"
+          sx={{ fontSize:10, height:16,
+            bgcolor: u.nearestCharger.status==='available'?'#22c55e22':'#f9731622',
+            color:   u.nearestCharger.status==='available'?'#22c55e':'#f97316' }} />
+      </Box>
+    </Box>
+  ) : (
+    <Typography sx={{ fontSize:11, opacity:0.4, color:'#7aa' }}>—</Typography>
+  )}
+</TableCell>
                   <TableCell sx={cellSx} align="center">
                     <Tooltip title="View full journey">
                       <Chip label="View" size="small" onClick={() => loadJourney(u._id, u.name)}
