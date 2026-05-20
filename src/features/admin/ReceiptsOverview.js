@@ -289,10 +289,9 @@ function ReceiptDrawer({ receipt: r, onClose }) {
           <DRow label="Device ID"      value={r.deviceId}      mono />
         </Section>
 
-        <Section title="Location">
-          <DRow label="State" value={r.deviceState} />
-          <DRow label="City"  value={r.deviceCity} />
-          <DRow label="Area"  value={r.deviceArea} />
+        <Section title="Project">
+          <DRow label="Project" value={r.projectName} />
+          <DRow label="Device"  value={r.deviceId} />
         </Section>
 
         <Section title="User">
@@ -366,43 +365,37 @@ export default function ReceiptsOverview() {
   const [refundFilter, setRefundFilter] = useState("");
 
   // ── Location filters ───────────────────────────────────────────────────────
-  const [filterOpts, setFilterOpts] = useState({ states: [], cities: [], areas: [] });
-  const [selState,   setSelState]   = useState("");
-  const [selCity,    setSelCity]    = useState("");
-  const [selArea,    setSelArea]    = useState("");
+const [projects,   setProjects]   = useState([]);
+const [selProject, setSelProject] = useState("");
 
-  const handleStateChange = (v) => { setSelState(v); setSelCity(""); setSelArea(""); };
-  const handleCityChange  = (v) => { setSelCity(v);  setSelArea(""); };
 
   // ── Load filter options once ───────────────────────────────────────────────
-  useEffect(() => {
-    api.get("/api/receipts/admin/filters")
-      .then(res => setFilterOpts(res.data || { states: [], cities: [], areas: [] }))
-      .catch(err => console.error("Filters load:", err));
-  }, []);
+useEffect(() => {
+  api.get("/api/receipts/admin/filters")
+    .then(res => setProjects(res.data?.projects || []))
+    .catch(err => console.error("Filters load:", err));
+}, []);
 
   // ── Fetch receipts ─────────────────────────────────────────────────────────
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = { period };
-      if (refundFilter) params.refundStatus = refundFilter;
-      if (selState)     params.state        = selState;
-      if (selCity)      params.city         = selCity;
-      if (selArea)      params.area         = selArea;
+const fetchData = useCallback(async () => {
+  setLoading(true);
+  try {
+    const params = { period };
+    if (refundFilter) params.refundStatus = refundFilter;
+    if (selProject)   params.project      = selProject;
 
-      const res  = await api.get("/api/receipts/admin/financial", { params });
-      const data = res.data;
-      setSummary(data.summary   || {});
-      setReceipts(data.receipts || []);
-      setChartData(buildChartData(data.receipts || [], period));
-      setRange(data.range || null);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [period, refundFilter, selState, selCity, selArea]);
+    const res  = await api.get("/api/receipts/admin/financial", { params });
+    const data = res.data;
+    setSummary(data.summary   || {});
+    setReceipts(data.receipts || []);
+    setChartData(buildChartData(data.receipts || [], period));
+    setRange(data.range || null);
+  } catch (err) {
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+}, [period, refundFilter, selProject]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -425,22 +418,20 @@ export default function ReceiptsOverview() {
   const closeDrawer = () => { setDrawerOpen(false); setTimeout(() => setSelectedRow(null), 300); };
 
   // ── Export ─────────────────────────────────────────────────────────────────
-  const handleExport = async () => {
-    try {
-      const params = { period };
-      if (selState) params.state = selState;
-      if (selCity)  params.city  = selCity;
-      if (selArea)  params.area  = selArea;
-      const res = await api.get("/api/receipts/admin/export", { params, responseType: "blob" });
-      const url = URL.createObjectURL(new Blob([res.data]));
-      const a   = document.createElement("a");
-      a.href = url; a.download = `receipts_${period}.csv`; a.click();
-    } catch (e) { console.error(e); }
-  };
+const handleExport = async () => {
+  try {
+    const params = { period };
+    if (selProject) params.project = selProject;
+    const res = await api.get("/api/receipts/admin/export", { params, responseType: "blob" });
+    const url = URL.createObjectURL(new Blob([res.data]));
+    const a   = document.createElement("a");
+    a.href = url;
+    a.download = `receipts_${selProject ? selProject + "_" : ""}${period}.csv`;
+    a.click();
+  } catch (e) { console.error(e); }
+};
 
-  const hasLocFilter      = selState || selCity || selArea;
-  const activeFilterCount = [selState, selCity, selArea, refundFilter].filter(Boolean).length;
-
+const activeFilterCount = [selProject, refundFilter].filter(Boolean).length;
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <Box sx={{ background: "#f1f5f9", minHeight: "100vh", fontFamily: "Inter, system-ui" }}>
@@ -496,56 +487,47 @@ export default function ReceiptsOverview() {
 
       <Box sx={{ px: { xs: 2, md: 4 }, py: 3 }}>
 
-        {/* ═══ LOCATION FILTER BAR ═══ */}
-        <Box sx={{
-          background: "#fff", borderRadius: "12px",
-          px: 3, py: 1.75, mb: 3,
-          boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
-          display: "flex", alignItems: "center", flexWrap: "wrap", gap: 2
-        }}>
-          <Stack direction="row" alignItems="center" spacing={0.75}>
-            <LocationOn sx={{ fontSize: 15, color: "#64748b" }} />
-            <Typography
-              fontSize={11} fontWeight={700} color="#64748b"
-              sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
-            >Location</Typography>
-          </Stack>
+{/* ═══ PROJECT FILTER BAR ═══ */}
+<Box sx={{
+  background: "#fff", borderRadius: "12px",
+  px: 3, py: 1.75, mb: 3,
+  boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+  display: "flex", alignItems: "center", flexWrap: "wrap", gap: 2
+}}>
+  <Stack direction="row" alignItems="center" spacing={0.75}>
+    <Bolt sx={{ fontSize: 15, color: "#64748b" }} />
+    <Typography
+      fontSize={11} fontWeight={700} color="#64748b"
+      sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}
+    >Project</Typography>
+  </Stack>
 
-          <FilterSelect
-            label="All States"
-            value={selState}
-            options={filterOpts.states}
-            onChange={handleStateChange}
-          />
-          <FilterSelect
-            label="All Cities"
-            value={selCity}
-            options={filterOpts.cities}
-            onChange={handleCityChange}
-            disabled={!filterOpts.cities.length}
-          />
-          <FilterSelect
-            label="All Areas"
-            value={selArea}
-            options={filterOpts.areas}
-            onChange={v => setSelArea(v)}
-            disabled={!filterOpts.areas.length}
-          />
+  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+    <Pill
+      label="All Projects"
+      active={selProject === ""}
+      onClick={() => setSelProject("")}
+    />
+    {projects.map(p => (
+      <Pill
+        key={p}
+        label={p}
+        active={selProject === p}
+        onClick={() => setSelProject(p)}
+        color={ACCENT}
+      />
+    ))}
+  </Stack>
 
-          {hasLocFilter && (
-            <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap alignItems="center">
-              <FilterChip label="State" value={selState} onClear={() => handleStateChange("")} />
-              <FilterChip label="City"  value={selCity}  onClear={() => handleCityChange("")} />
-              <FilterChip label="Area"  value={selArea}  onClear={() => setSelArea("")} />
-              <Box
-                onClick={() => handleStateChange("")}
-                sx={{ fontSize: 11, color: "#dc2626", cursor: "pointer", fontWeight: 700, ml: 1 }}
-              >
-                Clear all
-              </Box>
-            </Stack>
-          )}
-        </Box>
+  {selProject && (
+    <Box
+      onClick={() => setSelProject("")}
+      sx={{ ml: "auto", fontSize: 11, color: "#dc2626", cursor: "pointer", fontWeight: 700 }}
+    >
+      Clear
+    </Box>
+  )}
+</Box>
 
         {/* ═══ KPI CARDS — Collection ═══ */}
         <Box mb={0.5} display="flex" alignItems="center" justifyContent="space-between">
@@ -611,11 +593,9 @@ export default function ReceiptsOverview() {
               <Typography fontWeight={700} fontSize={14} color="#0f172a">
                 Trend — {PERIODS.find(p => p.value === period)?.label}
               </Typography>
-              {hasLocFilter && (
-                <Typography fontSize={11} color="#2563eb">
-                  ({[selState, selCity, selArea].filter(Boolean).join(" › ")})
-                </Typography>
-              )}
+{selProject && (
+  <Typography fontSize={11} color="#2563eb">({selProject})</Typography>
+)}
             </Stack>
             <Stack direction="row" spacing={0.5}>
               {CHART_TABS.map((t, i) => (
@@ -739,7 +719,7 @@ export default function ReceiptsOverview() {
                     ["Date",       "left",   150],
                     ["Receipt ID", "left",   160],
                     ["Device",     "left",   110],
-                    ["Location",   "left",   130],
+                    ["Project",   "left",   120],
                     ["User",       "left",   120],
                     ["Paid",       "right",   88],
                     ["Energy",     "right",   95],
@@ -790,7 +770,6 @@ export default function ReceiptsOverview() {
                 ) : (
                   filtered.map((r) => {
                     const refundC = REFUND_COLORS[r.refund?.status] || REFUND_COLORS.not_applicable;
-                    const loc = [r.deviceCity, r.deviceState].filter(Boolean).join(", ") || "—";
                     return (
                       <tr
                         key={r._id}
@@ -804,7 +783,7 @@ export default function ReceiptsOverview() {
                         </Td>
                         <Td align="left" mono blue>{r.receiptId || "—"}</Td>
                         <Td align="left" mono>{r.deviceId || "—"}</Td>
-                        <Td align="left">{loc}</Td>
+                        <Td align="left">{r.projectName || "—"}</Td>
                         <Td align="left">{r.userName || "—"}</Td>
                         <Td align="right" bold>{money(r.amountPaid)}</Td>
                         <Td align="right">{fmt(r.energyConsumed, 3)} kWh</Td>
