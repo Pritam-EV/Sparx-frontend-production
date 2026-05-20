@@ -37,6 +37,7 @@ import Analytics from "./features/admin/Analytics";
 import EBManagement  from "./features/admin/EBManagement";
 import ReceiptsOverview from "./features/admin/ReceiptsOverview.js";
 import UserActivity from './features/admin/UserActivity';
+import TransactionsOverview from "./features/admin/TransactionsOverview";
 
 import OwnerDashboard from "./features/owner/OwnerDashboard";
 import MyDevices from "./features/owner/MyDevices";
@@ -182,6 +183,7 @@ if (showSplash) return <SplashScreen />;
           <Route path="crud/devices/create" element={<DeviceCreate />} />
           <Route path="crud/devices/edit/:id" element={<DeviceEdit />} />
           <Route path="user-activity" element={<UserActivity />} />
+          <Route path="transactions" element={<TransactionsOverview />} />
         </Route>
 
         {/* Owner routes */}
