@@ -23,6 +23,15 @@ import KeyboardArrowRightIcon   from "@mui/icons-material/KeyboardArrowRight";
 import NorthIcon                from "@mui/icons-material/North";
 import SouthIcon                from "@mui/icons-material/South";
 import { apiFetch } from "../../utils/apiFetch";
+// ADD to existing imports:
+import SendIcon       from "@mui/icons-material/Send";
+import LockIcon       from "@mui/icons-material/Lock";
+import WarningIcon    from "@mui/icons-material/Warning";
+import Dialog         from "@mui/material/Dialog";
+import DialogTitle    from "@mui/material/DialogTitle";
+import DialogContent  from "@mui/material/DialogContent";
+import DialogActions  from "@mui/material/DialogActions";
+import CircularProgress from "@mui/material/CircularProgress";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -40,9 +49,14 @@ const CATEGORY_CFG = {
   other:    { bg: "#f9fafb", color: "#374151", border: "#e5e7eb", icon: <PaymentIcon sx={{ fontSize: 12 }} /> },
 };
 
+// REPLACE existing STATUS_CFG with:
 const STATUS_CFG = {
-  SUCCESS: { bg: "#dcfce7", color: "#16a34a" },
-  FAILED:  { bg: "#fee2e2", color: "#dc2626" },
+  SUCCESS:   { bg: "#dcfce7", color: "#16a34a" },
+  FAILED:    { bg: "#fee2e2", color: "#dc2626" },
+  PENDING:   { bg: "#fef9c3", color: "#ca8a04" },
+  INITIATED: { bg: "#fff7ed", color: "#ea580c" },
+  CANCELLED: { bg: "#f3f4f6", color: "#6b7280" },
+  ONHOLD:    { bg: "#eff6ff", color: "#2563eb" },
 };
 
 const REFUND_SUB_CFG = {
@@ -241,6 +255,20 @@ function TxnDrawer({ txn, onClose }) {
               </Stack>
             </Box>
           )}
+
+          {txn.category === "refund" && txn.destination === "bank" && (
+  <Box sx={{ mt: 2, p: 2, borderRadius: 2, bgcolor: "#f8fafc", border: "1px solid #e5e7eb" }}>
+    <Typography fontSize={11} fontWeight={700} color="text.secondary"
+      textTransform="uppercase" letterSpacing={0.5} mb={1}>
+      Bank Refund Status
+    </Typography>
+    <DetailRow label="Cashfree Refund ID" value={txn.cfRefundId} mono />
+    <DetailRow label="ARN / UTR"          value={txn.arnNumber}  mono />
+    <DetailRow label="Processed At"       value={txn.processedAt ? fmtDate(txn.processedAt) : null} />
+    <DetailRow label="Status Description" value={txn.statusDescription} />
+  </Box>
+)}
+
         </Box>
 
         {/* Footer */}
@@ -324,6 +352,14 @@ export default function TransactionsOverview() {
 
   const searchRef = useRef();
 
+  // ADD after existing useState declarations:
+const [refundTarget,   setRefundTarget]   = useState(null);  // the txn row being refunded
+const [refundStep,     setRefundStep]     = useState(null);  // "confirm" | "pin"
+const [pinValue,       setPinValue]       = useState("");
+const [pinError,       setPinError]       = useState("");
+const [refundLoading,  setRefundLoading]  = useState(false);
+const [refundSuccess,  setRefundSuccess]  = useState(null);  // success message
+
   // ─── Fetch ─────────────────────────────────────────────────────────────────
   const load = useCallback(async (opts = {}) => {
     setLoading(true);
@@ -372,6 +408,60 @@ export default function TransactionsOverview() {
   // ─── Table column config ───────────────────────────────────────────────────
   // On mobile: hide device/gateway/session columns
   const showExtra = !isMobile;
+
+
+  // ADD inside TransactionsOverview(), before the return():
+
+const ADMIN_PIN = "161118";
+
+const handleRefundClick = (e, txn) => {
+  e.stopPropagation();           // prevent row drawer from opening
+  setRefundTarget(txn);
+  setRefundStep("confirm");
+  setPinValue("");
+  setPinError("");
+};
+
+const handleProceedToPin = () => {
+  setRefundStep("pin");
+  setPinValue("");
+  setPinError("");
+};
+
+const handleCancelRefund = () => {
+  setRefundTarget(null);
+  setRefundStep(null);
+  setPinValue("");
+  setPinError("");
+};
+
+const handleSubmitRefund = async () => {
+  if (pinValue !== ADMIN_PIN) {
+    setPinError("Incorrect PIN. Please try again.");
+    setPinValue("");
+    return;
+  }
+
+  setRefundLoading(true);
+  try {
+    const res = await apiFetch("/api/payment/process-initiated-refund", {
+      method: "POST",
+      body: JSON.stringify({ refundDocId: refundTarget.refundDocId || refundTarget._id }),
+    });
+
+    if (res.success) {
+      setRefundSuccess(`Refund of ₹${refundTarget.amount} sent to Cashfree successfully. Status: PENDING`);
+      handleCancelRefund();
+      load();   // refresh the table
+    } else {
+      setPinError(res.message || "Refund failed. Please try again.");
+    }
+  } catch (err) {
+    setPinError("Network error. Please try again.");
+  } finally {
+    setRefundLoading(false);
+  }
+};
 
   return (
     <Box sx={{
@@ -529,6 +619,14 @@ export default function TransactionsOverview() {
                   letterSpacing: 0.5, bgcolor: "#f8fafc", borderBottom: "2px solid #e5e7eb", py: 1.5, px: 2, whiteSpace: "nowrap" }}>
                   Status
                 </TableCell>
+                <TableCell sx={{
+                  fontWeight: 700, fontSize: 11, color: "#6b7280",
+                  textTransform: "uppercase", letterSpacing: 0.5,
+                  bgcolor: "#f8fafc", borderBottom: "2px solid #e5e7eb",
+                  py: 1.5, px: 1.5, whiteSpace: "nowrap"
+                }}>
+                  Action
+                </TableCell>
                 {showExtra && (
                   <TableCell sx={{ fontWeight: 700, fontSize: 11, color: "#6b7280", textTransform: "uppercase",
                     letterSpacing: 0.5, bgcolor: "#f8fafc", borderBottom: "2px solid #e5e7eb", py: 1.5, px: 2, whiteSpace: "nowrap" }}>
@@ -668,6 +766,44 @@ export default function TransactionsOverview() {
                         />
                       </TableCell>
 
+                      {/* Process Refund Button — only for INITIATED bank refunds */}
+<TableCell sx={{ px: 1.5, py: 1.2 }}>
+  {txn.destination === "bank" && txn.status === "INITIATED" && (
+    <Tooltip title="Process bank refund via Cashfree">
+      <Button
+        size="small"
+        variant="contained"
+        startIcon={<SendIcon sx={{ fontSize: 12 }} />}
+        onClick={(e) => handleRefundClick(e, txn)}
+        sx={{
+          bgcolor: "#ea580c",
+          "&:hover": { bgcolor: "#c2410c" },
+          fontSize: 10,
+          fontWeight: 700,
+          py: 0.4,
+          px: 1.2,
+          borderRadius: 1.5,
+          textTransform: "none",
+          whiteSpace: "nowrap",
+          minWidth: 0,
+        }}
+      >
+        Process
+      </Button>
+    </Tooltip>
+  )}
+  {txn.destination === "bank" && txn.status === "PENDING" && (
+    <Chip label="Sent ⏳" size="small"
+      sx={{ bgcolor: "#fef9c3", color: "#ca8a04", fontWeight: 700, fontSize: 9, height: 18 }} />
+  )}
+  {txn.destination === "bank" && txn.status === "SUCCESS" && txn.arnNumber && (
+    <Tooltip title={`ARN: ${txn.arnNumber}`}>
+      <Chip label="ARN ✓" size="small"
+        sx={{ bgcolor: "#dcfce7", color: "#16a34a", fontWeight: 700, fontSize: 9, height: 18, cursor: "help" }} />
+    </Tooltip>
+  )}
+</TableCell>
+
                       {/* Order ID */}
                       {showExtra && (
                         <TableCell sx={{ px: 2, py: 1.2 }}>
@@ -792,6 +928,140 @@ export default function TransactionsOverview() {
           </Stack>
         )}
       </Paper>
+
+{/* ── Step 1: Confirm Modal ── */}
+<Dialog
+  open={refundStep === "confirm"}
+  onClose={handleCancelRefund}
+  maxWidth="xs" fullWidth
+  PaperProps={{ sx: { borderRadius: 3 } }}
+>
+  <DialogTitle sx={{ fontWeight: 800, fontSize: 16, pb: 1 }}>
+    <Stack direction="row" alignItems="center" spacing={1}>
+      <WarningIcon sx={{ color: "#ea580c" }} />
+      <span>Confirm Refund</span>
+    </Stack>
+  </DialogTitle>
+  <DialogContent>
+    {refundTarget && (
+      <Box>
+        <Box sx={{ p: 2, borderRadius: 2, bgcolor: "#fff7ed", border: "1px solid #fed7aa", mb: 2 }}>
+          <Typography fontSize={13} color="#92400e" fontWeight={600} mb={1}>
+            You are about to process a bank refund:
+          </Typography>
+          <Stack spacing={0.6}>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography fontSize={12} color="text.secondary">User</Typography>
+              <Typography fontSize={12} fontWeight={700}>{refundTarget.userName}</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography fontSize={12} color="text.secondary">Amount</Typography>
+              <Typography fontSize={14} fontWeight={900} color="#ea580c">
+                ₹{Number(refundTarget.amount || 0).toFixed(2)}
+              </Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography fontSize={12} color="text.secondary">Order ID</Typography>
+              <Typography fontSize={11} fontWeight={600} sx={{ fontFamily: "monospace" }}>
+                {refundTarget.orderId?.slice(0, 20)}…
+              </Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography fontSize={12} color="text.secondary">Session</Typography>
+              <Typography fontSize={11} fontWeight={600} sx={{ fontFamily: "monospace" }}>
+                {refundTarget.sessionId || "—"}
+              </Typography>
+            </Stack>
+          </Stack>
+        </Box>
+        <Typography fontSize={12} color="text.secondary">
+          This will call the Cashfree API and initiate a real bank transfer. This action cannot be undone.
+        </Typography>
+      </Box>
+    )}
+  </DialogContent>
+  <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+    <Button onClick={handleCancelRefund} variant="outlined" fullWidth
+      sx={{ borderRadius: 2, fontWeight: 700, textTransform: "none" }}>
+      Cancel
+    </Button>
+    <Button onClick={handleProceedToPin} variant="contained" fullWidth
+      sx={{ borderRadius: 2, fontWeight: 700, textTransform: "none", bgcolor: "#ea580c", "&:hover": { bgcolor: "#c2410c" } }}>
+      Continue
+    </Button>
+  </DialogActions>
+</Dialog>
+
+{/* ── Step 2: PIN Modal ── */}
+<Dialog
+  open={refundStep === "pin"}
+  onClose={handleCancelRefund}
+  maxWidth="xs" fullWidth
+  PaperProps={{ sx: { borderRadius: 3 } }}
+>
+  <DialogTitle sx={{ fontWeight: 800, fontSize: 16, pb: 1 }}>
+    <Stack direction="row" alignItems="center" spacing={1}>
+      <LockIcon sx={{ color: "#7c3aed" }} />
+      <span>Enter Admin PIN</span>
+    </Stack>
+  </DialogTitle>
+  <DialogContent>
+    <Typography fontSize={13} color="text.secondary" mb={2}>
+      Enter the 6-digit admin PIN to authorize this refund of{" "}
+      <strong style={{ color: "#ea580c" }}>
+        ₹{Number(refundTarget?.amount || 0).toFixed(2)}
+      </strong>{" "}
+      to <strong>{refundTarget?.userName}</strong>.
+    </Typography>
+    <TextField
+      fullWidth
+      label="Admin PIN"
+      type="password"
+      value={pinValue}
+      onChange={e => { setPinValue(e.target.value); setPinError(""); }}
+      onKeyDown={e => e.key === "Enter" && !refundLoading && handleSubmitRefund()}
+      inputProps={{ maxLength: 6, style: { letterSpacing: 8, fontSize: 22, fontWeight: 800 } }}
+      error={!!pinError}
+      helperText={pinError}
+      autoFocus
+      sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
+    />
+  </DialogContent>
+  <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+    <Button onClick={() => setRefundStep("confirm")} variant="outlined" fullWidth
+      disabled={refundLoading}
+      sx={{ borderRadius: 2, fontWeight: 700, textTransform: "none" }}>
+      Back
+    </Button>
+    <Button
+      onClick={handleSubmitRefund}
+      variant="contained" fullWidth
+      disabled={pinValue.length !== 6 || refundLoading}
+      sx={{ borderRadius: 2, fontWeight: 700, textTransform: "none", bgcolor: "#7c3aed", "&:hover": { bgcolor: "#6d28d9" } }}
+    >
+      {refundLoading
+        ? <CircularProgress size={18} sx={{ color: "#fff" }} />
+        : "Authorize Refund"
+      }
+    </Button>
+  </DialogActions>
+</Dialog>
+
+{/* ── Success Snackbar ── */}
+{refundSuccess && (
+  <Box sx={{
+    position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)",
+    bgcolor: "#16a34a", color: "#fff", px: 3, py: 1.5, borderRadius: 2.5,
+    boxShadow: "0 8px 24px rgba(0,0,0,0.15)", zIndex: 9999,
+    fontSize: 13, fontWeight: 700, maxWidth: 400, textAlign: "center",
+  }}>
+    ✅ {refundSuccess}
+    <IconButton size="small" onClick={() => setRefundSuccess(null)}
+      sx={{ color: "#fff", ml: 1, p: 0.2 }}>
+      <CloseIcon sx={{ fontSize: 14 }} />
+    </IconButton>
+  </Box>
+)}
 
       {/* ── Detail Drawer ── */}
       <TxnDrawer txn={selected} onClose={() => setSelected(null)} />
