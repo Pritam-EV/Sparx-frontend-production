@@ -14,6 +14,13 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import FooterNav from "../components/FooterNav";
 import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import { getGroupedVehicles } from "../utils/evVehicles";
+
+const PLATE_REGEX = /^[A-Z]{2}[0-9]{2}[A-Z]{1,3}[0-9]{1,4}$|^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+function validatePlate(raw) {
+  const cleaned = (raw || "").replace(/[\s\-]/g, "").toUpperCase();
+  return PLATE_REGEX.test(cleaned) ? cleaned : null;
+}
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -35,13 +42,15 @@ const Profile = () => {
 
   const [walletBalance, setWalletBalance] = useState(null);
 
-  const [updatedUserData, setUpdatedUserData] = useState({
-    name: userData?.name || "",
-    email: userData?.email || "",
-    mobile: userData?.mobile || "",
-    vehicleType: userData?.vehicleType || "",
-    vehicleNumber: userData?.vehicleNumber || userData?.vehicleReg || "",
-  });
+const [updatedUserData, setUpdatedUserData] = useState({
+  name: userData?.name || "",
+  email: userData?.email || "",
+  mobile: userData?.mobile || "",
+  vehicleType: userData?.vehicleType || "",
+  vehicleModel: userData?.vehicleModel || "",       // ← new
+  vehicleNumber: userData?.vehicleNumber || userData?.vehicleReg || "",
+  gstin: userData?.gstin || "",                      // ← new
+});
 
   const [operatorForm, setOperatorForm] = useState({
     name: userData?.name || "",
@@ -386,29 +395,87 @@ useEffect(() => {
                           style={styles.input}
                         />
                       </div>
-                      <div style={styles.inputGroup}>
-                        <label style={styles.label}>Vehicle Type</label>
-                        <input
-                          type="text"
-                          value={updatedUserData.vehicleType}
-                          onChange={(e) =>
-                            setUpdatedUserData({ ...updatedUserData, vehicleType: e.target.value })
-                          }
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.inputGroup}>
-                        <label style={styles.label}>Vehicle Number</label>
-                        <input
-                          type="text"
-                          value={updatedUserData.vehicleNumber}
-                          onChange={(e) =>
-                            setUpdatedUserData({ ...updatedUserData, vehicleNumber: e.target.value })
-                          }
-                          placeholder="MH12AB1234"
-                          style={styles.input}
-                        />
-                      </div>
+{/* Vehicle Type tiles */}
+<div style={styles.inputGroup}>
+  <label style={styles.label}>Vehicle Type</label>
+  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 4 }}>
+    {["2 Wheeler", "3 Wheeler", "4 Wheeler"].map((t) => (
+      <button
+        key={t}
+        type="button"
+        onClick={() => setUpdatedUserData({ ...updatedUserData, vehicleType: t, vehicleModel: "" })}
+        style={{
+          padding: "10px 4px", borderRadius: 10, border: "none",
+          background: updatedUserData.vehicleType === t
+            ? "linear-gradient(135deg,rgba(4,191,191,0.2),rgba(2,122,122,0.15))"
+            : "rgba(255,255,255,0.04)",
+          outline: updatedUserData.vehicleType === t ? "2px solid #04bfbf" : "2px solid transparent",
+          color: updatedUserData.vehicleType === t ? "#04bfbf" : "rgba(180,210,220,0.6)",
+          fontFamily: "inherit", fontSize: 11, fontWeight: 600,
+          cursor: "pointer", textAlign: "center", transition: "all 0.2s",
+        }}
+      >
+        <div style={{ fontSize: 18, marginBottom: 3 }}>
+          {t === "2 Wheeler" ? "🛵" : t === "3 Wheeler" ? "🛺" : "🚗"}
+        </div>
+        {t}
+      </button>
+    ))}
+  </div>
+</div>
+
+{/* Vehicle Model */}
+{updatedUserData.vehicleType && (
+  <div style={styles.inputGroup}>
+    <label style={styles.label}>Vehicle Model <span style={{ color: "rgba(180,210,220,0.4)", fontWeight: 400 }}>(optional)</span></label>
+    <select
+      value={updatedUserData.vehicleModel}
+      onChange={(e) => setUpdatedUserData({ ...updatedUserData, vehicleModel: e.target.value })}
+      style={{ ...styles.input, appearance: "none", cursor: "pointer" }}
+    >
+      <option value="">Select model...</option>
+      {Object.entries(getGroupedVehicles(updatedUserData.vehicleType)).map(([brand, models]) => (
+        <optgroup key={brand} label={brand === "Other" ? "── Other ──" : brand}>
+          {models.map((m) => <option key={m} value={m}>{m}</option>)}
+        </optgroup>
+      ))}
+    </select>
+  </div>
+)}
+
+{/* Vehicle Number */}
+<div style={styles.inputGroup}>
+  <label style={styles.label}>Vehicle Number</label>
+  <input
+    type="text"
+    value={updatedUserData.vehicleNumber}
+    onChange={(e) =>
+      setUpdatedUserData({ ...updatedUserData, vehicleNumber: e.target.value.replace(/\s/g, "").toUpperCase() })
+    }
+    placeholder="MH12AB1234"
+    style={{ ...styles.input, fontFamily: "monospace", letterSpacing: "0.1em" }}
+    maxLength={13}
+  />
+  {updatedUserData.vehicleNumber && (
+    <span style={{ fontSize: 11, marginTop: 4, color: validatePlate(updatedUserData.vehicleNumber) ? "#04bfbf" : "#ff6b7a" }}>
+      {validatePlate(updatedUserData.vehicleNumber) ? "✅ Valid Indian plate" : "❌ Invalid — use MH12AB1234 or 22BH1234AB"}
+    </span>
+  )}
+</div>
+
+{/* GSTIN */}
+<div style={styles.inputGroup}>
+  <label style={styles.label}>GSTIN <span style={{ color: "rgba(180,210,220,0.4)", fontWeight: 400 }}>(optional)</span></label>
+  <input
+    type="text"
+    value={updatedUserData.gstin}
+    onChange={(e) => setUpdatedUserData({ ...updatedUserData, gstin: e.target.value.toUpperCase() })}
+    placeholder="22AAAAA0000A1Z5"
+    style={{ ...styles.input, fontFamily: "monospace", letterSpacing: "0.06em" }}
+    maxLength={15}
+  />
+</div>
+
                       <div style={styles.actionRow}>
                         <button type="submit" style={styles.updateButton}>
                           Save Changes
@@ -457,6 +524,24 @@ useEffect(() => {
                         </span>
                       </div>
                     </div>
+
+                  {userData.vehicleModel && (
+                    <div style={styles.infoCard}>
+                      <div style={styles.infoBlock}>
+                        <span style={styles.cardLabel}>Vehicle Model</span>
+                        <span style={styles.cardValue}>{userData.vehicleModel}</span>
+                      </div>
+                    </div>
+                  )}
+                  {userData.gstin && (
+                    <div style={styles.infoCard}>
+                      <div style={styles.infoBlock}>
+                        <span style={styles.cardLabel}>GSTIN</span>
+                        <span style={{ ...styles.cardValue, fontFamily: "monospace", fontSize: 13, letterSpacing: "0.08em" }}>{userData.gstin}</span>
+                      </div>
+                    </div>
+                  )}
+
                   </div>
                 )}
               </>
