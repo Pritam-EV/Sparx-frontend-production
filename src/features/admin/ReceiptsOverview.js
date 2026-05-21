@@ -33,9 +33,7 @@ import {
   Bolt,
   Discount,
   Replay,
-  TrendingUp,
-  LocationOn,
-  KeyboardArrowDown
+  TrendingUp
 } from "@mui/icons-material";
 import { api } from "../../api";
 
@@ -128,39 +126,7 @@ function Pill({ label, active, onClick, color }) {
   );
 }
 
-// ─── Reusable: Location Select Dropdown ──────────────────────────────────────
 
-function FilterSelect({ label, value, options, onChange, disabled }) {
-  return (
-    <Box sx={{ position: "relative", minWidth: 140 }}>
-      <Box
-        component="select"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        disabled={disabled || !options.length}
-        sx={{
-          width: "100%", appearance: "none", WebkitAppearance: "none",
-          px: 1.5, pr: 3.5, py: 0.85, fontSize: 12, fontWeight: 500,
-          border: value ? "1.5px solid #2563eb" : "1px solid #e2e8f0",
-          borderRadius: "8px",
-          background: value ? "#eff6ff" : "#f8fafc",
-          color: value ? "#1d4ed8" : "#475569",
-          cursor: disabled ? "not-allowed" : "pointer",
-          outline: "none", transition: "all .14s",
-          "&:focus": { borderColor: "#2563eb", background: "#fff" },
-          "&:disabled": { opacity: 0.45 }
-        }}
-      >
-        <option value="">{label}</option>
-        {options.map(o => <option key={o} value={o}>{o}</option>)}
-      </Box>
-      <KeyboardArrowDown sx={{
-        position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
-        fontSize: 16, color: value ? "#2563eb" : "#94a3b8", pointerEvents: "none"
-      }} />
-    </Box>
-  );
-}
 
 // ─── Reusable: Active Filter Chip ────────────────────────────────────────────
 
@@ -678,7 +644,6 @@ const activeFilterCount = [selProject, refundFilter].filter(Boolean).length;
               ))}
             </Stack>
           </Stack>
-
           {/* Active filter summary */}
           {activeFilterCount > 0 && (
             <Box sx={{
@@ -686,9 +651,7 @@ const activeFilterCount = [selProject, refundFilter].filter(Boolean).length;
               display: "flex", alignItems: "center", gap: 1, flexWrap: "wrap"
             }}>
               <Typography fontSize={11} color="#94a3b8">Active:</Typography>
-              <FilterChip label="State" value={selState} onClear={() => handleStateChange("")} />
-              <FilterChip label="City"  value={selCity}  onClear={() => handleCityChange("")} />
-              <FilterChip label="Area"  value={selArea}  onClear={() => setSelArea("")} />
+              <FilterChip label="Project" value={selProject} onClear={() => setSelProject("")} />
               {refundFilter && (
                 <Box sx={{
                   display: "inline-flex", alignItems: "center", gap: 0.5,
@@ -700,7 +663,7 @@ const activeFilterCount = [selProject, refundFilter].filter(Boolean).length;
                 </Box>
               )}
               <Box
-                onClick={() => { handleStateChange(""); setRefundFilter(""); }}
+                onClick={() => { setSelProject(""); setRefundFilter(""); }}
                 sx={{ ml: "auto", fontSize: 11, color: "#dc2626", cursor: "pointer", fontWeight: 700 }}
               >
                 Clear all filters
