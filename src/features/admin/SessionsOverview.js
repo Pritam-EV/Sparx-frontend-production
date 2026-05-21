@@ -352,15 +352,16 @@ export default function SessionsOverview() {
   const fetchLive = useCallback(async (quiet = false) => {
     if (!quiet) setLiveLoading(true);
     try {
-      const [r1, r2] = await Promise.all([
-        api.get("/api/sessions/all", { params: { status: "active", limit: 500 } }),
-        api.get("/api/sessions/all", { params: { status: "paused",  limit: 200 } }),
-      ]);
+    const projectParam = selProject ? { project: selProject } : {};
+    const [r1, r2] = await Promise.all([
+      api.get("/api/sessions/all", { params: { status: "active", limit: 500, ...projectParam } }),
+      api.get("/api/sessions/all", { params: { status: "paused",  limit: 200, ...projectParam } }),
+    ]);
       setLiveSessions([...(r1.data?.sessions || []), ...(r2.data?.sessions || [])]);
       setLastRefresh(new Date());
     } catch (e) { console.error(e); }
     finally { if (!quiet) setLiveLoading(false); }
-  }, []);
+  }, [selProject]);
 
   const fetchPast = useCallback(async () => {
     setLoading(true);
@@ -377,7 +378,7 @@ export default function SessionsOverview() {
       }
       else if (period === "quarter") { const d = new Date(); d.setMonth(d.getMonth()-3); params.from = d.toISOString(); }
       else if (period === "year")    { params.from = new Date(new Date().getFullYear(),0,1).toISOString(); }
-      if (selProject) params.search = selProject;
+      if (selProject) params.project = selProject;
       const res = await api.get("/api/sessions/all", { params });
       setAllSessions((res.data?.sessions || []).filter(s => s.status !== "active" && s.status !== "paused"));
     } catch (e) { console.error(e); }
@@ -385,7 +386,7 @@ export default function SessionsOverview() {
   }, [period, selProject]);
 
   useEffect(() => {
-    api.get("/api/receipts/admin/filters")
+    api.get("/api/sessions/admin/filters")
       .then(r => setProjects(r.data?.projects || []))
       .catch(() => {});
   }, []);
