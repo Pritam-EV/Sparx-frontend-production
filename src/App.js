@@ -39,6 +39,8 @@ import ReceiptsOverview from "./features/admin/ReceiptsOverview.js";
 import UserActivity from './features/admin/UserActivity';
 import TransactionsOverview from "./features/admin/TransactionsOverview";
 
+import AccountantDashboard from "./features/accountant/AccountantDashboard";
+
 import OwnerDashboard from "./features/owner/OwnerDashboard";
 import MyDevices from "./features/owner/MyDevices";
 import OwnerAnalytics from "./features/owner/OwnerAnalytics";
@@ -185,6 +187,15 @@ if (showSplash) return <SplashScreen />;
           <Route path="user-activity" element={<UserActivity />} />
           <Route path="transactions" element={<TransactionsOverview />} />
         </Route>
+
+                <Route
+          path="/ca"
+          element={
+            <PrivateRoute allowedRoles={["admin", "accountant"]}>
+              <AccountantDashboard />
+            </PrivateRoute>
+          }
+        />
 
         {/* Owner routes */}
         <Route element={<PrivateRoute allowedRoles={['owner']} />}>

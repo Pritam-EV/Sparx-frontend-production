@@ -348,7 +348,7 @@ export default function SessionsOverview() {
   const [selectedRow,  setSelectedRow]  = useState(null);
   const [autoRefresh,  setAutoRefresh]  = useState(true);
   const timerRef = useRef(null);
-
+// Trend 
   const fetchLive = useCallback(async (quiet = false) => {
     if (!quiet) setLiveLoading(true);
     try {
@@ -496,23 +496,7 @@ export default function SessionsOverview() {
 
       <Box sx={{ px: { xs: 2, md: 4 }, py: 3 }}>
 
-        {/* ═══ KPI CARDS ═══ */}
-        <Grid container spacing={2} mb={3}>
-          {[
-            { icon: <FiberManualRecord />, label: "Live Sessions",  value: String(liveSessions.length),  color: GREEN,     sub: "Active + Paused" },
-            { icon: <EvStation />,         label: "Past Sessions",  value: String(allSessions.length),   color: ACCENT,    sub: PERIODS.find(p => p.value === period)?.label || "" },
-            { icon: <BoltOutlined />,      label: "Live Energy",    value: kwh(liveEnergy),              color: AMBER,     sub: "Currently flowing" },
-            { icon: <FlashOn />,           label: "Total Energy",   value: kwh(pastEnergy),              color: PURPLE,    sub: "Period total" },
-            { icon: <CurrencyRupee />,     label: "Revenue",        value: money(pastRevenue),           color: GREEN,     sub: "Period total" },
-            { icon: <AccessTime />,        label: "Avg Duration",   value: `${fmt(avgDurMin / 60, 1)}h`, color: "#0891b2", sub: "Per session" },
-          ].map((c, i) => (
-            <Grid item xs={6} sm={4} md={2} key={i}>
-              <KpiCard {...c} loading={loading} />
-            </Grid>
-          ))}
-        </Grid>
-
-        {/* ═══ PROJECT FILTER ═══ */}
+                {/* ═══ PROJECT FILTER ═══ */}
         {projects.length > 0 && (
           <Box sx={{
             background: "#fff", borderRadius: "12px", px: 3, py: 1.75, mb: 3,
@@ -538,6 +522,24 @@ export default function SessionsOverview() {
             )}
           </Box>
         )}
+
+        {/* ═══ KPI CARDS ═══ */}
+        <Grid container spacing={2} mb={3}>
+          {[
+            { icon: <FiberManualRecord />, label: "Live Sessions",  value: String(liveSessions.length),  color: GREEN,     sub: "Active + Paused" },
+            { icon: <EvStation />,         label: "Past Sessions",  value: String(allSessions.length),   color: ACCENT,    sub: PERIODS.find(p => p.value === period)?.label || "" },
+            { icon: <BoltOutlined />,      label: "Live Energy",    value: kwh(liveEnergy),              color: AMBER,     sub: "Currently flowing" },
+            { icon: <FlashOn />,           label: "Total Energy",   value: kwh(pastEnergy),              color: PURPLE,    sub: "Period total" },
+            { icon: <CurrencyRupee />,     label: "Revenue",        value: money(pastRevenue),           color: GREEN,     sub: "Period total" },
+            { icon: <AccessTime />,        label: "Avg Duration",   value: `${fmt(avgDurMin / 60, 1)}h`, color: "#0891b2", sub: "Per session" },
+          ].map((c, i) => (
+            <Grid item xs={6} sm={4} md={2} key={i}>
+              <KpiCard {...c} loading={loading} />
+            </Grid>
+          ))}
+        </Grid>
+
+
 
         {/* ═══ TAB + SEARCH + FILTERS ═══ */}
         <Box sx={{
@@ -628,7 +630,7 @@ export default function SessionsOverview() {
           )}
         </Box>
 
-        {/* ═══ TREND CHART (past tab only) ═══ */}
+        {/* ═══ TREND CHART (past tab only) ═══
         {tab === "past" && (
           <Box sx={{ background: "#fff", borderRadius: "12px", p: 3, mb: 3, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
             <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between"
@@ -677,7 +679,7 @@ export default function SessionsOverview() {
               </Box>
             )}
           </Box>
-        )}
+        )} */}
 
         {/* ═══ TABLE ═══ */}
         <Box sx={{ background: "#fff", borderRadius: "12px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", overflow: "hidden" }}>

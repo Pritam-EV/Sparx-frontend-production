@@ -174,6 +174,8 @@ useEffect(() => {
       navigate("/admin");
     } else if (userData?.role === "owner") {
       navigate("/owner");
+      } else if (userData?.role === "accountant") {
+      navigate("/ca");
     } else {
       setPopupVisible(true);
     }

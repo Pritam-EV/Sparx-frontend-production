@@ -2,7 +2,7 @@
   "homepage": "/",
   "name": "frontend",
   "version": "0.1.0",
-  "proxy": "https://sparx-backend-production.onrender.com",
+  "proxy": "https://sparx-backend-production-vuaj.onrender.com",
   "private": true,
   "dependencies": {
     "@emotion/react": "^11.14.0",
