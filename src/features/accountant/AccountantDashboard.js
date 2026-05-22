@@ -437,7 +437,7 @@ export default function AccountantDashboard() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: "#F3F4F6", borderBottom: "1px solid #E5E7EB" }}>
-                      {["Invoice No.", "Date", "Name", "Mobile", "GSTIN", "Place of Supply", "Type", "Payment", "Taxable (₹)", "CGST (₹)", "SGST (₹)", "IGST (₹)", "GST Total (₹)", "Discount (₹)", "Total (₹)"].map(h => (
+                      {["Invoice No.", "Date", "Name", "GSTIN", "Place of Supply", "Type", "Payment", "Taxable (₹)", "CGST (₹)", "SGST (₹)", "IGST (₹)", "GST Total (₹)", "Discount (₹)", "Total (₹)"].map(h => (
                         <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#374151", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
@@ -448,7 +448,6 @@ export default function AccountantDashboard() {
                         <td style={{ padding: "9px 12px", fontWeight: 600, color: "#1D4ED8", whiteSpace: "nowrap" }}>{inv.invoiceNo}</td>
                         <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#374151" }}>{fmtDateOnly(inv.date)}</td>
                         <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>{inv.customerName}</td>
-                        <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#6B7280" }}>{inv.customerMobile || "—"}</td>
                         <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: inv.customerGstin ? "#059669" : "#D1D5DB" }}>
                           {inv.customerGstin || "—"}
                         </td>
@@ -524,7 +523,7 @@ export default function AccountantDashboard() {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                   <thead>
                     <tr style={{ background: "#F3F4F6", borderBottom: "1px solid #E5E7EB" }}>
-                      {["Date & Time", "Customer Name", "Mobile", "Amount (₹)", "Bal. Before (₹)", "Bal. After (₹)", "Cashfree Order ID"].map(h => (
+                      {["Date & Time", "Customer Name", "Amount (₹)", "Bal. Before (₹)", "Bal. After (₹)", "Cashfree Order ID"].map(h => (
                         <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: "#374151", fontWeight: 600, whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
@@ -534,7 +533,6 @@ export default function AccountantDashboard() {
                       <tr key={t._id || i} style={{ borderBottom: "1px solid #F3F4F6", background: i % 2 === 0 ? "#fff" : "#FAFAFA" }}>
                         <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>{fmtDate(t.date)}</td>
                         <td style={{ padding: "9px 12px" }}>{t.userName}</td>
-                        <td style={{ padding: "9px 12px", color: "#6B7280" }}>{t.userMobile}</td>
                         <td style={{ padding: "9px 12px", textAlign: "right", fontFamily: "monospace", fontWeight: 700, color: "#16A34A" }}>{fmt(t.amount)}</td>
                         <td style={{ padding: "9px 12px", textAlign: "right", fontFamily: "monospace", color: "#9CA3AF" }}>{fmt(t.balanceBefore)}</td>
                         <td style={{ padding: "9px 12px", textAlign: "right", fontFamily: "monospace" }}>{fmt(t.balanceAfter)}</td>
