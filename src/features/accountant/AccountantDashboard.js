@@ -77,8 +77,36 @@ const T = {
 
 // ─── CSS Injection ─────────────────────────────────────────────────────────────
 const dashStyles = `
+  html, body, #root {
+    height: 100%;
+    min-height: 100%;
+    overflow-y: auto;
+  }
+
   .acc-dash * { box-sizing: border-box; }
-  .acc-dash { font-family: ${T.font}; background: ${T.bg}; min-height: 100vh; color: ${T.text}; }
+
+  .acc-dash {
+    font-family: ${T.font};
+    background: ${T.bg};
+    min-height: 100vh;
+    color: ${T.text};
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .acc-content {
+    padding: 24px;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding-bottom: 48px;
+  }
+
+  @media (max-width: 640px) {
+    .acc-content { padding: 16px 12px 56px; }
+  }
+
+  .acc-dash * { box-sizing: border-box; }
+  .acc-dash { font-family: ${T.font}; background: ${T.bg}; min-height: 100vh; color: ${T.text}; overflow-y: auto; }
 
   /* Header */
   .acc-header {
@@ -422,7 +450,20 @@ export default function AccountantDashboard() {
   const [topSort,   setTopSort]   = useState({ field: "date", dir: "desc" });
 
   const liveTimer = useRef(null);
+useEffect(() => {
+  const prevBodyOverflow = document.body.style.overflow;
+  const prevHtmlOverflow = document.documentElement.style.overflow;
 
+  document.body.style.overflowY = "auto";
+  document.body.style.overflowX = "hidden";
+  document.documentElement.style.overflowY = "auto";
+  document.documentElement.style.overflowX = "hidden";
+
+  return () => {
+    document.body.style.overflow = prevBodyOverflow;
+    document.documentElement.style.overflow = prevHtmlOverflow;
+  };
+}, []);
   // ── Logout ────────────────────────────────────────────────────────────────────
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -505,34 +546,65 @@ export default function AccountantDashboard() {
     if (activeTab === "topups") fetchTopups();
   }, [activeTab, fetchTopups]);
 
-  // ── Excel Export ───────────────────────────────────────────────────────────────
-  const handleExport = async (period) => {
-    const token = getToken();
-    try {
-      const res = await fetch(`${API}/api/accountant/export?period=${period}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error(`Export failed: ${res.status}`);
-      const blob = await res.blob();
-      const url  = URL.createObjectURL(blob);
-      const a    = document.createElement("a");
-      a.href     = url;
-      a.download = `VIZ_SmartCharging_CA_${period}_${Date.now()}.xlsx`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (e) {
-      alert("Export failed: " + e.message);
-    }
-  };
-
-  // ── Sorted rows ────────────────────────────────────────────────────────────────
+    // ── Sorted rows ────────────────────────────────────────────────────────────────
   const sortedInvoices = sortRows(invData?.data, invSort);
   const sortedTopups   = sortRows(topData?.data, topSort);
+
+  // ── Excel Export ───────────────────────────────────────────────────────────────
+// ── Excel Export (frontend — exports exactly what is shown on screen) ──────────
+const handleExport = (period) => {
+  // Determine which dataset to export based on active tab
+  const isTopups = activeTab === "topups";
+  const rows = isTopups ? sortedTopups : sortedInvoices;
+
+  if (!rows || rows.length === 0) {
+    alert("No data to export. Please load the data first.");
+    return;
+  }
+
+  // Build rows with only the required fields — no extra columns
+  const sheetData = isTopups
+    ? rows.map(t => ({
+        "Date & Time":        t.date ? new Date(t.date).toLocaleString("en-IN") : "",
+        "Customer Name":      t.userName || "",
+        "Amount (₹)":         t.amount ?? 0,
+        "Balance Before (₹)": t.balanceBefore ?? 0,
+        "Balance After (₹)":  t.balanceAfter ?? 0,
+        "Cashfree Order ID":  t.orderId || "",
+      }))
+    : rows.map(inv => ({
+        "Invoice No.":      inv.invoiceNo || "",
+        "Date":             inv.date ? new Date(inv.date).toLocaleDateString("en-IN") : "",
+        "Customer Name":    inv.customerName || "",
+        "GSTIN":            inv.customerGstin || "",
+        "Place of Supply":  inv.placeOfSupply || "",
+        "Type":             inv.invoiceType || "",
+        "Payment Mode":     PAYMENT_LABELS[inv.paymentMode]?.label || inv.paymentMode || "",
+        "Taxable (₹)":      inv.taxableAmount ?? 0,
+        "CGST (₹)":         inv.cgst ?? 0,
+        "SGST (₹)":         inv.sgst ?? 0,
+        "IGST (₹)":         inv.igst ?? 0,
+        "GST Total (₹)":    inv.totalGst ?? 0,
+        "Discount (₹)":     inv.discount ?? 0,
+        "Total Amount (₹)": inv.totalAmount ?? 0,
+      }));
+
+  // SheetJS — dynamic import to avoid bundle bloat
+  import("https://cdn.sheetjs.com/xlsx-0.20.1/package/xlsx.mjs").then(XLSX => {
+    const ws = XLSX.utils.json_to_sheet(sheetData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, isTopups ? "Wallet Topups" : "Invoice Register");
+    XLSX.writeFile(wb, `VIZ_SmartCharging_CA_${period}_${Date.now()}.xlsx`);
+  }).catch(() => alert("Excel library failed to load. Check your internet connection."));
+};
+
+
 
   // ─── Render ────────────────────────────────────────────────────────────────────
   return (
     <>
       <style>{dashStyles}</style>
+      
       <div className="acc-dash">
 
         {/* ── Header ── */}
@@ -562,7 +634,7 @@ export default function AccountantDashboard() {
         {/* ── Tab Bar ── */}
         <nav className="acc-tabs">
           {[
-            { key: "overview", label: "Overview" },
+            { key: "overview", label: "Wallet Summary" },
             { key: "invoices", label: "Invoice Register" },
             { key: "topups",   label: "Wallet Topups" },
           ].map(t => (
@@ -644,7 +716,10 @@ export default function AccountantDashboard() {
                     <button
                       key={opt.value}
                       className="acc-export-btn"
-                      onClick={() => handleExport(opt.value)}
+                      onClick={() => {
+  setActiveTab("invoices");
+  setInvPeriod(opt.value);
+}}
                     >
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                       {opt.label}
