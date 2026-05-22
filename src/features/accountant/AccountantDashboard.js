@@ -117,7 +117,7 @@ export default function AccountantDashboard() {
   const [kpiError,  setKpiError]  = useState(null);
 
   // Invoice Register
-  const [invPeriod,  setInvPeriod]  = useState("fy");
+  const [invPeriod,  setInvPeriod]  = useState("month");
   const [invPage,    setInvPage]    = useState(1);
   const [invSearch,  setInvSearch]  = useState("");
   const [invData,    setInvData]    = useState(null);
@@ -448,7 +448,7 @@ export default function AccountantDashboard() {
                         <td style={{ padding: "9px 12px", fontWeight: 600, color: "#1D4ED8", whiteSpace: "nowrap" }}>{inv.invoiceNo}</td>
                         <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#374151" }}>{fmtDateOnly(inv.date)}</td>
                         <td style={{ padding: "9px 12px", whiteSpace: "nowrap" }}>{inv.customerName}</td>
-                        <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#6B7280" }}>{inv.customerMobile}</td>
+                        <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: "#6B7280" }}>{inv.customerMobile || "—"}</td>
                         <td style={{ padding: "9px 12px", whiteSpace: "nowrap", color: inv.customerGstin ? "#059669" : "#D1D5DB" }}>
                           {inv.customerGstin || "—"}
                         </td>
