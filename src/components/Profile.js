@@ -178,17 +178,34 @@ useEffect(() => {
     }
   };
 
-  const handleGoToDashboard = () => {
-    if (userData?.role === "admin") {
-      navigate("/admin");
-    } else if (userData?.role === "owner") {
-      navigate("/owner");
-      } else if (userData?.role === "accountant") {
-      navigate("/ca");
-    } else {
-      setPopupVisible(true);
+const handleGoToDashboard = async () => {
+  if (userData?.role === "admin") {
+    navigate("/admin");
+  } else if (userData?.role === "accountant") {
+    navigate("/ca");
+  } else if (userData?.role === "owner") {
+    // Check if this owner has any charger linked
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.REACT_APP_Backend_API_Base_URL}/api/owner`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const data = await res.json();
+      const hasCharger = Array.isArray(data) ? data.length > 0
+                       : Array.isArray(data?.chargers) ? data.chargers.length > 0
+                       : false;
+      if (hasCharger) {
+        navigate("/owner");
+      } else {
+        setPopupVisible(true); // show "Link / Register Charger" popup
+      }
+    } catch {
+      navigate("/owner"); // fallback: go to dashboard anyway
     }
-  };
+  }
+  // customers and others → do nothing here; button won't show for them
+};
 
   const closePopup = () => setPopupVisible(false);
 
@@ -549,77 +566,72 @@ useEffect(() => {
               <p style={styles.noUser}>No user data found</p>
             )}
 
-            <div style={styles.bottomSection}>
-              <div style={styles.separator} />
+<div style={styles.bottomSection}>
+  <div style={styles.separator} />
 
-              <Button
-                onClick={() => setOperatorOpen(true)}
-                sx={{
-                  color: "#01696f",
-                  fontWeight: 700,
-                  letterSpacing: "0.3px",
-                  mb: 1.2,
-                  textTransform: "none",
-                  borderRadius: "12px",
-                  px: 2.5,
-                  "&:hover": { background: "rgba(1,105,111,0.07)" },
-                }}
-              >
-                CONTACT US
-              </Button>
+  {/* Always show Contact Us */}
+  <Button
+    onClick={() => setOperatorOpen(true)}
+    sx={{
+      color: "#01696f",
+      fontWeight: 700,
+      letterSpacing: "0.3px",
+      mb: 1.2,
+      textTransform: "none",
+      borderRadius: "12px",
+      px: 2.5,
+      "&:hover": { background: "rgba(1,105,111,0.07)" },
+    }}
+  >
+    CONTACT US
+  </Button>
 
-              <p style={{ ...styles.linkTextMuted, marginBottom: 8 }}>
-                Already own a charger?
-              </p>
+  {/* Only show "Go to Dashboard" / "Link Charger" prompt for owner/admin/accountant */}
+  {userData?.role && userData.role !== "customer" && (
+    <>
+      <p style={{ ...styles.linkTextMuted, marginBottom: 8 }}>
+        Already own a charger?
+      </p>
+      <Button
+        onClick={handleGoToDashboard}
+        sx={{
+          mt: 0.5,
+          minWidth: 220,
+          background: "linear-gradient(90deg, #01696f, #0c4e54)",
+          color: "#ffffff",
+          fontWeight: 700,
+          borderRadius: "14px",
+          px: 3,
+          py: 1.2,
+          textTransform: "none",
+          boxShadow: "0 8px 24px rgba(1,105,111,0.20)",
+          "&:hover": { background: "linear-gradient(90deg, #0c4e54, #0f3638)" },
+        }}
+      >
+        Go to dashboard
+      </Button>
+    </>
+  )}
 
-              <Button
-                onClick={handleGoToDashboard}
-                sx={{
-                  mt: 0.5,
-                  minWidth: 220,
-                  background: "linear-gradient(90deg, #01696f, #0c4e54)",
-                  color: "#ffffff",
-                  fontWeight: 700,
-                  borderRadius: "14px",
-                  px: 3,
-                  py: 1.2,
-                  textTransform: "none",
-                  boxShadow: "0 8px 24px rgba(1,105,111,0.20)",
-                  "&:hover": { background: "linear-gradient(90deg, #0c4e54, #0f3638)" },
-                }}
-              >
-                Go to dashboard
-              </Button>
+  <div style={styles.developerSection}>
+    <p style={{ ...styles.linkTextMuted, color: "#5a7a85", marginBottom: 4 }}>
+      Designed and Developed by
+    </p>
+    <p style={{ ...styles.linkTextMuted, color: "#04bfbf", fontWeight: 700, marginBottom: 0 }}>
+      Vjra Technologies LLP
+    </p>
+  </div>
 
-              <div style={styles.developerSection}>
-                <p style={{ ...styles.linkTextMuted, color: "#5a7a85", marginBottom: 4 }}>
-                  Designed and Developed by
-                </p>
-                <p style={{ ...styles.linkTextMuted, color: "#04bfbf", fontWeight: 700, marginBottom: 0 }}>
-                  Vjra Technologies LLP
-                </p>
-              </div>
-
-              <div style={styles.policyLinksWrap}>
-                <a
-                  href="/terms.pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.policyLink}
-                >
-                  Terms & Conditions
-                </a>
-                <span style={styles.policyDot}>•</span>
-                <a
-                  href="/refund.pdf"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={styles.policyLink}
-                >
-                  Refund Policy
-                </a>
-              </div>
-            </div>
+  <div style={styles.policyLinksWrap}>
+    <a href="/terms.pdf" target="_blank" rel="noopener noreferrer" style={styles.policyLink}>
+      Terms & Conditions
+    </a>
+    <span style={styles.policyDot}>•</span>
+    <a href="/refund.pdf" target="_blank" rel="noopener noreferrer" style={styles.policyLink}>
+      Refund Policy
+    </a>
+  </div>
+</div>
 
             {popupVisible && (
               <div style={styles.popupOverlay} onClick={closePopup}>

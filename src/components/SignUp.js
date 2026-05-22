@@ -16,21 +16,21 @@ const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 // ─── Shared field wrapper ──────────────────────────────────────────────────
 function Field({ label, required, hint, error, children }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-      <label style={{ fontSize: 11, fontWeight: 600, color: "rgba(190,215,230,0.7)", letterSpacing: "0.07em", textTransform: "uppercase" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <label style={{ fontSize: 10, fontWeight: 600, color: "rgba(190,215,230,0.65)", letterSpacing: "0.07em", textTransform: "uppercase" }}>
         {label}{required && <span style={{ color: "#04bfbf", marginLeft: 3 }}>*</span>}
       </label>
       {children}
-      {hint && !error && <span style={{ fontSize: 11, color: "rgba(180,210,220,0.4)" }}>{hint}</span>}
-      {error && <span style={{ fontSize: 11, color: "#ff6b7a" }}>{error}</span>}
+      {hint && !error && <span style={{ fontSize: 10, color: "rgba(180,210,220,0.38)" }}>{hint}</span>}
+      {error && <span style={{ fontSize: 10, color: "#ff6b7a" }}>{error}</span>}
     </div>
   );
 }
 
 const baseInput = {
-  width: "100%", padding: "13px 16px", borderRadius: 12,
+  width: "100%", padding: "10px 13px", borderRadius: 10,
   border: "1px solid rgba(255,255,255,0.08)", background: "#0d1a20",
-  color: "#e6f9ff", fontSize: 15, outline: "none", fontFamily: "inherit",
+  color: "#e6f9ff", fontSize: 14, outline: "none", fontFamily: "inherit",
   boxSizing: "border-box", transition: "border-color 0.18s",
 };
 
@@ -53,7 +53,7 @@ function SSelect({ children, style, ...props }) {
       style={{
         ...baseInput, appearance: "none", WebkitAppearance: "none", cursor: "pointer",
         backgroundImage: `url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 7L11 1' stroke='%2304bfbf' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`,
-        backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", paddingRight: 40,
+        backgroundRepeat: "no-repeat", backgroundPosition: "right 13px center", paddingRight: 36,
         ...(f ? { borderColor: "#04bfbf" } : {}), ...(style || {}),
       }}
       onFocus={() => setF(true)} onBlur={() => setF(false)}
@@ -67,28 +67,28 @@ function SSelect({ children, style, ...props }) {
 function Steps({ current }) {
   const steps = ["Your Info", "Vehicle", "Done"];
   return (
-    <div style={{ display: "flex", alignItems: "center", width: "100%", marginBottom: 28 }}>
+    <div style={{ display: "flex", alignItems: "center", width: "100%", marginBottom: 20 }}>
       {steps.map((s, i) => (
         <React.Fragment key={i}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flex: 1 }}>
             <div style={{
-              width: 28, height: 28, borderRadius: "50%",
+              width: 24, height: 24, borderRadius: "50%",
               display: "flex", alignItems: "center", justifyContent: "center",
-              fontSize: 12, fontWeight: 700,
+              fontSize: 11, fontWeight: 700,
               background: i < current ? "#04bfbf" : i === current ? "linear-gradient(135deg,#04bfbf,#027a7a)" : "rgba(255,255,255,0.07)",
               color: i <= current ? "#0a1a20" : "rgba(180,210,220,0.4)",
               border: i === current ? "2px solid #04bfbf" : "none",
-              boxShadow: i === current ? "0 0 10px rgba(4,191,191,0.35)" : "none",
+              boxShadow: i === current ? "0 0 8px rgba(4,191,191,0.35)" : "none",
               transition: "all 0.3s",
             }}>
               {i < current ? "✓" : i + 1}
             </div>
-            <span style={{ fontSize: 10, marginTop: 4, fontWeight: i === current ? 600 : 400, color: i === current ? "#04bfbf" : "rgba(180,210,220,0.4)" }}>
+            <span style={{ fontSize: 9, marginTop: 3, fontWeight: i === current ? 600 : 400, color: i === current ? "#04bfbf" : "rgba(180,210,220,0.4)" }}>
               {s}
             </span>
           </div>
           {i < steps.length - 1 && (
-            <div style={{ flex: 2, height: 2, borderRadius: 2, marginBottom: 18, background: i < current ? "#04bfbf" : "rgba(255,255,255,0.07)", transition: "background 0.3s" }} />
+            <div style={{ flex: 2, height: 2, borderRadius: 2, marginBottom: 16, background: i < current ? "#04bfbf" : "rgba(255,255,255,0.07)", transition: "background 0.3s" }} />
           )}
         </React.Fragment>
       ))}
@@ -156,37 +156,59 @@ export default function SignUp() {
   const groupedModels = form.vehicleType ? getGroupedVehicles(form.vehicleType) : {};
 
   return (
+    // ── Outer: full-page scrollable background ──
     <div style={{
-      minHeight: "100vh", width: "100vw", display: "flex", alignItems: "center",
-      justifyContent: "center", padding: "24px 0",
+      minHeight: "100vh",
+      width: "100vw",
+      overflowY: "auto",
+      WebkitOverflowScrolling: "touch",
+      display: "flex",
+      alignItems: "flex-start",
+      justifyContent: "center",
+      padding: "20px 16px 32px",
       background: "linear-gradient(160deg,#0a1620 0%,#0d1f28 40%,#0a1a1f 100%)",
-      fontFamily: "'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif", color: "#e6f9ff",
+      fontFamily: "'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif",
+      color: "#e6f9ff",
+      boxSizing: "border-box",
     }}>
+      {/* ── Card ── */}
       <div style={{
-        width: "min(92vw, 460px)", padding: "36px 32px", borderRadius: 20,
-        background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
-        boxShadow: "0 24px 64px rgba(0,0,0,0.75)", backdropFilter: "blur(12px)",
+        width: "100%",
+        maxWidth: 420,
+        padding: "24px 20px 20px",
+        borderRadius: 18,
+        background: "rgba(255,255,255,0.025)",
+        border: "1px solid rgba(255,255,255,0.07)",
+        boxShadow: "0 20px 56px rgba(0,0,0,0.75)",
+        backdropFilter: "blur(12px)",
+        boxSizing: "border-box",
       }}>
-        {/* Brand badge */}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 20 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(4,191,191,0.08)", borderRadius: 12, padding: "6px 16px", border: "1px solid rgba(4,191,191,0.18)" }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#04bfbf" />
-            </svg>
-            <span style={{ fontSize: 14, fontWeight: 700, color: "#04bfbf", letterSpacing: "0.05em" }}>SPARX</span>
-          </div>
+
+        {/* ── Logo (same as topbar) ── */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <img
+            src="/logo.png"
+            alt="VIZ Logo"
+            style={{
+              height: 52,
+              objectFit: "contain",
+              filter: "drop-shadow(0 0 8px rgba(4,191,191,0.75))",
+            }}
+          />
         </div>
 
-        <h1 style={{ fontSize: 22, fontWeight: 700, textAlign: "center", marginBottom: 4 }}>Create your account</h1>
-        <p style={{ fontSize: 13, color: "rgba(190,215,230,0.5)", textAlign: "center", marginBottom: 24 }}>
+        <h1 style={{ fontSize: 18, fontWeight: 700, textAlign: "center", marginBottom: 2, marginTop: 0 }}>
+          Create your account
+        </h1>
+        <p style={{ fontSize: 12, color: "rgba(190,215,230,0.5)", textAlign: "center", marginBottom: 18, marginTop: 0 }}>
           Verified: <span style={{ color: "#04bfbf", fontWeight: 600 }}>{mobile}</span>
         </p>
 
         <Steps current={step} />
 
-        {/* ── Step 0: Personal Info ──────────────────────────────────────── */}
+        {/* ── Step 0: Personal Info ── */}
         {step === 0 && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Field label="Full Name" required error={fieldErrors.name}>
               <SInput placeholder="Roshan Kumar" value={form.name} onChange={e => set("name", e.target.value)} autoComplete="name" />
             </Field>
@@ -195,46 +217,50 @@ export default function SignUp() {
               <SInput type="email" placeholder="roshan@example.com" value={form.email} onChange={e => set("email", e.target.value)} autoComplete="email" />
             </Field>
 
-            <Field label="GSTIN" hint="Optional · For GST invoice on your charging receipts" error={fieldErrors.gstin}>
+            <Field label="GSTIN" hint="Optional · For GST invoice on charging receipts" error={fieldErrors.gstin}>
               <SInput
                 placeholder="22AAAAA0000A1Z5"
                 value={form.gstin}
                 onChange={e => set("gstin", e.target.value.toUpperCase())}
                 maxLength={15}
-                style={{ fontFamily: "monospace", letterSpacing: "0.08em" }}
+                style={{ fontFamily: "monospace", letterSpacing: "0.07em" }}
               />
             </Field>
 
-            <button type="button" onClick={() => validateStep0() && setStep(1)} style={{
-              marginTop: 4, height: 50, borderRadius: 12, fontWeight: 700, fontSize: 15,
-              background: "linear-gradient(90deg,#04bfbf,#027a7a)", color: "#0a1a20",
-              border: "none", cursor: "pointer", boxShadow: "0 4px 18px rgba(4,191,191,0.25)",
-            }}>
+            <button
+              type="button"
+              onClick={() => validateStep0() && setStep(1)}
+              style={{
+                marginTop: 2, height: 46, borderRadius: 11, fontWeight: 700, fontSize: 14,
+                background: "linear-gradient(90deg,#04bfbf,#027a7a)", color: "#0a1a20",
+                border: "none", cursor: "pointer", boxShadow: "0 4px 16px rgba(4,191,191,0.25)",
+                fontFamily: "inherit",
+              }}
+            >
               Continue →
             </button>
           </div>
         )}
 
-        {/* ── Step 1: Vehicle Info ───────────────────────────────────────── */}
+        {/* ── Step 1: Vehicle Info ── */}
         {step === 1 && (
-          <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-            {/* Vehicle type tiles */}
+          <form onSubmit={handleSignup} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
             <Field label="Vehicle Type" hint="Optional">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
                 {["2 Wheeler", "3 Wheeler", "4 Wheeler"].map(t => (
                   <button key={t} type="button"
                     onClick={() => { set("vehicleType", t); set("vehicleModel", ""); }}
                     style={{
-                      padding: "12px 6px", borderRadius: 12, border: "none", cursor: "pointer",
+                      padding: "10px 4px", borderRadius: 10, border: "none", cursor: "pointer",
                       background: form.vehicleType === t
                         ? "linear-gradient(135deg,rgba(4,191,191,0.2),rgba(2,122,122,0.12))"
                         : "rgba(255,255,255,0.04)",
                       outline: `2px solid ${form.vehicleType === t ? "#04bfbf" : "transparent"}`,
                       color: form.vehicleType === t ? "#04bfbf" : "rgba(180,210,220,0.55)",
-                      fontFamily: "inherit", fontSize: 11, fontWeight: 600,
+                      fontFamily: "inherit", fontSize: 10, fontWeight: 600,
                       textAlign: "center", transition: "all 0.2s",
                     }}>
-                    <div style={{ fontSize: 22, marginBottom: 4 }}>
+                    <div style={{ fontSize: 18, marginBottom: 3 }}>
                       {t === "2 Wheeler" ? "🛵" : t === "3 Wheeler" ? "🛺" : "🚗"}
                     </div>
                     {t}
@@ -243,7 +269,6 @@ export default function SignUp() {
               </div>
             </Field>
 
-            {/* Vehicle model — only shown when type selected */}
             {form.vehicleType && (
               <Field label="Vehicle Model" hint="Optional · Select your EV model">
                 <SSelect value={form.vehicleModel} onChange={e => set("vehicleModel", e.target.value)}>
@@ -259,18 +284,17 @@ export default function SignUp() {
               </Field>
             )}
 
-            {/* Vehicle number */}
-            <Field label="Vehicle Number" required hint="Format: MH12AB1234  ·  BH plate: 22BH1234AB" error={fieldErrors.vehicleNumber}>
+            <Field label="Vehicle Number" required hint="e.g. MH12AB1234  ·  BH: 22BH1234AB" error={fieldErrors.vehicleNumber}>
               <div style={{ position: "relative" }}>
                 <SInput
                   placeholder="MH12AB1234"
                   value={form.vehicleNumber}
                   onChange={e => set("vehicleNumber", e.target.value.replace(/\s/g, "").toUpperCase())}
                   maxLength={13}
-                  style={{ fontFamily: "monospace", letterSpacing: "0.12em", paddingRight: 44 }}
+                  style={{ fontFamily: "monospace", letterSpacing: "0.1em", paddingRight: 40 }}
                 />
                 {form.vehicleNumber && (
-                  <span style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 16 }}>
+                  <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14 }}>
                     {validatePlate(form.vehicleNumber) ? "✅" : "❌"}
                   </span>
                 )}
@@ -278,24 +302,24 @@ export default function SignUp() {
             </Field>
 
             {error && (
-              <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(255,107,122,0.1)", border: "1px solid rgba(255,107,122,0.25)", color: "#ff6b7a", fontSize: 13 }}>
+              <div style={{ padding: "9px 13px", borderRadius: 9, background: "rgba(255,107,122,0.1)", border: "1px solid rgba(255,107,122,0.25)", color: "#ff6b7a", fontSize: 12 }}>
                 {error}
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+            <div style={{ display: "flex", gap: 9, marginTop: 2 }}>
               <button type="button" onClick={() => setStep(0)} style={{
-                flex: 1, height: 50, borderRadius: 12, fontWeight: 600, fontSize: 14,
+                flex: 1, height: 46, borderRadius: 11, fontWeight: 600, fontSize: 13,
                 background: "rgba(255,255,255,0.05)", color: "rgba(190,215,230,0.7)",
-                border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer",
+                border: "1px solid rgba(255,255,255,0.08)", cursor: "pointer", fontFamily: "inherit",
               }}>
                 ← Back
               </button>
               <button type="submit" disabled={loading} style={{
-                flex: 2, height: 50, borderRadius: 12, fontWeight: 700, fontSize: 15,
+                flex: 2, height: 46, borderRadius: 11, fontWeight: 700, fontSize: 14,
                 background: loading ? "rgba(4,191,191,0.35)" : "linear-gradient(90deg,#04bfbf,#027a7a)",
                 color: "#0a1a20", border: "none", cursor: loading ? "not-allowed" : "pointer",
-                boxShadow: "0 4px 18px rgba(4,191,191,0.25)",
+                boxShadow: "0 4px 16px rgba(4,191,191,0.25)", fontFamily: "inherit",
               }}>
                 {loading ? "Creating account…" : "Create Account ⚡"}
               </button>
@@ -303,19 +327,19 @@ export default function SignUp() {
           </form>
         )}
 
-        {/* ── Step 2: Success ────────────────────────────────────────────── */}
+        {/* ── Step 2: Success ── */}
         {step === 2 && (
-          <div style={{ textAlign: "center", padding: "20px 0" }}>
-            <div style={{ fontSize: 56, marginBottom: 12 }}>⚡</div>
-            <h2 style={{ fontSize: 20, fontWeight: 700, color: "#04bfbf", marginBottom: 8 }}>You're all set!</h2>
-            <p style={{ fontSize: 14, color: "rgba(190,215,230,0.6)" }}>Redirecting to your dashboard…</p>
+          <div style={{ textAlign: "center", padding: "16px 0" }}>
+            <div style={{ fontSize: 48, marginBottom: 10 }}>⚡</div>
+            <h2 style={{ fontSize: 18, fontWeight: 700, color: "#04bfbf", marginBottom: 6, marginTop: 0 }}>You're all set!</h2>
+            <p style={{ fontSize: 13, color: "rgba(190,215,230,0.6)", margin: 0 }}>Redirecting to your dashboard…</p>
           </div>
         )}
 
         {step < 2 && (
-          <p style={{ marginTop: 24, fontSize: 13, color: "rgba(180,210,220,0.45)", textAlign: "center" }}>
+          <p style={{ marginTop: 18, fontSize: 12, color: "rgba(180,210,220,0.45)", textAlign: "center", marginBottom: 0 }}>
             Already have an account?{" "}
-            <button onClick={() => navigate("/login")} style={{ background: "none", border: "none", color: "#04bfbf", fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+            <button onClick={() => navigate("/login")} style={{ background: "none", border: "none", color: "#04bfbf", fontWeight: 600, cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>
               Login
             </button>
           </p>
