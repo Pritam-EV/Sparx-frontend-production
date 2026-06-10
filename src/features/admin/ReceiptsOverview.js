@@ -11,15 +11,15 @@ import {
   Drawer,
   CircularProgress
 } from "@mui/material";
-import {
-  ResponsiveContainer,
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip as RTooltip,
-  CartesianGrid
-} from "recharts";
+// import {
+//   ResponsiveContainer,
+//   AreaChart,
+//   Area,
+//   XAxis,
+//   YAxis,
+//   Tooltip as RTooltip,
+//   CartesianGrid
+// } from "recharts";
 import {
   Refresh,
   Download,
@@ -148,38 +148,38 @@ function FilterChip({ label, value, onClear }) {
   );
 }
 
-// ─── KPI Card ────────────────────────────────────────────────────────────────
+// // ─── KPI Card ────────────────────────────────────────────────────────────────
 
-function KpiCard({ icon, label, value, color, neg, highlight, loading }) {
-  return (
-    <Box sx={{
-      background: "#fff", borderRadius: "12px", p: 2,
-      boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-      borderLeft: `3px solid ${color}`,
-      opacity: loading ? 0.6 : 1, transition: "opacity .2s", height: "100%"
-    }}>
-      <Stack direction="row" alignItems="center" spacing={1} mb={0.5}>
-        <Box sx={{
-          width: 28, height: 28, borderRadius: "8px",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          background: color + "18", color, flexShrink: 0,
-          "& svg": { fontSize: 14 }
-        }}>{icon}</Box>
-        <Typography
-          fontSize={10} fontWeight={600} color="#94a3b8"
-          sx={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
-        >{label}</Typography>
-      </Stack>
-      {loading
-        ? <Box sx={{ height: 20, width: "70%", borderRadius: 1, background: "#f1f5f9" }} />
-        : <Typography fontSize={16} fontWeight={800}
-            color={highlight ? color : neg ? "#dc2626" : "#0f172a"}>
-            {neg ? `(${value})` : value}
-          </Typography>
-      }
-    </Box>
-  );
-}
+// function KpiCard({ icon, label, value, color, neg, highlight, loading }) {
+//   return (
+//     <Box sx={{
+//       background: "#fff", borderRadius: "12px", p: 2,
+//       boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+//       borderLeft: `3px solid ${color}`,
+//       opacity: loading ? 0.6 : 1, transition: "opacity .2s", height: "100%"
+//     }}>
+//       <Stack direction="row" alignItems="center" spacing={1} mb={0.5}>
+//         <Box sx={{
+//           width: 28, height: 28, borderRadius: "8px",
+//           display: "flex", alignItems: "center", justifyContent: "center",
+//           background: color + "18", color, flexShrink: 0,
+//           "& svg": { fontSize: 14 }
+//         }}>{icon}</Box>
+//         <Typography
+//           fontSize={10} fontWeight={600} color="#94a3b8"
+//           sx={{ textTransform: "uppercase", letterSpacing: "0.05em" }}
+//         >{label}</Typography>
+//       </Stack>
+//       {loading
+//         ? <Box sx={{ height: 20, width: "70%", borderRadius: 1, background: "#f1f5f9" }} />
+//         : <Typography fontSize={16} fontWeight={800}
+//             color={highlight ? color : neg ? "#dc2626" : "#0f172a"}>
+//             {neg ? `(${value})` : value}
+//           </Typography>
+//       }
+//     </Box>
+//   );
+// }
 
 // ─── Table Cell ──────────────────────────────────────────────────────────────
 
@@ -307,6 +307,76 @@ function ReceiptDrawer({ receipt: r, onClose }) {
   );
 }
 
+// ─── Summary List ─────────────────────────────────────────────────────────────
+// ─── Summary List ─────────────────────────────────────────────────────────────
+function SummaryList({ rows, loading }) {
+  // Split into two columns: collection (first 6) and distribution (last 6)
+  const collection   = rows.filter(r => !r.group || r.group === "collection");
+  const distribution = rows.filter(r => r.group === "distribution");
+
+  const Row = ({ label, value, color, neg, highlight }) => (
+    <Box sx={{
+      display: "flex", alignItems: "center",
+      justifyContent: "space-between",
+      px: 2, py: 0.85,
+      borderBottom: "1px solid #f1f5f9",
+      background: highlight ? "#f0fdf4" : "transparent",
+      "&:last-child": { borderBottom: "none" },
+      transition: "background .1s",
+      "&:hover": { background: highlight ? "#dcfce7" : "#f8fafc" },
+    }}>
+      <Stack direction="row" alignItems="center" spacing={1}>
+        <Box sx={{ width: 7, height: 7, borderRadius: "50%", background: color, flexShrink: 0 }} />
+        <Typography fontSize={12} color={highlight ? "#064e3b" : "#64748b"} fontWeight={highlight ? 600 : 400}>
+          {label}
+        </Typography>
+      </Stack>
+      {loading
+        ? <Box sx={{ height: 12, width: 64, borderRadius: 1, background: "#f1f5f9" }} />
+        : <Typography
+            fontSize={12} fontWeight={highlight ? 800 : 600}
+            fontFamily="'Roboto Mono', monospace"
+            color={highlight ? "#059669" : neg ? "#dc2626" : "#0f172a"}
+            sx={{ letterSpacing: "-0.01em" }}
+          >
+            {neg ? `(${value})` : value}
+          </Typography>
+      }
+    </Box>
+  );
+
+  const Panel = ({ title, rows }) => (
+    <Box sx={{
+      background: "#fff", borderRadius: "10px",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+      overflow: "hidden", flex: 1, minWidth: 0,
+    }}>
+      {/* Panel header */}
+      <Box sx={{
+        px: 2, py: 0.9,
+        background: "#f8fafc",
+        borderBottom: "1px solid #e2e8f0",
+      }}>
+        <Typography fontSize={10} fontWeight={700} color="#94a3b8"
+          sx={{ textTransform: "uppercase", letterSpacing: "0.08em" }}>
+          {title}
+        </Typography>
+      </Box>
+      {rows.map((r) => <Row key={r.label} {...r} />)}
+    </Box>
+  );
+
+  return (
+    <Box sx={{
+      display: "flex",
+      flexDirection: { xs: "column", md: "row" },
+      gap: 2, mb: 3,
+    }}>
+      <Panel title="Collection"   rows={collection} />
+      <Panel title="Distribution" rows={distribution} />
+    </Box>
+  );
+}
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
@@ -354,7 +424,7 @@ const fetchData = useCallback(async () => {
     const data = res.data;
     setSummary(data.summary   || {});
     setReceipts(data.receipts || []);
-    setChartData(buildChartData(data.receipts || [], period));
+    // setChartData(buildChartData(data.receipts || [], period));
     setRange(data.range || null);
   } catch (err) {
     console.error(err);
@@ -495,7 +565,23 @@ const activeFilterCount = [selProject, refundFilter].filter(Boolean).length;
   )}
 </Box>
 
-        {/* ═══ KPI CARDS — Collection ═══ */}
+{/* ═══ SUMMARY LIST ═══ */}
+<SummaryList loading={loading} rows={[
+  { group: "collection",   label: "Gross Revenue",     value: money(totalRevenue),                color: ACCENT },
+  { group: "collection",   label: "GST Collected",     value: money(summary.gstCollected),        color: "#0891b2" },
+  { group: "collection",   label: "Total Refunds",     value: money(totalRefund),                 color: RED,    neg: true },
+  { group: "collection",   label: "PG Charges",        value: money(pgCharges),                   color: AMBER,  neg: true },
+  { group: "collection",   label: "Discounts Applied", value: money(totalDiscount),               color: PURPLE, neg: true },
+  { group: "collection",   label: "Net Settlement",    value: money(netSettlement),               color: GREEN,  highlight: true },
+  { group: "distribution", label: "Platform Margin",   value: money(summary.totalMargin),         color: GREEN },
+  { group: "distribution", label: "Owner Settlement",  value: money(summary.totalOwnerPayout),    color: "#0284c7" },
+  { group: "distribution", label: "Electricity Cost",  value: money(summary.totalElectricity),    color: AMBER },
+  { group: "distribution", label: "Total Energy",      value: kwh(summary.totalEnergy),           color: "#7c3aed" },
+  { group: "distribution", label: "Taxable Revenue",   value: money(summary.taxableRevenue),      color: "#475569" },
+  { group: "distribution", label: "Total Receipts",    value: String(summary.totalReceipts || 0), color: "#475569" },
+]} />
+
+        {/* ═══ KPI CARDS — Collection ═══
         <Box mb={0.5} display="flex" alignItems="center" justifyContent="space-between">
           <Typography
             fontSize={11} fontWeight={700} color="#94a3b8"
@@ -526,7 +612,7 @@ const activeFilterCount = [selProject, refundFilter].filter(Boolean).length;
         </Grid>
 
         {/* Expanded KPIs — Distribution */}
-        <Collapse in={expandedCards}>
+        {/* <Collapse in={expandedCards}>
           <Typography
             fontSize={11} fontWeight={700} color="#94a3b8"
             sx={{ textTransform: "uppercase", letterSpacing: 1, mb: 1 }}
@@ -545,9 +631,9 @@ const activeFilterCount = [selProject, refundFilter].filter(Boolean).length;
               </Grid>
             ))}
           </Grid>
-        </Collapse>
+        </Collapse> */} 
 
-        {/* ═══ TREND CHART ═══ */}
+        {/* ═══ TREND CHART ═══
         <Box sx={{ background: "#fff", borderRadius: "12px", p: 3, mb: 3, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
@@ -610,7 +696,9 @@ const activeFilterCount = [selProject, refundFilter].filter(Boolean).length;
               <Typography color="#94a3b8" fontSize={13}>No data for this period</Typography>
             </Box>
           )}
-        </Box>
+        </Box> */}
+
+        
 
         {/* ═══ FILTER BAR — search + refund status ═══ */}
         <Box sx={{ background: "#fff", borderRadius: "12px", p: 2, mb: 2, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
@@ -797,12 +885,19 @@ const activeFilterCount = [selProject, refundFilter].filter(Boolean).length;
       </Box>
 
       {/* ═══ DETAIL DRAWER ═══ */}
-      <Drawer
-        anchor="right"
-        open={drawerOpen}
-        onClose={closeDrawer}
-        PaperProps={{ sx: { width: { xs: "100vw", sm: 480 }, background: "#f8fafc" } }}
-      >
+        <Drawer
+          anchor="right"
+          open={drawerOpen}
+          onClose={closeDrawer}
+          PaperProps={{
+            sx: {
+              width: { xs: "100vw", sm: 480 },
+              background: "#f8fafc",
+              marginTop: { xs: "56px", md: 0 },
+              height: { xs: "calc(100% - 56px)", md: "100%" },
+            }
+          }}
+        >
         {selectedRow && <ReceiptDrawer receipt={selectedRow} onClose={closeDrawer} />}
       </Drawer>
 

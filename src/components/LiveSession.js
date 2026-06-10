@@ -420,7 +420,12 @@ useEffect(() => {
       if (deviceStatus === 'available') {
         if (!autoStopCalledRef.current) {
           autoStopCalledRef.current = true;
-          await stopSessionAndRedirect('target_reached');
+          try {
+            await stopSessionAndRedirect('target_reached');
+          } catch (err) {
+            console.error('[AUTO-STOP] Failed, resetting flag for retry:', err);
+            autoStopCalledRef.current = false;  // ← reset so next poll retries
+          }
         }
         return;
       }

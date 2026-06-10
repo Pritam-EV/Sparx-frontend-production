@@ -1,305 +1,484 @@
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
-  Box,
-  Grid,
-  Card,
-  Typography,
-  Stack,
-  Divider,
-  IconButton,
-  Tooltip,
+  Box, Typography, Grid, Card, CardContent,
+  FormControl, InputLabel, Select, MenuItem,
+  CircularProgress, Divider, Tooltip, IconButton,
+  Chip, Stack,
 } from "@mui/material";
-import QueryStatsIcon from "@mui/icons-material/QueryStats";
-import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
-import BoltIcon from "@mui/icons-material/Bolt";
-import TimelineIcon from "@mui/icons-material/Timeline";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { apiFetch } from "../../utils/apiFetch";
+import BoltIcon from "@mui/icons-material/Bolt";
+import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import PaymentsIcon from "@mui/icons-material/Payments";
+import EvStationIcon from "@mui/icons-material/EvStation";
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import { api } from "../../api";
 
-const cardSx = {
-  bgcolor: "#0e2629",
-  border: "1px solid #0e2629",
-  boxShadow: "0 20px 60px rgba(0,0,0,0.7)",
-  borderRadius: 3,
-  color: "#e6f9ff",
-  width: 150,
-  height: 250,
-  display: "flex",
-  flexDirection: "column",
-  justifyContent: "center",
-  p: 1,
-};
+// ─── Constants ────────────────────────────────────────────────────────────────
+const DURATION_OPTIONS = [
+  { value: "all",          label: "All Time" },
+  { value: "today",        label: "Today" },
+  { value: "thisMonth",    label: "This Month" },
+  { value: "lastMonth",    label: "Last Month" },
+  { value: "thisQuarter",  label: "This Quarter" },
+  { value: "thisYear",     label: "This Year" },
+];
 
-const titleSx = {
-  display: "flex",
-  alignItems: "center",
-  gap: 0,
-  mb: 0,
-  fontWeight: 600,
-  fontSize: "1.1rem",
-};
+const fmt = (n) =>
+  typeof n === "number"
+    ? "₹ " + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    : "₹ 0.00";
 
-const labelSx = { fontWeight: 500, opacity: 0.7, fontSize: 14 };
-const valueSx = { fontWeight: 700, fontSize: 16, ml: 2 };
+const fmtKwh = (n) =>
+  typeof n === "number" ? n.toLocaleString("en-IN", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + " kWh" : "0.000 kWh";
 
-const fmt0 = (v) =>
-  Number(v ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 });
+const fmtNum = (n) => (typeof n === "number" ? n.toLocaleString("en-IN") : "0");
 
-const AdminAnalytics = () => {
-  const [devices, setDevices] = useState([]);
-  const [sessions, setSessions] = useState([]);
-  const [finance, setFinance] = useState({
-    amountPaid: 0,
-    amountUtilized: 0,
-    amountRefunded: 0,
-    energyUtilized: 0,
-  });
-  const [lastFetchedAt, setLastFetchedAt] = useState(null);
-
-  const fetchData = useCallback(() => {
-    Promise.all([
-      apiFetch("/api/devices"),
-      apiFetch("/api/sessions/all?limit=10000"),
-      apiFetch("/api/receipts/all?limit=10000"),
-    ]).then(([devicesRes, sessionsRes, receiptsRes]) => {
-      const dArr = Array.isArray(devicesRes)
-        ? devicesRes
-        : devicesRes.devices || [];
-      setDevices(dArr);
-
-      const sArr = Array.isArray(sessionsRes)
-        ? sessionsRes
-        : sessionsRes.sessions || [];
-      setSessions(sArr);
-
-      const rArr = Array.isArray(receiptsRes?.list)
-        ? receiptsRes.list
-        : Array.isArray(receiptsRes?.receipts)
-        ? receiptsRes.receipts
-        : [];
-const amountPaid = rArr.reduce((a, r) => a + Number(r.amountPaid ?? 0), 0);
-const amountRefunded = rArr.reduce((a, r) => a + Number(r.refund ?? 0), 0);
-
-// Utilized should come from sessions (actual charging usage)
-const amountUtilized = sArr.reduce((a, s) => a + Number(s.amountUsed ?? 0), 0);
-
-const energyUtilized = sArr.reduce(
-  (a, s) => a + Number(s.energyConsumed ?? 0),
-  0
+// ─── Sub-components ───────────────────────────────────────────────────────────
+const SectionLabel = ({ children }) => (
+  <Typography
+    variant="overline"
+    sx={{ color: "#666", fontWeight: 700, letterSpacing: 1.5, mb: 1.5, display: "block" }}
+  >
+    {children}
+  </Typography>
 );
 
-setFinance({
-  amountPaid,
-  amountUtilized,
-  amountRefunded,
-  energyUtilized,
-});
+const KpiCard = ({ label, value, icon, color, bg, tooltip, sub }) => (
+  <Card
+    elevation={0}
+    sx={{
+      height: "100%",
+      borderRadius: 3,
+      border: "1px solid",
+      borderColor: "divider",
+      bgcolor: bg || "#fff",
+      transition: "box-shadow 0.2s",
+      "&:hover": { boxShadow: "0 4px 20px rgba(0,0,0,0.09)" },
+    }}
+  >
+    <CardContent sx={{ p: 2.5 }}>
+      <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+        <Box>
+          <Stack direction="row" alignItems="center" spacing={0.5} mb={0.5}>
+            <Typography variant="caption" sx={{ color: "#777", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.8 }}>
+              {label}
+            </Typography>
+            {tooltip && (
+              <Tooltip title={tooltip} arrow placement="top">
+                <InfoOutlinedIcon sx={{ fontSize: 14, color: "#bbb", cursor: "help" }} />
+              </Tooltip>
+            )}
+          </Stack>
+          <Typography variant="h5" sx={{ fontWeight: 700, color: color || "#1a1a2e", lineHeight: 1.2 }}>
+            {value}
+          </Typography>
+          {sub && (
+            <Typography variant="caption" sx={{ color: "#999", mt: 0.5, display: "block" }}>
+              {sub}
+            </Typography>
+          )}
+        </Box>
+        <Box
+          sx={{
+            width: 44, height: 44, borderRadius: 2,
+            bgcolor: color ? color + "18" : "#f5f5f5",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          {React.cloneElement(icon, { sx: { color: color || "#555", fontSize: 22 } })}
+        </Box>
+      </Stack>
+    </CardContent>
+  </Card>
+);
 
-      setLastFetchedAt(new Date());
-    });
+const FinanceRow = ({ label, value, tooltip, highlight, indent, color }) => (
+  <Stack
+    direction="row"
+    alignItems="center"
+    justifyContent="space-between"
+    sx={{
+      py: 1.1,
+      px: indent ? 2 : 0,
+      borderRadius: 1.5,
+      bgcolor: highlight ? (color ? color + "10" : "#f0f7ff") : "transparent",
+      "&:not(:last-child)": { borderBottom: "1px solid #f0f0f0" },
+    }}
+  >
+    <Stack direction="row" alignItems="center" spacing={0.5}>
+      {indent && <Box sx={{ width: 8, height: 2, bgcolor: "#ddd", borderRadius: 1 }} />}
+      <Typography variant="body2" sx={{ color: indent ? "#555" : "#333", fontWeight: highlight ? 700 : 500 }}>
+        {label}
+      </Typography>
+      {tooltip && (
+        <Tooltip title={tooltip} arrow placement="top">
+          <InfoOutlinedIcon sx={{ fontSize: 13, color: "#bbb", cursor: "help" }} />
+        </Tooltip>
+      )}
+    </Stack>
+    <Typography
+      variant="body2"
+      sx={{ fontWeight: highlight ? 700 : 600, color: color || (highlight ? "#1a237e" : "#222"), fontVariantNumeric: "tabular-nums" }}
+    >
+      {value}
+    </Typography>
+  </Stack>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+const Analytics = () => {
+  const [filterOptions, setFilterOptions] = useState({ projects: [], cities: [] });
+  const [filters, setFilters] = useState({ duration: "thisMonth", project: "all", city: "all" });
+  const [summary, setSummary] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [lastUpdated, setLastUpdated] = useState(null);
+
+  // ── Fetch filter options ─────────────────────────────────────────────────
+  useEffect(() => {
+    api.get("/analytics/filters")
+      .then(r => setFilterOptions(r.data))
+      .catch(e => console.error("Filter options error:", e));
   }, []);
 
-  useEffect(() => {
-    fetchData();
-    const intervalId = setInterval(fetchData, 10000); // auto refresh 10s
-    return () => clearInterval(intervalId);
-  }, [fetchData]);
-
-  const deviceStats = useMemo(() => {
-    let available = 0,
-      occupied = 0,
-      offline = 0,
-      faulty = 0;
-    for (const d of devices) {
-      const s = String(d?.status ?? "").toLowerCase().trim();
-      if (s === "available" || s === "online") available += 1;
-      else if (s === "occupied" || s === "busy") occupied += 1;
-      else if (s === "offline" || s === "unknown") offline += 1;
-      else if (s === "faulty" || s === "error") faulty += 1;
+  // ── Fetch summary ────────────────────────────────────────────────────────
+  const fetchSummary = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({ period: filters.duration });
+      if (filters.project !== "all") params.set("project", filters.project);
+      if (filters.city    !== "all") params.set("city",    filters.city);
+      const { data } = await api.get(`/analytics/summary?${params}`);
+      setSummary(data);
+      setLastUpdated(new Date());
+    } catch (e) {
+      console.error("Analytics summary error:", e);
+      setError("Failed to load analytics data. Please try again.");
+    } finally {
+      setLoading(false);
     }
-    return {
-      total: devices.length,
-      available,
-      occupied,
-      offline,
-      faulty,
-    };
-  }, [devices]);
+  }, [filters]);
 
-const sessionStats = useMemo(() => {
-  let total = sessions.length;
-  let active = 0;
-  let completed = 0;
+  useEffect(() => { fetchSummary(); }, [fetchSummary]);
 
-  for (const s of sessions) {
-    const status = String(s.status ?? "").toLowerCase();
-    if (status === "active") active++;
-    else if (status === "completed") completed++;
-  }
+  const handleFilter = (key) => (e) => setFilters(prev => ({ ...prev, [key]: e.target.value }));
 
-  return { total, active, completed };
-}, [sessions]);
-const platformRevenue = finance.energyUtilized * 2;
-const balance = finance.amountPaid - finance.amountUtilized;
+  const f  = summary?.finance  || {};
+  const s  = summary?.sessions || {};
+  const en = summary?.energy   || {};
+
+  // Cashfree breakdown helpers
+  const cashfreePgPct = f.pgRatePercent ? `${f.pgRatePercent}%` : "1.888%";
+
   return (
-    <Box
-      sx={{
-        maxWidth: 1200,
-        mx: "auto",
-        pt: 2,
-        px: { xs: 1, sm: 2, md: 3 },
-        minHeight: "calc(100vh - 64px)",
-      }}
-    >
-      {/* Header row with Title and Refresh */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          mb: 3,
-        }}
-      >
-        <Typography
-          variant="h5"
-          sx={{ color: "#04bfbf", fontWeight: 700 }}
-        >
-          Analytics Overview
-        </Typography>
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 }, minHeight: "100vh", bgcolor: "#f7f8fc", maxWidth: 1400, mx: "auto" }}>
 
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Tooltip title="Refresh Data">
-            <IconButton onClick={fetchData} size="small" sx={{ color: "#0087b1ff" }}>
-              <RefreshIcon />
-            </IconButton>
-          </Tooltip>
-          <Typography sx={{ fontSize: 12, color: "#04bfbf" }}>
-            {lastFetchedAt
-              ? `Last updated: ${lastFetchedAt.toLocaleTimeString()}`
-              : "Loading..."}
+      {/* ── Header ─────────────────────────────────────────────────────── */}
+      <Stack direction={{ xs: "column", sm: "row" }} alignItems={{ xs: "flex-start", sm: "center" }}
+        justifyContent="space-between" mb={3} spacing={1}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 800, color: "#1a1a2e" }}>
+            Analytics
           </Typography>
+          {lastUpdated && (
+            <Typography variant="caption" sx={{ color: "#999" }}>
+              Updated {lastUpdated.toLocaleTimeString("en-IN")}
+            </Typography>
+          )}
         </Box>
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+          {/* Duration */}
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Duration</InputLabel>
+            <Select value={filters.duration} label="Duration" onChange={handleFilter("duration")}>
+              {DURATION_OPTIONS.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+
+          {/* Project */}
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Project</InputLabel>
+            <Select value={filters.project} label="Project" onChange={handleFilter("project")}>
+              <MenuItem value="all">All Projects</MenuItem>
+              {filterOptions.projects.map(p => <MenuItem key={p} value={p}>{p}</MenuItem>)}
+            </Select>
+          </FormControl>
+
+          {/* City */}
+          <FormControl size="small" sx={{ minWidth: 130 }}>
+            <InputLabel>City</InputLabel>
+            <Select value={filters.city} label="City" onChange={handleFilter("city")}>
+              <MenuItem value="all">All Cities</MenuItem>
+              {filterOptions.cities.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
+            </Select>
+          </FormControl>
+
+          <IconButton onClick={fetchSummary} disabled={loading} size="small"
+            sx={{ border: "1px solid #ddd", bgcolor: "#fff" }}>
+            <RefreshIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+      </Stack>
+
+      {/* ── Active period chip ──────────────────────────────────────────── */}
+      <Box mb={3}>
+        <Chip
+          size="small"
+          label={DURATION_OPTIONS.find(o => o.value === filters.duration)?.label || "All Time"}
+          sx={{ bgcolor: "#e8f4fd", color: "#0277bd", fontWeight: 600, fontSize: 12 }}
+        />
+        {filters.project !== "all" && (
+          <Chip size="small" label={`Project: ${filters.project}`}
+            sx={{ ml: 1, bgcolor: "#f3e5f5", color: "#7b1fa2", fontWeight: 600, fontSize: 12 }} />
+        )}
+        {filters.city !== "all" && (
+          <Chip size="small" label={`City: ${filters.city}`}
+            sx={{ ml: 1, bgcolor: "#e8f5e9", color: "#2e7d32", fontWeight: 600, fontSize: 12 }} />
+        )}
       </Box>
 
-      <Grid container spacing={2}>
-        {/* Devices Card */}
-        <Grid item xs={12} sm={6} sx={{ display: "flex" }}>
-          <Card sx={cardSx}>
-            <Box sx={titleSx}>
-              <QueryStatsIcon sx={{ color: "#04bfbf" }} />
-              Devices
-            </Box>
-            <Divider sx={{ borderColor: "#0e2629", mb: 2 }} />
-            <Stack spacing={1}>
-              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography sx={labelSx}>Total:</Typography>
-                <Typography sx={valueSx}>{fmt0(deviceStats.total)}</Typography>
-              </Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  color: "#3ec286",
-                }}
-              >
-                <Typography sx={{ ...labelSx, color: "#04bfbf" }}>
-                  Available:
-                </Typography>
-                <Typography sx={valueSx}>{fmt0(deviceStats.available)}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", color: "#1abd05ff" }}>
-                <Typography>Occupied:</Typography>
-                <Typography sx={valueSx}>{fmt0(deviceStats.occupied)}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", color: "#949596ff" }}>
-                <Typography>Offline:</Typography>
-                <Typography sx={valueSx}>{fmt0(deviceStats.offline)}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", color: "#be0802ff" }}>
-                <Typography>Faulty:</Typography>
-                <Typography sx={valueSx}>{fmt0(deviceStats.faulty)}</Typography>
-              </Box>
-            </Stack>
-          </Card>
-        </Grid>
+      {/* ── Loading / Error ─────────────────────────────────────────────── */}
+      {loading && (
+        <Box display="flex" justifyContent="center" alignItems="center" minHeight={300}>
+          <CircularProgress size={48} />
+        </Box>
+      )}
+      {error && !loading && (
+        <Box textAlign="center" py={8}>
+          <Typography color="error" variant="body1">{error}</Typography>
+        </Box>
+      )}
 
-        {/* Finance Card */}
-        <Grid item xs={12} sm={6} sx={{ display: "flex" }}>
-          <Card sx={cardSx}>
-            <Box sx={titleSx}>
-              <AttachMoneyIcon sx={{ color: "#f97316" }} />
-              Finance
-            </Box>
-            <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", mb: 2 }} />
-            <Stack spacing={1}>
-              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography sx={labelSx}>Received:</Typography>
-                <Typography sx={valueSx}>₹{fmt0(finance.amountPaid)}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography sx={labelSx}>Utilized:</Typography>
-                <Typography sx={valueSx}>₹{fmt0(finance.amountUtilized)}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography sx={labelSx}>Refunded:</Typography>
-                <Typography sx={valueSx}>₹{fmt0(finance.amountRefunded)}</Typography>
-              </Box>
-              <Divider sx={{ borderColor: "rgba(255,255,255,0.05)", my: 1 }} />
-              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography sx={labelSx}>Platfrom Revenue:</Typography>
-                <Typography sx={valueSx}>₹{fmt0(platformRevenue)}</Typography>
-              </Box>
-              <Divider sx={{ borderColor: "rgba(255,255,255,0.05)", my: 1 }} />
-              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography sx={labelSx}>Balance:</Typography>
-                <Typography sx={valueSx}>₹{fmt0(balance)}</Typography>
-              </Box>
-            </Stack>
-          </Card>
-        </Grid>
+      {!loading && !error && summary && (
+        <>
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/*  SECTION 1 — SESSIONS                                         */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <SectionLabel>Sessions</SectionLabel>
+          <Grid container spacing={2.5} mb={4}>
+            <Grid item xs={6} sm={6} md={3}>
+              <KpiCard
+                label="Live Sessions"
+                value={fmtNum(s.live)}
+                icon={<EvStationIcon />}
+                color="#00897b"
+                bg="#f0faf9"
+                tooltip="Currently active (charging) sessions right now"
+              />
+            </Grid>
+            <Grid item xs={6} sm={6} md={3}>
+              <KpiCard
+                label="Total Sessions"
+                value={fmtNum(s.total)}
+                icon={<EvStationIcon />}
+                color="#1565c0"
+                tooltip="All sessions started in the selected period"
+              />
+            </Grid>
+          </Grid>
 
-        {/* Sessions Card */}
-        <Grid item xs={12} sm={6} sx={{ display: "flex" }}>
-          <Card sx={cardSx}>
-            <Box sx={titleSx}>
-              <TimelineIcon sx={{ color: "#04bfbf" }} />
-              Sessions
-            </Box>
-            <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", mb: 2 }} />
-            <Stack spacing={1}>
-              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography sx={labelSx}>Total:</Typography>
-                <Typography sx={valueSx}>{fmt0(sessionStats.total)}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", color: "#a80404ff" }}>
-                <Typography>Active:</Typography>
-                <Typography sx={valueSx}>{fmt0(sessionStats.active)}</Typography>
-              </Box>
-              <Box sx={{ display: "flex", justifyContent: "space-between", color: "#03b931ff" }}>
-                <Typography>Completed:</Typography>
-                <Typography sx={valueSx}>{fmt0(sessionStats.completed)}</Typography>
-              </Box>
-            </Stack>
-          </Card>
-        </Grid>
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/*  SECTION 2 — ENERGY                                           */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <SectionLabel>Energy</SectionLabel>
+          <Grid container spacing={2.5} mb={4}>
+            <Grid item xs={12} sm={6} md={3}>
+              <KpiCard
+                label="Live Energy Dispensed"
+                value={fmtKwh(en.liveKwh)}
+                icon={<BoltIcon />}
+                color="#f57c00"
+                bg="#fff8f0"
+                tooltip="Energy delivered so far in currently active sessions"
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <KpiCard
+                label="Total Energy Consumed"
+                value={fmtKwh(en.totalKwh)}
+                icon={<BoltIcon />}
+                color="#558b2f"
+                bg="#f4fce8"
+                tooltip="Total kWh dispensed across all completed sessions in the period"
+              />
+            </Grid>
+          </Grid>
 
-        {/* Energy Card */}
-        <Grid item xs={12} sm={6} sx={{ display: "flex" }}>
-          <Card sx={cardSx}>
-            <Box sx={titleSx}>
-              <BoltIcon sx={{ color: "#ffea00" }} />
-              Energy
-            </Box>
-            <Divider sx={{ borderColor: "rgba(255,255,255,0.1)", mb: 2 }} />
-            <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography sx={labelSx}>Utilized:</Typography>
-                <Typography sx={valueSx}>{Number(finance.energyUtilized).toFixed(2)} kWh </Typography>
-            </Box>
-          </Card>
-        </Grid>
-      </Grid>
+          {/* ══════════════════════════════════════════════════════════════ */}
+          {/*  SECTION 3 — FINANCE                                          */}
+          {/* ══════════════════════════════════════════════════════════════ */}
+          <SectionLabel>Finance</SectionLabel>
+          <Grid container spacing={2.5}>
+
+            {/* ── KPI Row ─────────────────────────────────────────────── */}
+            <Grid item xs={12} sm={6} md={4}>
+              <KpiCard
+                label="Cashfree Total Collected"
+                value={fmt(f.cashfreeGrossTotal)}
+                icon={<PaymentsIcon />}
+                color="#1565c0"
+                bg="#f0f4ff"
+                tooltip="Gross Cashfree receipts = Wallet top-ups + Direct session payments"
+                sub={`Top-up: ${fmt(f.walletTopupTotal)}  |  Direct: ${fmt(f.directCashfreePaid)}`}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <KpiCard
+                label="Cashfree Net Settlement"
+                value={fmt(f.cashfreeNetSettlement)}
+                icon={<AccountBalanceWalletIcon />}
+                color="#283593"
+                bg="#eef1ff"
+                tooltip={`Gross − Direct session refunds − PG charges (${cashfreePgPct})`}
+                sub={`After refunds & PG charges`}
+              />
+            </Grid>
+            <Grid item xs={12} sm={6} md={4}>
+              <KpiCard
+                label="Platform Margin"
+                value={fmt(f.platformMargin)}
+                icon={<TrendingUpIcon />}
+                color="#6a1b9a"
+                bg="#f9f0ff"
+                tooltip="vjraMarginAmount summed from all receipts in period"
+              />
+            </Grid>
+
+            {/* ── Cashfree Detail Breakdown Card ──────────────────────── */}
+            <Grid item xs={12} md={6}>
+              <Card elevation={0} sx={{ borderRadius: 3, border: "1px solid #e0e0e0", bgcolor: "#fff" }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Stack direction="row" alignItems="center" spacing={1} mb={2}>
+                    <PaymentsIcon sx={{ color: "#1565c0", fontSize: 20 }} />
+                    <Typography variant="subtitle1" fontWeight={700} color="#1a1a2e">
+                      Cashfree Collections Breakdown
+                    </Typography>
+                  </Stack>
+
+                  <FinanceRow
+                    label="Wallet Top-up (Cashfree → Wallet)"
+                    value={fmt(f.walletTopupTotal)}
+                    tooltip="Users loaded money into Sparx wallet via Cashfree"
+                    highlight
+                    color="#0277bd"
+                  />
+                  <FinanceRow
+                    label="Direct Session Payments (Cashfree)"
+                    value={fmt(f.directCashfreePaid)}
+                    tooltip="Users paid directly via Cashfree at session start (no wallet)"
+                    highlight
+                    color="#0277bd"
+                  />
+                  <Divider sx={{ my: 1.5, borderStyle: "dashed" }} />
+                  <FinanceRow
+                    label="Gross Cashfree Total"
+                    value={fmt(f.cashfreeGrossTotal)}
+                    highlight
+                    color="#1565c0"
+                  />
+
+                  <Box mt={2} mb={1}>
+                    <Typography variant="caption" sx={{ color: "#999", textTransform: "uppercase", fontWeight: 700, letterSpacing: 1 }}>
+                      Deductions
+                    </Typography>
+                  </Box>
+                  <FinanceRow
+                    label="Direct Session Refunds (Bank via CF)"
+                    value={`− ${fmt(f.directSessionRefunds)}`}
+                    tooltip="Cashfree refunds sent back to user bank accounts"
+                    indent
+                    color="#c62828"
+                  />
+                  <FinanceRow
+                    label={`PG Charges (${cashfreePgPct} = 1.6% + 18% GST)`}
+                    value={`− ${fmt(f.pgCharges)}`}
+                    tooltip={`1.6% base + 18% GST on 1.6% = 1.888% on gross Cashfree collection of ${fmt(f.cashfreeGrossTotal)}`}
+                    indent
+                    color="#c62828"
+                  />
+                  <Divider sx={{ my: 1.5 }} />
+                  <FinanceRow
+                    label="Net Cashfree Settlement"
+                    value={fmt(f.cashfreeNetSettlement)}
+                    tooltip="What actually settles to your account after refunds & PG charges"
+                    highlight
+                    color="#1b5e20"
+                  />
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* ── Wallet & Session Detail Card ─────────────────────────── */}
+            <Grid item xs={12} md={6}>
+              <Card elevation={0} sx={{ borderRadius: 3, border: "1px solid #e0e0e0", bgcolor: "#fff" }}>
+                <CardContent sx={{ p: 3 }}>
+                  <Stack direction="row" alignItems="center" spacing={1} mb={2}>
+                    <AccountBalanceWalletIcon sx={{ color: "#6a1b9a", fontSize: 20 }} />
+                    <Typography variant="subtitle1" fontWeight={700} color="#1a1a2e">
+                      Wallet & Session Breakdown
+                    </Typography>
+                  </Stack>
+
+                  <FinanceRow
+                    label="Wallet Top-up (Total Loaded)"
+                    value={fmt(f.walletTopupTotal)}
+                    tooltip="Total amount credited into wallets via Cashfree in this period"
+                    highlight
+                    color="#0277bd"
+                  />
+                  <FinanceRow
+                    label="Wallet Session Payments"
+                    value={fmt(f.walletSessionPaid)}
+                    tooltip="Amount debited from wallets to pay for charging sessions"
+                    highlight
+                    color="#4527a0"
+                  />
+                  <FinanceRow
+                    label="Wallet Refunds (Session Leftover → Wallet)"
+                    value={`− ${fmt(f.walletRefunds)}`}
+                    tooltip="Unused balance after session ended, credited back to the user's Sparx wallet (not a Cashfree refund)"
+                    indent
+                    color="#c62828"
+                  />
+
+                  <Divider sx={{ my: 1.5, borderStyle: "dashed" }} />
+
+                  <FinanceRow
+                    label="Session Paid Amount"
+                    value={fmt(f.sessionPaidAmount)}
+                    tooltip="amountUtilized summed from receipts — actual amount consumed across all sessions"
+                    highlight
+                    color="#1565c0"
+                  />
+                  <FinanceRow
+                    label="Session Paid Refunds (Total)"
+                    value={`− ${fmt(f.sessionPaidRefunds)}`}
+                    tooltip="Wallet refunds + bank refunds — total money returned to users after sessions"
+                    indent
+                    color="#c62828"
+                  />
+
+                  <Divider sx={{ my: 1.5 }} />
+
+                  <FinanceRow
+                    label="Platform Margin"
+                    value={fmt(f.platformMargin)}
+                    tooltip="Total vjraMarginAmount from all receipts — platform's revenue"
+                    highlight
+                    color="#6a1b9a"
+                  />
+                </CardContent>
+              </Card>
+            </Grid>
+
+          </Grid>
+        </>
+      )}
     </Box>
   );
 };
 
-export default AdminAnalytics;
+export default Analytics;

@@ -252,26 +252,24 @@ function SessionDrawer({ session: s, onClose }) {
             <Typography fontSize={10} color="#64748b">{money(s.amountUsed)} used</Typography>
             <Typography fontSize={10} color="#64748b">{money(s.amountPaid)} paid</Typography>
           </Stack>
-          {(s.latestVoltage != null || s.latestCurrent != null) && (
-            <Stack direction="row" spacing={2} mt={1.75}>
-              {s.latestVoltage != null && (
-                <Box sx={{ background: "#fff", borderRadius: "8px", px: 1.5, py: 0.75, flex: 1, textAlign: "center", border: "1px solid #dcfce7" }}>
-                  <Typography fontSize={10} color="#64748b">Voltage</Typography>
-                  <Typography fontSize={14} fontWeight={800} color="#16a34a">{s.latestVoltage} V</Typography>
-                </Box>
-              )}
-              {s.latestCurrent != null && (
-                <Box sx={{ background: "#fff", borderRadius: "8px", px: 1.5, py: 0.75, flex: 1, textAlign: "center", border: "1px solid #dcfce7" }}>
-                  <Typography fontSize={10} color="#64748b">Current</Typography>
-                  <Typography fontSize={14} fontWeight={800} color="#16a34a">{s.latestCurrent} A</Typography>
-                </Box>
-              )}
+          <Stack direction="row" spacing={2} mt={1.75}>
+              <Box sx={{ background: "#fff", borderRadius: "8px", px: 1.5, py: 0.75, flex: 1, textAlign: "center", border: "1px solid #dcfce7" }}>
+                <Typography fontSize={10} color="#64748b">Voltage</Typography>
+                <Typography fontSize={14} fontWeight={800} color={s.latestVoltage != null ? "#16a34a" : "#94a3b8"}>
+                  {s.latestVoltage != null ? `${s.latestVoltage} V` : "—"}
+                </Typography>
+              </Box>
+              <Box sx={{ background: "#fff", borderRadius: "8px", px: 1.5, py: 0.75, flex: 1, textAlign: "center", border: "1px solid #dcfce7" }}>
+                <Typography fontSize={10} color="#64748b">Current</Typography>
+                <Typography fontSize={14} fontWeight={800} color={s.latestCurrent != null ? "#16a34a" : "#94a3b8"}>
+                  {s.latestCurrent != null ? `${s.latestCurrent} A` : "—"}
+                </Typography>
+              </Box>
               <Box sx={{ background: "#fff", borderRadius: "8px", px: 1.5, py: 0.75, flex: 1, textAlign: "center", border: "1px solid #dcfce7" }}>
                 <Typography fontSize={10} color="#64748b">Duration</Typography>
                 <Typography fontSize={14} fontWeight={800} color="#16a34a">{dur(s.startTime)}</Typography>
               </Box>
             </Stack>
-          )}
         </Box>
       )}
 
@@ -729,9 +727,20 @@ export default function SessionsOverview() {
                             <ProgressBar value={s.energyConsumed || 0} max={s.energySelected || 1} color={GREEN} />
                             <Typography fontSize={9} color="#94a3b8" mt={0.25}>{kwh(s.energySelected)} sel.</Typography>
                           </td>
-                          <Td align="right" mono>
-                            {s.latestVoltage != null ? `${s.latestVoltage}V` : "—"} / {s.latestCurrent != null ? `${s.latestCurrent}A` : "—"}
-                          </Td>
+                          <td style={{ padding: "10px 12px", textAlign: "right" }}>
+                            {s.latestVoltage != null || s.latestCurrent != null ? (
+                              <>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: "#0f172a", fontFamily: "monospace" }}>
+                                  {s.latestVoltage != null ? `${Number(s.latestVoltage).toFixed(1)} V` : "--"}
+                                </div>
+                                <div style={{ fontSize: 10, color: "#64748b", fontFamily: "monospace" }}>
+                                  {s.latestCurrent != null ? `${Number(s.latestCurrent).toFixed(2)} A` : "--"}
+                                </div>
+                              </>
+                            ) : (
+                              <span style={{ fontSize: 11, color: "#cbd5e1" }}>—</span>
+                            )}
+                          </td>
                           <Td align="right" bold>{dur(s.startTime)}</Td>
                           <Td>{fmtDt(s.startTime)}</Td>
                         </tr>
@@ -814,7 +823,14 @@ export default function SessionsOverview() {
 
       {/* ═══ DETAIL DRAWER ═══ */}
       <Drawer anchor="right" open={drawerOpen} onClose={closeDrawer}
-        PaperProps={{ sx: { width: { xs: "100vw", sm: 500 }, background: "#f8fafc" } }}>
+        PaperProps={{
+          sx: {
+            width: { xs: "100vw", sm: 500 },
+            background: "#f8fafc",
+            marginTop: { xs: "56px", md: 0 },
+            height: { xs: "calc(100% - 56px)", md: "100%" },
+          }
+        }}>
         {selectedRow && <SessionDrawer session={selectedRow} onClose={closeDrawer} />}
       </Drawer>
 
