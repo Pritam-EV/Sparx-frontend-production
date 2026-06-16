@@ -244,7 +244,7 @@ const endDrag = async () => {
     }
   }, []);
 
-  const stopSessionAndRedirect = async (triggerType) => {
+const stopSessionAndRedirect = async (triggerType, finalEnergy) => {   // ← ADD finalEnergy param
     const sid = lastSessionIdRef.current || sessionData?.sessionId;
 
     if (!sid) {
@@ -268,6 +268,7 @@ const endDrag = async () => {
             deviceId: deviceId || deviceIdFromState,
             endTime: new Date().toISOString(),
             endTrigger: triggerType,
+            ...(finalEnergy !== undefined && { deltaEnergy: finalEnergy }), // ← ADD THIS LINE
           }),
         }
       );
@@ -376,7 +377,8 @@ useEffect(() => {
                 body: JSON.stringify({
                   sessionId: sid,
                   endTime: new Date().toISOString(),
-                  endTrigger: 'target_reached',
+                  endTrigger: 'device_auto_available',           // ← better trigger label
+                  ...(energyConsumed > 0 && { deltaEnergy: energyConsumed }), // ← pass state value
                 }),
               }
             );
@@ -421,10 +423,10 @@ useEffect(() => {
         if (!autoStopCalledRef.current) {
           autoStopCalledRef.current = true;
           try {
-            await stopSessionAndRedirect('target_reached');
+            await stopSessionAndRedirect('device_auto_available', data.energyConsumed); // ← pass energy
           } catch (err) {
             console.error('[AUTO-STOP] Failed, resetting flag for retry:', err);
-            autoStopCalledRef.current = false;  // ← reset so next poll retries
+            autoStopCalledRef.current = false;
           }
         }
         return;

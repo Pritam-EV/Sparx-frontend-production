@@ -1,8 +1,42 @@
-// src/pages/SessionSummary.js
+// src/components/SessionSummary.js
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { CircularProgress } from "@mui/material";
 
+/* ─────────────────────────────────────────────────────────────
+   SHARED BUTTON STYLES  (used in state screens too)
+───────────────────────────────────────────────────────────── */
+const btnPrimary = {
+  width: "100%",
+  padding: "11px 14px",
+  background: "linear-gradient(90deg,#04bfbf,#029a9a)",
+  color: "#fff",
+  border: "none",
+  borderRadius: "12px",
+  fontSize: "13px",
+  fontWeight: 700,
+  cursor: "pointer",
+  fontFamily: "'Inter',sans-serif",
+  boxShadow: "0 4px 14px rgba(4,191,191,0.28)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "7px",
+  boxSizing: "border-box",
+  transition: "opacity 0.15s",
+};
+const btnGhost = {
+  ...btnPrimary,
+  background: "transparent",
+  color: "#5a8a90",
+  border: "1.5px solid rgba(4,191,191,0.22)",
+  boxShadow: "none",
+  marginTop: "8px",
+};
+
+/* ─────────────────────────────────────────────────────────────
+   MAIN COMPONENT
+───────────────────────────────────────────────────────────── */
 const SessionSummary = () => {
   const navigate = useNavigate();
   const { state } = useLocation();
@@ -18,44 +52,44 @@ const SessionSummary = () => {
 
   const API = process.env.REACT_APP_Backend_API_Base_URL;
 
+  /* ── Formatters ── */
   const fmtMoney = (v) => `₹${Number(v || 0).toFixed(2)}`;
-  const fmtDateTime = (d) => {
+  const fmtUnits = (v) =>  Number(v || 0).toFixed(3);
+  const fmtDate  = (d) => {
     if (!d) return "—";
-    return new Date(d).toLocaleString("en-IN", {
+    return new Date(d).toLocaleDateString("en-IN", {
       day: "2-digit", month: "short", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
     });
   };
-  const supplier = {
-  name: "Vjra Technologies LLP",
-  gstin: "27ABBFV7565K1ZJ",
-  addressLine1: "Sahakar nagar",
-  addressLine2: "Pune - 411009",
-};
 
+  /* ── Supplier constants ── */
+  const SUPPLIER = {
+    name:  "Vjra Technologies LLP",
+    gstin: "27ABBFV7565K1ZJ",
+    addr:  "Sahakar Nagar, Pune – 411009, Maharashtra",
+  };
+
+  /* ── Fetch session + receipt ── */
   useEffect(() => {
     if (!sessionId) { setLoading(false); return; }
     (async () => {
       try {
-        const token = localStorage.getItem("token");
-        const res = await fetch(`${API}/api/sessions/${sessionId}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error();
-        setSession(await res.json());
+        const token   = localStorage.getItem("token");
+        const headers = { Authorization: `Bearer ${token}` };
 
-        const fetchReceiptWithRetry = async () => {
+        const sRes = await fetch(`${API}/api/sessions/${sessionId}`, { headers });
+        if (!sRes.ok) throw new Error();
+        setSession(await sRes.json());
+
+        const fetchReceipt = async () => {
           for (let i = 0; i < 6; i++) {
-            const r = await fetch(`${API}/api/receipts/${sessionId}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
+            const r = await fetch(`${API}/api/receipts/${sessionId}`, { headers });
             if (r.ok) return await r.json();
             await new Promise((res) => setTimeout(res, 1000));
           }
           return null;
         };
-
-        const rec = await fetchReceiptWithRetry();
+        const rec = await fetchReceipt();
         if (rec) {
           setReceipt(rec);
           setRating(rec.rating || 0);
@@ -70,6 +104,7 @@ const SessionSummary = () => {
     })();
   }, [sessionId]);
 
+  /* ── Refund via WhatsApp ── */
   const handleRefund = () => {
     if (!receipt) return;
     const endDate = session?.endTime ? new Date(session.endTime) : new Date();
@@ -86,20 +121,21 @@ const SessionSummary = () => {
     window.open(`https://wa.me/918855094432?text=${msg}`, "_blank");
   };
 
+  /* ── Submit feedback ── */
   const handleSubmitFeedback = async () => {
     if (feedbackSubmitted) return;
     try {
-      const token = localStorage.getItem("token");
+      const token   = localStorage.getItem("token");
+      const headers = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      };
       await fetch(`${API}/api/receipts/${sessionId}/rate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ rating }),
+        method: "POST", headers, body: JSON.stringify({ rating }),
       });
       if (suggestion?.trim()) {
         await fetch(`${API}/api/receipts/${sessionId}/suggest`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ suggestion }),
+          method: "POST", headers, body: JSON.stringify({ suggestion }),
         });
       }
       setFeedbackSubmitted(true);
@@ -110,54 +146,19 @@ const SessionSummary = () => {
 
   const ratingLabels = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
 
-  /* ── Compact row — tighter padding ── */
-  const Row = ({ label, value, valueColor, bold }) => (
-    <div style={{
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingBottom: "5px",
-      borderBottom: "1px solid rgba(4,191,191,0.10)",
-    }}>
-      <span style={{
-        fontSize: "11.5px", fontWeight: 600,
-        color: "#5a8a90", fontFamily: "Poppins, sans-serif",
-      }}>
-        {label}
-      </span>
-      <span style={{
-        fontSize: "12.5px",
-        fontWeight: bold ? 700 : 600,
-        color: valueColor || "#0e1e1e",
-        fontFamily: "Poppins, sans-serif",
-        textAlign: "right",
-        maxWidth: "62%",
-        wordBreak: "break-word",
-      }}>
-        {value}
-      </span>
-    </div>
-  );
-
-  /* ── State card wrapper ── */
+  /* ── State-screen wrapper ── */
   const StateCard = ({ children }) => (
     <div style={{
       minHeight: "100vh",
       background: "#f0fafa",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      padding: "24px",
-      fontFamily: "Poppins, sans-serif",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "24px", fontFamily: "'Inter',sans-serif",
     }}>
       <div style={{
-        background: "#fff",
-        borderRadius: "20px",
+        background: "#fff", borderRadius: "18px",
         border: "1px solid rgba(4,191,191,0.15)",
         boxShadow: "0 4px 24px rgba(4,191,191,0.10)",
-        padding: "28px 24px",
-        width: "100%",
-        maxWidth: "400px",
+        padding: "28px 22px", width: "100%", maxWidth: "380px",
       }}>
         {children}
       </div>
@@ -169,19 +170,22 @@ const SessionSummary = () => {
     <StateCard>
       <div style={{ textAlign: "center" }}>
         <div style={{
-          width: 52, height: 52, borderRadius: "50%",
+          width: 50, height: 50, borderRadius: "50%",
           background: "rgba(161,53,68,0.08)",
           display: "flex", alignItems: "center", justifyContent: "center",
           margin: "0 auto 12px",
         }}>
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a13544" strokeWidth="2">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+            stroke="#a13544" strokeWidth="2">
             <circle cx="12" cy="12" r="10"/>
             <line x1="12" y1="8" x2="12" y2="12"/>
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
         </div>
-        <p style={{ fontSize: "15px", fontWeight: 700, color: "#0e1e1e", margin: "0 0 6px" }}>Invalid Session</p>
-        <p style={{ fontSize: "12px", color: "#7a9aa3", margin: "0 0 18px" }}>
+        <p style={{ fontSize:"14px", fontWeight:700, color:"#0e1e1e", margin:"0 0 6px" }}>
+          Invalid Session
+        </p>
+        <p style={{ fontSize:"12px", color:"#7a9aa3", margin:"0 0 16px" }}>
           Session ID was not provided. Please go back and try again.
         </p>
         <button onClick={() => navigate("/home")} style={btnPrimary}>Go Home</button>
@@ -191,13 +195,13 @@ const SessionSummary = () => {
 
   if (loading) return (
     <StateCard>
-      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-        <CircularProgress size={26} sx={{ color: "#04bfbf", flexShrink: 0 }} />
+      <div style={{ display:"flex", alignItems:"center", gap:"14px" }}>
+        <CircularProgress size={26} sx={{ color:"#04bfbf", flexShrink:0 }} />
         <div>
-          <p style={{ fontSize: "14px", fontWeight: 700, color: "#0e1e1e", margin: "0 0 3px" }}>
+          <p style={{ fontSize:"14px", fontWeight:700, color:"#0e1e1e", margin:"0 0 3px" }}>
             Loading summary
           </p>
-          <p style={{ fontSize: "11px", color: "#7a9aa3", margin: 0 }}>
+          <p style={{ fontSize:"11px", color:"#7a9aa3", margin:0 }}>
             Preparing your receipt…
           </p>
         </div>
@@ -207,504 +211,525 @@ const SessionSummary = () => {
 
   if (error) return (
     <StateCard>
-      <div style={{ textAlign: "center" }}>
-        <p style={{ fontSize: "15px", fontWeight: 700, color: "#a13544", margin: "0 0 6px" }}>
+      <div style={{ textAlign:"center" }}>
+        <p style={{ fontSize:"14px", fontWeight:700, color:"#a13544", margin:"0 0 6px" }}>
           Could not load
         </p>
-        <p style={{ fontSize: "12px", color: "#7a9aa3", margin: "0 0 18px" }}>{error}</p>
+        <p style={{ fontSize:"12px", color:"#7a9aa3", margin:"0 0 16px" }}>{error}</p>
         <button onClick={() => window.location.reload()} style={btnPrimary}>Retry</button>
-        <button onClick={() => navigate("/home")} style={{ ...btnGhost, marginTop: "8px" }}>Go Home</button>
+        <button onClick={() => navigate("/home")} style={btnGhost}>Go Home</button>
       </div>
     </StateCard>
   );
 
   if (!receipt) return (
     <StateCard>
-      <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-        <CircularProgress size={26} sx={{ color: "#04bfbf", flexShrink: 0 }} />
-        <p style={{ fontSize: "13px", fontWeight: 600, color: "#0e1e1e", margin: 0 }}>
+      <div style={{ display:"flex", alignItems:"center", gap:"14px" }}>
+        <CircularProgress size={26} sx={{ color:"#04bfbf", flexShrink:0 }} />
+        <p style={{ fontSize:"13px", fontWeight:600, color:"#0e1e1e", margin:0 }}>
           Generating receipt…
         </p>
       </div>
     </StateCard>
   );
 
-/* ══════════════════════════════════
-   Main Receipt
-══════════════════════════════════ */
-return (
-  <>
-    <style>{`
-      html, body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        background: #f0fafa;
-        font-family: "Poppins", sans-serif;
-      }
-      * { box-sizing: border-box; }
+  const hasRefund   = receipt.refundAmount   > 0;
+  const hasDiscount = receipt.discountApplied > 0;
 
-      .summary-root {
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-      }
+  /* ══════════════════════════════════════════════════════════
+     MAIN RENDER
+  ══════════════════════════════════════════════════════════ */
+  return (
+    <>
+      {/* ── Global styles ───────────────────────────────── */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-.summary-card {
-  width: 100%;
-  max-width: 820px;
-  background: #ffffff;
-  border-radius: 18px;
-  border: 1px solid rgba(4,191,191,0.15);
-  box-shadow: 0 4px 24px rgba(4,191,191,0.10);
-  display: flex;
-  flex-direction: column;
-  /* allow card to grow; no hard cap */
-}
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-.summary-scroll {
-  padding: 16px 18px 14px;
-  overflow-y: auto;
-  max-height: calc(100vh - 220px); /* header + footer approx */
-}
-
-      .summary-scroll::-webkit-scrollbar { width: 6px; }
-      .summary-scroll::-webkit-scrollbar-thumb {
-        background: rgba(4,191,191,0.25); border-radius: 999px;
-      }
-      .summary-scroll::-webkit-scrollbar-track { background: transparent; }
-
-      .summary-footer {
-        padding: 10px 18px 16px;
-        border-top: 1px solid rgba(4,191,191,0.10);
-        background: #f7fcfc;
-      }
-
-      .star-btn { background: none; border: none; cursor: pointer; padding: 2px; line-height: 1; }
-      .star-btn:disabled { cursor: default; }
-      .refund-wa:hover { background: rgba(37,211,102,0.14) !important; }
-      .home-btn:hover { background: linear-gradient(90deg, #029a9a, #027070) !important; }
-
-      @media (max-width: 600px) {
-        .summary-card {
-          max-height: none;
-          height: auto;
+        /* KEY FIX: full-page natural scroll — no overflow traps */
+        html {
+          min-height: 100%;
+          background: linear-gradient(155deg,#daf3f3 0%,#f0fafa 55%,#e6f7f7 100%);
+          font-family: 'Inter', sans-serif;
+          -webkit-font-smoothing: antialiased;
         }
-        .summary-scroll {
-          max-height: none;
+        body {
+          min-height: 100%;
+          background: transparent;
+          overflow-y: auto !important;   /* always scrollable */
+          overflow-x: hidden;
         }
-      }
-    `}</style>
 
-    <div className="summary-root">
-      <div className="summary-card">
-        {/* Scrollable invoice content */}
-        <div className="summary-scroll">
+        /* page root — flex column, natural height */
+        .ss-root {
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          padding: 16px 14px 72px;      /* generous bottom gap */
+        }
 
-          {/* TAX INVOICE HEADER */}
-          <div
-            style={{
-              borderBottom: "1px solid #e3e8eb",
-              paddingBottom: "10px",
-              marginBottom: "14px",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "flex-start",
-                gap: "12px",
-              }}
-            >
-              {/* Left: Supplier details */}
-              <div>
-                <h2 style={{ margin: 0, fontSize: "18px", fontWeight: 700 }}>
-                  Tax Invoice
-                </h2>
-                <div
-                  style={{
-                    fontWeight: 600,
-                    marginTop: 4,
-                    fontSize: "13px",
-                    color: "#102a43",
-                  }}
-                >
-                  {supplier.name}
-                </div>
-                <div style={{ fontSize: "11.5px", color: "#52606d" }}>
-                  GSTIN: {supplier.gstin}
-                </div>
-                <div style={{ fontSize: "11.5px", color: "#52606d" }}>
-                  {supplier.addressLine1}
-                </div>
-                <div style={{ fontSize: "11.5px", color: "#52606d" }}>
-                  {supplier.addressLine2}
-                </div>
+        /* centred column, never wider than 620px */
+        .ss-col {
+          width: 100%;
+          max-width: 620px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        /* ═══ RECEIPT CARD ═══ */
+        .ss-card {
+          background: #fff;
+          border-radius: 16px;
+          border: 1px solid rgba(4,191,191,0.13);
+          box-shadow:
+            0 1px 4px  rgba(4,191,191,0.06),
+            0 8px 28px rgba(4,191,191,0.09);
+          overflow: hidden;
+        }
+
+        /* teal top bar */
+        .ss-topbar {
+          height: 5px;
+          background: linear-gradient(90deg,#04d4d4,#04bfbf 40%,#017c7c);
+        }
+
+        .ss-body { padding: 16px 18px 14px; }
+
+        /* ── heading ── */
+        .ss-heading {
+          text-align: center;
+          padding-bottom: 10px;
+          border-bottom: 1.5px dashed rgba(4,191,191,0.20);
+          margin-bottom: 0;
+        }
+        .ss-heading h1 {
+          font-size: 15px;
+          font-weight: 800;
+          letter-spacing: 0.16em;
+          text-transform: uppercase;
+          color: #0a1c1c;
+          margin-bottom: 3px;
+        }
+        .ss-badge {
+          display: inline-block;
+          padding: 2px 10px;
+          background: rgba(4,191,191,0.08);
+          border: 1px solid rgba(4,191,191,0.22);
+          border-radius: 999px;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.09em;
+          text-transform: uppercase;
+          color: #04bfbf;
+        }
+
+        /* ── supplier ── */
+        .ss-supplier {
+          text-align: center;
+          padding: 10px 0 10px;
+          border-bottom: 1px solid rgba(4,191,191,0.09);
+        }
+        .ss-sup-name  { font-size:12px; font-weight:800; color:#0a1c1c; letter-spacing:0.01em; }
+        .ss-sup-gstin { font-size:10px; font-weight:700; color:#04bfbf; letter-spacing:0.05em; margin:2px 0; }
+        .ss-sup-addr  { font-size:10px; color:#5a8590; }
+
+        /* ── meta two-col ── */
+        .ss-meta {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          padding: 10px 0 10px;
+          border-bottom: 1px solid rgba(4,191,191,0.09);
+        }
+        /* always keep side-by-side — only shrink font on very narrow */
+        @media (max-width: 340px) {
+          .ss-meta { grid-template-columns: 1fr 1fr; gap: 6px; }
+        }
+
+        .ss-lbl {
+          font-size: 8px;
+          font-weight: 800;
+          letter-spacing: 0.11em;
+          text-transform: uppercase;
+          color: #04bfbf;
+          margin-bottom: 5px;
+        }
+        .ss-bill-name   { font-size:12px; font-weight:700; color:#0a1c1c; margin-bottom:3px; }
+        .ss-bill-detail { font-size:10.5px; color:#5a7a80; line-height:1.65; }
+
+        .ss-inv-right { text-align:right; }
+        .ss-inv-item  { margin-bottom:3px; }
+        .ss-inv-item strong {
+          display: block;
+          font-size: 8.5px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: #9ab8bc;
+          line-height: 1.3;
+        }
+        .ss-inv-item span {
+          font-size: 10.5px;
+          font-weight: 600;
+          color: #243b3b;
+          word-break: break-all;
+        }
+
+        /* ── table ── */
+        .ss-tbl-wrap {
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          margin: 10px 0;
+          border-radius: 8px;
+          border: 1px solid rgba(4,191,191,0.13);
+          /* scroll-shadow hint */
+          background:
+            linear-gradient(to right,  #fff 20%, rgba(255,255,255,0)) center left,
+            linear-gradient(to left,   #fff 20%, rgba(255,255,255,0)) center right,
+            radial-gradient(farthest-side at 0   50%, rgba(4,191,191,0.10), transparent) center left,
+            radial-gradient(farthest-side at 100% 50%, rgba(4,191,191,0.10), transparent) center right;
+          background-repeat: no-repeat;
+          background-color: #fff;
+          background-size: 32px 100%, 32px 100%, 10px 100%, 10px 100%;
+          background-attachment: local, local, scroll, scroll;
+        }
+        .ss-tbl {
+          width: 100%;
+          border-collapse: collapse;
+          min-width: 420px;
+          font-size: 11px;
+        }
+        .ss-tbl thead tr {
+          background: linear-gradient(90deg,rgba(4,191,191,0.08),rgba(4,191,191,0.03));
+        }
+        .ss-tbl th {
+          padding: 8px 9px;
+          font-size: 8.5px;
+          font-weight: 800;
+          letter-spacing: 0.07em;
+          text-transform: uppercase;
+          color: #04bfbf;
+          border-bottom: 1px solid rgba(4,191,191,0.13);
+          white-space: nowrap;
+        }
+        .ss-tbl th:first-child  { text-align:left;  padding-left:11px; }
+        .ss-tbl th:not(:first-child) { text-align:right; padding-right:10px; }
+        .ss-tbl td {
+          padding: 9px 9px;
+          color: #2a3f40;
+          vertical-align: top;
+          border-bottom: 1px solid rgba(4,191,191,0.06);
+        }
+        .ss-tbl td:first-child  { text-align:left;  padding-left:11px; }
+        .ss-tbl td:not(:first-child) { text-align:right; padding-right:10px; font-weight:500; }
+        .ss-tbl tbody tr:last-child td { border-bottom:none; }
+        .ss-td-service { font-weight:700; color:#0a1c1c; font-size:11.5px; }
+        .ss-td-sub     { font-size:9.5px; color:#7a9ea3; margin-top:2px; }
+        .ss-td-total   { font-weight:800 !important; color:#04bfbf !important; font-size:12px !important; }
+
+        /* ── payment summary ── */
+        .ss-pay { margin: 6px 0 10px; }
+        .ss-pay-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 4.5px 0;
+          font-size: 11.5px;
+          color: #5a7a80;
+          border-bottom: 1px solid rgba(4,191,191,0.07);
+        }
+        .ss-pay-row:last-child { border-bottom:none; }
+        .ss-pay-row span:first-child { font-weight:500; }
+        .ss-pay-row span:last-child  { font-weight:600; }
+
+        .ss-pay-hi {
+          padding: 7px 0 6px !important;
+          margin: 2px 0;
+          border-top: 1.5px solid rgba(4,191,191,0.18) !important;
+          border-bottom: 1.5px solid rgba(4,191,191,0.18) !important;
+          font-size: 13px !important;
+          font-weight: 800 !important;
+          color: #0a1c1c !important;
+        }
+        .ss-pay-hi span:last-child { color:#04bfbf; font-size:13.5px; }
+
+        .ss-pay-refund span { color:#437a22 !important; font-weight:700 !important; }
+
+        /* ── GST note ── */
+        .ss-note {
+          background: rgba(4,191,191,0.04);
+          border: 1px solid rgba(4,191,191,0.12);
+          border-radius: 8px;
+          padding: 8px 12px;
+          font-size: 10px;
+          color: #4a7a80;
+          line-height: 1.55;
+        }
+        .ss-note b { color:#04bfbf; font-weight:700; }
+
+        /* ═══ RATING CARD ═══ */
+        .ss-rate-card {
+          background: #fff;
+          border-radius: 14px;
+          border: 1px solid rgba(4,191,191,0.12);
+          box-shadow: 0 3px 14px rgba(4,191,191,0.07);
+          padding: 16px 16px 14px;
+        }
+        .ss-rate-title {
+          font-size:12.5px; font-weight:700; color:#0a1c1c;
+          text-align:center; margin-bottom:11px;
+        }
+        .ss-stars {
+          display:flex; justify-content:center; gap:6px; margin-bottom:4px;
+        }
+        .ss-star {
+          background:none; border:none; cursor:pointer;
+          padding:2px; line-height:1;
+          transition: transform 0.12s;
+        }
+        .ss-star:not(:disabled):hover { transform:scale(1.18); }
+        .ss-star:disabled { cursor:default; }
+        .ss-star-label {
+          text-align:center; font-size:11px; font-weight:700;
+          color:#ff9100; min-height:16px; margin-bottom:10px;
+        }
+        .ss-textarea {
+          width:100%; padding:9px 12px; font-size:12px;
+          font-family:'Inter',sans-serif;
+          border-radius:10px; border:1.5px solid rgba(4,191,191,0.18);
+          background:rgba(4,191,191,0.03); color:#0a1c1c;
+          outline:none; resize:none; transition:border-color 0.16s;
+          line-height:1.5; margin-bottom:10px; display:block;
+        }
+        .ss-textarea:focus { border-color:#04bfbf; }
+        .ss-textarea::placeholder { color:#9ab8bc; }
+        .ss-fb-done {
+          display:flex; align-items:center; justify-content:center; gap:7px;
+          padding:9px 14px; background:rgba(4,191,191,0.07);
+          border-radius:10px; border:1px solid rgba(4,191,191,0.16);
+          font-size:12px; font-weight:700; color:#04bfbf;
+        }
+
+        /* ═══ ACTION BUTTONS ═══ */
+        .ss-actions { display:flex; flex-direction:column; gap:9px; }
+        .ss-btn-home {
+          width:100%; padding:13px 14px;
+          background:linear-gradient(90deg,#04d0d0,#04bfbf 50%,#029898);
+          color:#fff; border:none; border-radius:13px;
+          font-size:13.5px; font-weight:700; cursor:pointer;
+          font-family:'Inter',sans-serif;
+          box-shadow: 0 5px 16px rgba(4,191,191,0.28), 0 1px 4px rgba(4,191,191,0.16);
+          display:flex; align-items:center; justify-content:center; gap:8px;
+          transition: transform 0.13s, box-shadow 0.16s;
+        }
+        .ss-btn-home:hover {
+          transform:translateY(-2px);
+          box-shadow:0 8px 22px rgba(4,191,191,0.36);
+        }
+        .ss-btn-home:active { transform:translateY(0); }
+
+        .ss-btn-wa {
+          width:100%; padding:12px 14px;
+          background:rgba(37,211,102,0.07);
+          color:#1a7a3a; border:1.5px solid rgba(37,211,102,0.26);
+          border-radius:13px; font-size:13px; font-weight:700;
+          cursor:pointer; font-family:'Inter',sans-serif;
+          display:flex; align-items:center; justify-content:center; gap:8px;
+          transition: background 0.16s, transform 0.13s;
+        }
+        .ss-btn-wa:hover {
+          background:rgba(37,211,102,0.14);
+          transform:translateY(-1px);
+        }
+
+        .ss-btn-submit {
+          width:100%; padding:11px 14px;
+          background:linear-gradient(90deg,#04d0d0,#029898);
+          color:#fff; border:none; border-radius:11px;
+          font-size:13px; font-weight:700; cursor:pointer;
+          font-family:'Inter',sans-serif;
+          box-shadow:0 4px 12px rgba(4,191,191,0.24);
+          transition: transform 0.13s, opacity 0.15s;
+        }
+        .ss-btn-submit:not(:disabled):hover { transform:translateY(-1px); }
+        .ss-btn-submit:disabled { opacity:0.38; cursor:not-allowed; }
+      `}</style>
+
+      {/* ══════════════════════════════════════════════════════════
+          PAGE  —  naturally scrollable, no height traps
+      ══════════════════════════════════════════════════════════ */}
+      <div className="ss-root">
+        <div className="ss-col">
+
+          {/* ╔════════════════════════════════════════════════════╗
+              ║                 TAX RECEIPT CARD                  ║
+              ╚════════════════════════════════════════════════════╝ */}
+          <div className="ss-card">
+            <div className="ss-topbar" />
+
+            <div className="ss-body">
+
+              {/* 1 ── TAX INVOICE centred ── */}
+              <div className="ss-heading">
+                <h1>Tax Invoice</h1>
+                <span className="ss-badge">Original for Recipient</span>
               </div>
 
-              {/* Right: Invoice details */}
-              <div
-                style={{
-                  textAlign: "right",
-                  fontSize: "11.5px",
-                  color: "#52606d",
-                }}
-              >
+              {/* 2 ── Supplier centred ── */}
+              <div className="ss-supplier">
+                <div className="ss-sup-name">{SUPPLIER.name}</div>
+                <div className="ss-sup-gstin">GSTIN: {SUPPLIER.gstin}</div>
+                <div className="ss-sup-addr">{SUPPLIER.addr}</div>
+              </div>
+
+              {/* 3 ── Bill To (left) | Invoice Details (right) ── */}
+              <div className="ss-meta">
+
+                {/* LEFT – Bill To */}
                 <div>
-                  <strong>Invoice No:&nbsp;</strong>
-                  <span>{receipt?.receiptId || "—"}</span>
+                  <div className="ss-lbl">Bill To</div>
+                  <div className="ss-bill-name">
+                    {receipt.userName || "Customer"}
+                  </div>
+                  <div className="ss-bill-detail">
+                    {receipt.userMobile && (
+                      <span>{receipt.userMobile}<br /></span>
+                    )}
+                    {receipt.userEmail && (
+                      <span>{receipt.userEmail}</span>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <strong>Invoice Date:&nbsp;</strong>
-                  <span>{fmtDateTime(receipt?.createdAt)}</span>
+
+                {/* RIGHT – Invoice meta */}
+                <div className="ss-inv-right">
+                  <div className="ss-lbl" style={{ textAlign:"right" }}>
+                    Invoice Details
+                  </div>
+
+                  <div className="ss-inv-item">
+                    <strong>Invoice No</strong>
+                    <span>{receipt.receiptId}</span>
+                  </div>
+                  <div className="ss-inv-item">
+                    <strong>Invoice Date</strong>
+                    <span>{fmtDate(receipt.createdAt)}</span>
+                  </div>
+                  <div className="ss-inv-item">
+                    <strong>Session ID</strong>
+                    <span>{receipt.sessionId || session?.sessionId || "—"}</span>
+                  </div>
+                  <div className="ss-inv-item">
+                    <strong>Place of Supply</strong>
+                    <span>Maharashtra (27)</span>
+                  </div>
                 </div>
-                <div>
-                  <strong>Place of Supply:&nbsp;</strong>
-                  <span>{receipt?.placeOfSupply || "Maharashtra"}</span>
+              </div>
+
+              {/* 4 ── Line-item table ── */}
+              <div className="ss-tbl-wrap">
+                <table className="ss-tbl">
+                  <thead>
+                    <tr>
+                      <th style={{ minWidth:130 }}>Description</th>
+                      <th>Energy (kWh)</th>
+                      <th>Rate (₹/kWh)</th>
+                      <th>Taxable (₹)</th>
+                      <th>GST 18% (₹)</th>
+                      <th>Total (₹)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>
+                        <div className="ss-td-service">EV Charging Services</div>
+                        <div className="ss-td-sub">SAC: 998714</div>
+                        <div className="ss-td-sub">
+                          Device: {receipt.deviceId || session?.deviceId || "—"}
+                        </div>
+                      </td>
+                      <td>{fmtUnits(receipt.energyConsumed)}</td>
+                      <td>{fmtMoney(receipt.userRatePerKwh)}</td>
+                      <td>{fmtMoney(receipt.taxableAmount)}</td>
+                      <td>{fmtMoney(receipt.gstAmount)}</td>
+                      <td className="ss-td-total">{fmtMoney(receipt.totalAmount)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {/* 5 ── Payment summary ── */}
+              <div className="ss-pay">
+
+                {/* Discount (only if applied) */}
+                {hasDiscount && (
+                  <div className="ss-pay-row">
+                    <span>Discount Applied</span>
+                    <span style={{ color:"#437a22" }}>
+                      − {fmtMoney(receipt.discountApplied)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Amount Paid — highlighted */}
+                <div className="ss-pay-row ss-pay-hi">
+                  <span>Amount Paid</span>
+                  <span>{fmtMoney(receipt.amountPaid)}</span>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          {/* CUSTOMER SECTION */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: "16px",
-              marginBottom: "12px",
-              fontSize: "11.5px",
-              color: "#243b53",
-              flexWrap: "wrap",
-            }}
-          >
-            <div style={{ minWidth: "55%" }}>
-              <div
-                style={{
-                  fontWeight: 600,
-                  marginBottom: 4,
-                  fontSize: "12px",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.03em",
-                  color: "#52606d",
-                }}
-              >
-                Billed To
-              </div>
-              <div style={{ fontWeight: 600 }}>
-                {receipt?.userName || "Customer"}
-              </div>
-              {receipt?.userMobile && (
-                <div>Mobile: {receipt.userMobile}</div>
-              )}
-              {receipt?.userEmail && (
-                <div>Email: {receipt.userEmail}</div>
-              )}
-              <div>
-                Customer GSTIN:&nbsp;
-                {receipt?.userGstin && receipt.userGstin.trim()
-                  ? receipt.userGstin
-                  : "Unregistered"}
-              </div>
-            </div>
+                {/* Total Billed */}
+                <div className="ss-pay-row">
+                  <span>Total Billed Amount</span>
+                  <span>{fmtMoney(receipt.totalAmount)}</span>
+                </div>
 
-            <div
-              style={{
-                textAlign: "right",
-                flex: 1,
-                minWidth: "40%",
-              }}
-            >
-              <div>
-                <strong>Device ID:&nbsp;</strong>
-                <span>{receipt?.deviceId || session?.deviceId || "—"}</span>
+                {/* Refund (conditional) */}
+                {hasRefund && (
+                  <div className="ss-pay-row ss-pay-refund">
+                    <span>Refund (Unutilised)</span>
+                    <span>{fmtMoney(receipt.refundAmount)}</span>
+                  </div>
+                )}
               </div>
-              <div>
-                <strong>Session ID:&nbsp;</strong>
-                <span>{receipt?.sessionId || session?.sessionId || "—"}</span>
-              </div>
-              <div>
-                <strong>Transaction ID:&nbsp;</strong>
-                <span>
-                  {receipt?.transactionId || session?.transactionId || "—"}
-                </span>
-              </div>
-            </div>
-          </div>
 
-          {/* LINE ITEM TABLE */}
-          <div
-            style={{
-              border: "1px solid #e0e0e0",
-              borderRadius: 6,
-              overflow: "hidden",
-              marginBottom: "12px",
-            }}
-          >
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                fontSize: "11.5px",
-              }}
-            >
-              <thead style={{ backgroundColor: "#f5f7fa" }}>
-                <tr>
-                  <th
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #dde1e7",
-                      textAlign: "left",
-                    }}
-                  >
-                    Description
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #dde1e7",
-                      textAlign: "right",
-                    }}
-                  >
-                    Energy (kWh)
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #dde1e7",
-                      textAlign: "right",
-                    }}
-                  >
-                    Rate (₹/kWh)
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #dde1e7",
-                      textAlign: "right",
-                    }}
-                  >
-                    Taxable (₹)
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #dde1e7",
-                      textAlign: "right",
-                    }}
-                  >
-                    GST (₹)
-                  </th>
-                  <th
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #dde1e7",
-                      textAlign: "right",
-                    }}
-                  >
-                    Total (₹)
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #f0f0f0",
-                      color: "#243b53",
-                    }}
-                  >
-                    EV Charging – Device{" "}
-                    {receipt?.deviceId || session?.deviceId || "—"}
-                    <br />
-                    Session {receipt?.sessionId || session?.sessionId || "—"}
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #f0f0f0",
-                      textAlign: "right",
-                    }}
-                  >
-                    {Number(
-                      receipt?.energyConsumed ||
-                        session?.energyConsumed ||
-                        0
-                    ).toFixed(2)}
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #f0f0f0",
-                      textAlign: "right",
-                    }}
-                  >
-                    {fmtMoney(receipt?.userRatePerKwh || 0)}
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #f0f0f0",
-                      textAlign: "right",
-                    }}
-                  >
-                    {fmtMoney(receipt?.taxableAmount || 0)}
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #f0f0f0",
-                      textAlign: "right",
-                    }}
-                  >
-                    {fmtMoney(receipt?.gstAmount || 0)}
-                  </td>
-                  <td
-                    style={{
-                      padding: "8px",
-                      borderBottom: "1px solid #f0f0f0",
-                      textAlign: "right",
-                    }}
-                  >
-                    {fmtMoney(receipt?.totalAmount || 0)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+              {/* 6 ── GST note ── */}
+              <div className="ss-note">
+                <b>System-generated GST Invoice.</b>{" "}
+                Thank you for charging with <b>VIZ Smart Charging</b>.
+              </div>
 
-          {/* PAYMENT SUMMARY */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              marginBottom: "12px",
-            }}
-          >
-            <div
-              style={{
-                minWidth: 260,
-                fontSize: "11.5px",
-                color: "#243b53",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: 2,
-                }}
-              >
-                <span>Amount Selected</span>
-                <span>{fmtMoney(receipt?.amountSelected || 0)}</span>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: 2,
-                }}
-              >
-                <span>Discount</span>
-                <span>- {fmtMoney(receipt?.discountApplied || 0)}</span>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginTop: 4,
-                  fontWeight: 600,
-                }}
-              >
-                <span>Amount Paid</span>
-                <span>{fmtMoney(receipt?.amountPaid || 0)}</span>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginTop: 6,
-                }}
-              >
-                <span>Amount Utilized</span>
-                <span>{fmtMoney(receipt?.amountUtilized || 0)}</span>
-              </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginTop: 2,
-                }}
-              >
-                <span>Refund</span>
-                <span>{fmtMoney(receipt?.refundAmount || 0)}</span>
-              </div>
-            </div>
-          </div>
+            </div>{/* /ss-body */}
+          </div>{/* /ss-card */}
 
-          {/* FOOTER NOTE */}
-          <div
-            style={{
-              fontSize: "10.5px",
-              color: "#7b8794",
-              marginBottom: "6px",
-            }}
-          >
-            This is a GST tax invoice for EV charging services. Thank you for
-            charging with VIZ Smart Charging.
-          </div>
+          {/* ╔════════════════════════════════════════════════════╗
+              ║                  RATING SECTION                   ║
+              ╚════════════════════════════════════════════════════╝ */}
+          <div className="ss-rate-card">
+            <p className="ss-rate-title">How was your charging experience?</p>
 
-          {/* Feedback Card */}
-          <div
-            style={{
-              background: "#ffffff",
-              borderRadius: "16px",
-              border: "1px solid rgba(4,191,191,0.15)",
-              boxShadow: "0 3px 16px rgba(4,191,191,0.06)",
-              padding: "14px 16px",
-              marginTop: "10px",
-            }}
-          >
-            <p
-              style={{
-                margin: "0 0 10px",
-                fontSize: "13px",
-                fontWeight: 700,
-                color: "#0e1e1e",
-                textAlign: "center",
-              }}
-            >
-              How was your charging experience?
-            </p>
-
-            {/* Stars */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: "5px",
-                marginBottom: "4px",
-              }}
-            >
+            <div className="ss-stars">
               {[1, 2, 3, 4, 5].map((i) => (
                 <button
                   key={i}
-                  className="star-btn"
+                  className="ss-star"
                   disabled={feedbackSubmitted}
                   onClick={() => setRating(i)}
+                  aria-label={`Rate ${i} star${i > 1 ? "s" : ""}`}
                 >
                   <svg
-                    width="26"
-                    height="26"
-                    viewBox="0 0 24 24"
-                    fill={i <= rating ? "#ff9100" : "none"}
+                    width="30" height="30" viewBox="0 0 24 24" fill="none"
                     stroke={i <= rating ? "#ff9100" : "#c0d8db"}
-                    strokeWidth="1.5"
-                    style={{ transition: "all 0.15s" }}
+                    strokeWidth="1.4"
+                    style={{
+                      fill: i <= rating ? "#ff9100" : "none",
+                      transition: "all 0.14s",
+                      filter: i <= rating
+                        ? "drop-shadow(0 1px 4px rgba(255,145,0,0.32))"
+                        : "none",
+                    }}
                   >
                     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
                   </svg>
@@ -712,204 +737,66 @@ return (
               ))}
             </div>
 
-            {rating > 0 && (
-              <p
-                style={{
-                  margin: "0 0 10px",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  color: "#ff9100",
-                  textAlign: "center",
-                }}
-              >
-                {ratingLabels[rating]}
-              </p>
-            )}
+            <p className="ss-star-label">
+              {rating > 0 ? ratingLabels[rating] : ""}
+            </p>
 
             {!feedbackSubmitted ? (
               <>
                 <textarea
-                  rows={3}
-                  placeholder="Any suggestions to improve our service? (optional)"
+                  className="ss-textarea"
+                  rows={2}
+                  placeholder="Suggestions to improve our service? (optional)"
                   value={suggestion}
                   onChange={(e) => setSuggestion(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "9px 11px",
-                    fontSize: "12.5px",
-                    fontFamily: "Poppins, sans-serif",
-                    borderRadius: "10px",
-                    border: "1.5px solid rgba(4,191,191,0.20)",
-                    background: "rgba(4,191,191,0.04)",
-                    color: "#0e1e1e",
-                    outline: "none",
-                    resize: "none",
-                    transition: "border-color 0.18s",
-                    lineHeight: 1.5,
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = "#04bfbf";
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor =
-                      "rgba(4,191,191,0.20)";
-                  }}
                 />
                 <button
+                  className="ss-btn-submit"
                   onClick={handleSubmitFeedback}
                   disabled={rating === 0}
-                  style={{
-                    ...btnPrimary,
-                    marginTop: "10px",
-                    opacity: rating === 0 ? 0.45 : 1,
-                    cursor: rating === 0 ? "not-allowed" : "pointer",
-                  }}
                 >
                   Submit Feedback
                 </button>
               </>
             ) : (
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "6px",
-                  padding: "8px 11px",
-                  background: "rgba(4,191,191,0.08)",
-                  borderRadius: "10px",
-                  border: "1px solid rgba(4,191,191,0.18)",
-                }}
-              >
-                <svg
-                  width="15"
-                  height="15"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#04bfbf"
-                  strokeWidth="2.5"
-                >
+              <div className="ss-fb-done">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="#04bfbf" strokeWidth="2.5">
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
-                <span
-                  style={{
-                    fontSize: "12px",
-                    fontWeight: 700,
-                    color: "#04bfbf",
-                  }}
-                >
-                  Thanks for your feedback!
-                </span>
+                Thanks for your feedback!
               </div>
             )}
           </div>
-        </div>
 
-        {/* Fixed footer: action buttons */}
-        <div className="summary-footer">
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "8px",
-            }}
-          >
-            <button
-              className="home-btn"
-              onClick={() => navigate("/home")}
-              style={btnPrimary}
-            >
-              <svg
-                width="14"
-                height="14"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.2"
-                style={{ marginRight: "6px", flexShrink: 0 }}
-              >
+          {/* ╔════════════════════════════════════════════════════╗
+              ║               HOME + REFUND BUTTONS               ║
+              ╚════════════════════════════════════════════════════╝ */}
+          <div className="ss-actions">
+
+            <button className="ss-btn-home" onClick={() => navigate("/home")}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2.2">
                 <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
                 <polyline points="9 22 9 12 15 12 15 22" />
               </svg>
               Back to Home
             </button>
 
-            {receipt.refundAmount > 0 && (
-              <button
-                onClick={handleRefund}
-                className="refund-wa"
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  background: "rgba(37,211,102,0.07)",
-                  color: "#1a7a3a",
-                  border: "1.5px solid rgba(37,211,102,0.28)",
-                  borderRadius: "14px",
-                  fontSize: "13px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontFamily: "Poppins, sans-serif",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "7px",
-                  transition: "background 0.18s",
-                }}
-              >
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="#25D366"
-                >
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+            {hasRefund && (
+              <button className="ss-btn-wa" onClick={handleRefund}>
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="#25D366">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
                 </svg>
                 Request Refund via WhatsApp
               </button>
             )}
           </div>
-        </div>
-      </div>
-    </div>
-  </>
-);
-};
 
-/* ── Shared button styles ── */
-const btnPrimary = {
-  width: "100%",
-  padding: "12px",
-  background: "linear-gradient(90deg, #04bfbf, #029a9a)",
-  color: "#ffffff",
-  border: "none",
-  borderRadius: "14px",
-  fontSize: "13.5px",
-  fontWeight: 700,
-  cursor: "pointer",
-  fontFamily: "Poppins, sans-serif",
-  boxShadow: "0 5px 18px rgba(4,191,191,0.28)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  boxSizing: "border-box",
-  transition: "background 0.18s",
-};
-
-const btnGhost = {
-  width: "100%",
-  padding: "12px",
-  background: "transparent",
-  color: "#5a8a90",
-  border: "1.5px solid rgba(4,191,191,0.20)",
-  borderRadius: "14px",
-  fontSize: "13.5px",
-  fontWeight: 600,
-  cursor: "pointer",
-  fontFamily: "Poppins, sans-serif",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  boxSizing: "border-box",
+        </div>{/* /ss-col */}
+      </div>{/* /ss-root */}
+    </>
+  );
 };
 
 export default SessionSummary;
