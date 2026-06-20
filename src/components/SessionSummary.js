@@ -247,27 +247,23 @@ const SessionSummary = () => {
 
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* KEY FIX: full-page natural scroll — no overflow traps */
-        html {
-          min-height: 100%;
-          background: linear-gradient(155deg,#daf3f3 0%,#f0fafa 55%,#e6f7f7 100%);
-          font-family: 'Inter', sans-serif;
-          -webkit-font-smoothing: antialiased;
-        }
-        body {
-          min-height: 100%;
-          background: transparent;
-          overflow-y: auto !important;   /* always scrollable */
-          overflow-x: hidden;
-        }
-
-        /* page root — flex column, natural height */
         .ss-root {
-          min-height: 100vh;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          padding: 16px 14px 72px;      /* generous bottom gap */
+        min-height: 100%;       /* ← 100% not 100vh — fills scroll track, not viewport */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 16px 14px 100px;
+        background: linear-gradient(155deg,#daf3f3 0%,#f0fafa 55%,#e6f7f7 100%);
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+        .ss-scroll-track {
+          flex: 1;
+          width: 100%;
+          overflow-y: auto;
+          -webkit-overflow-scrolling: touch;
+          overscroll-behavior: contain;
         }
 
         /* centred column, never wider than 620px */
@@ -558,6 +554,24 @@ const SessionSummary = () => {
         .ss-btn-submit:disabled { opacity:0.38; cursor:not-allowed; }
       `}</style>
 
+
+<div style={{
+  width: "100vw",
+  height: "100vh",
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
+}}>
+  <div
+    className="ss-scroll-track"
+    style={{
+      flex: 1,
+      overflowY: "auto",
+      WebkitOverflowScrolling: "touch",
+      overscrollBehavior: "contain",
+    }}
+  >
+
       {/* ══════════════════════════════════════════════════════════
           PAGE  —  naturally scrollable, no height traps
       ══════════════════════════════════════════════════════════ */}
@@ -588,21 +602,42 @@ const SessionSummary = () => {
               {/* 3 ── Bill To (left) | Invoice Details (right) ── */}
               <div className="ss-meta">
 
-                {/* LEFT – Bill To */}
-                <div>
-                  <div className="ss-lbl">Bill To</div>
-                  <div className="ss-bill-name">
-                    {receipt.userName || "Customer"}
-                  </div>
-                  <div className="ss-bill-detail">
-                    {receipt.userMobile && (
-                      <span>{receipt.userMobile}<br /></span>
-                    )}
-                    {receipt.userEmail && (
-                      <span>{receipt.userEmail}</span>
-                    )}
-                  </div>
+              {/* LEFT – Bill To */}
+              <div>
+                <div className="ss-lbl">Bill To</div>
+
+                <div className="ss-inv-item">
+                  <strong>Name</strong>
+                  <span style={{ textAlign: "left" }}>{receipt.userName || "Customer"}</span>
                 </div>
+
+                {receipt.userMobile && (
+                  <div className="ss-inv-item">
+                    <strong>Contact</strong>
+                    <span style={{ textAlign: "left" }}>{receipt.userMobile}</span>
+                  </div>
+                )}
+
+                {receipt.userEmail && (
+                  <div className="ss-inv-item">
+                    <strong>Email</strong>
+                    <span style={{ textAlign: "left", wordBreak: "break-all" }}>{receipt.userEmail}</span>
+                  </div>
+                )}
+                {receipt.userGstin ? (
+                <div className="ss-inv-item">
+                  <strong>GSTIN</strong>
+                  <span style={{ textAlign: "left", fontFamily: "monospace", letterSpacing: "0.06em" }}>
+                    {receipt.userGstin}
+                  </span>
+                </div>
+              ) : (
+                <div className="ss-inv-item">
+                  <strong>GSTIN</strong>
+                  <span style={{ textAlign: "left", color: "#9ab8bc" }}>Unregistered</span>
+                </div>
+              )}
+              </div>
 
                 {/* RIGHT – Invoice meta */}
                 <div className="ss-inv-right">
@@ -795,6 +830,8 @@ const SessionSummary = () => {
 
         </div>{/* /ss-col */}
       </div>{/* /ss-root */}
+        </div>{/* /ss-scroll-track */}
+      </div>{/* /outer frame */}
     </>
   );
 };

@@ -1,6 +1,7 @@
 // components/PrivateRoute.js
 import React from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { getAuthState } from "../utils/auth"; 
 
 /**
  * PrivateRoute (React Router v6)
@@ -29,18 +30,11 @@ const PrivateRoute = ({
 }) => {
   const location = useLocation();
 
-  // Read user from localStorage (as your app currently stores it)
-  const rawUser = localStorage.getItem("user");
-  let user = null;
-  try {
-    user = rawUser ? JSON.parse(rawUser) : null;
-  } catch (err) {
-    console.error("Error parsing user from localStorage:", err);
-    localStorage.removeItem("user");
-  }
+  // ✅ Unified auth state: user + token must both be present
+  const { user, isAuthenticated } = getAuthState();
 
   // Not authenticated: redirect to login and preserve intended route
-  if (!user) {
+  if (!isAuthenticated) {
     return <Navigate to={redirectTo} replace state={{ from: location }} />;
   }
 

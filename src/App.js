@@ -60,6 +60,7 @@ import DeviceEdit from "./pages/devices/DeviceEdit";
 import DeviceOnboarding from './components/DeviceOnboarding';
 
 import { api } from './api';
+import { getAuthState } from "./utils/auth"; 
 
 // AppContent component handles splash + auth + all routes.
 const AppContent = () => {
@@ -71,9 +72,9 @@ const AppContent = () => {
   const hasNavigatedRef = useRef(false);
   const firstLoadRef = useRef(true);
 
-  // Get authentication status
-  const isAuthenticated = !!localStorage.getItem("user");
-
+  // Get authentication status from unified helper (user + token)
+  const { isAuthenticated } = getAuthState();
+  
     // 1) Capture initial URL exactly once
   useEffect(() => {
     initialUrlRef.current =

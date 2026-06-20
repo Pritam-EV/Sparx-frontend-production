@@ -1,5 +1,5 @@
 import axios from "axios";
-
+import { clearAuth } from "./utils/auth";
 // ==============================
 // BASE URL
 // ==============================
@@ -36,8 +36,14 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      // ✅ Clear BOTH token and user consistently
+      clearAuth();
+
+      // ✅ Avoid redirect-loops: only redirect if we're not already on /login
+      if (window.location.pathname !== "/login") {
+        // Use assign so it replaces history entry
+        window.location.assign("/login");
+      }
     }
 
     return Promise.reject(error);
