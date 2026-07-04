@@ -59,15 +59,14 @@ html, body, #root {
 
 /* Floating QR button */
 .qr-floating-button {
-  position: absolute;
-  top: 80px;
-  right: 20px;
+  /* top: 680px;
+  right: 10px; */
   width: 50px;
   height: 50px;
   border-radius: 50%;
-  background-color: #F2A007; /* yellow */
+  background-color: #04bfbf;
   border: none;
-  box-shadow: 0 0 12px #F2A007;
+  box-shadow: 0 0 12px #04bfbf;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -146,7 +145,7 @@ html, body, #root {
 .bottom-buttons {
   position: fixed;
   right: 16px;
-  bottom: 80px;  /* keep above footer */
+  bottom: 160px;  /* keep above footer */
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -254,3 +253,183 @@ html, body, #root {
   cursor: pointer;
   box-shadow: 0 6px 14px rgba(37,211,102,0.18);
 }
+/* Centered QR button in footer – uses same yellow/glow style as top QR */
+
+/* New footer QR container, positioned relative to viewport bottom */
+.qr-footer-center-button {
+  /* behave like other footer buttons */
+  flex: 1;
+  height: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+
+  display: flex;
+  flex-direction: column;   /* match .bottom-bar button */
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+
+  position: relative;       /* needed for the circle */
+}
+
+/* Circle behind the icon */
+.qr-footer-center-button::before {
+  content: "";
+  position: absolute;
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background-color: #04bfbf;
+  box-shadow: 0 0 10px #04bfbf;
+  top: 8%;              /* move circle a bit up */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation: qr-footer-pulse 2.4s ease-in-out infinite;
+}
+
+/* Icon on top of circle */
+.qr-footer-icon {
+  width: 22px;
+  height: 22px;
+  color: #001f26;
+  filter: drop-shadow(0 0 2px #000000);
+  position: relative;
+  z-index: 1;
+}
+
+/* Glow animation – very similar to floating QR button */
+@keyframes qr-footer-pulse {
+  0% {
+    box-shadow: 0 0 0 0 #04bfbf;
+    transform: translateX(-50%) scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(242, 160, 7, 0);
+    transform: translateX(-50%) scale(1.03);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(242, 160, 7, 0);
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+/* Bottom-left support button, fixed above footer   nav */
+.support-bottom-left {
+  position: fixed;
+  left: 16px;
+  bottom: 80px; /* a bit above the 55px bottom-bar */
+  z-index: 2000;
+}
+/* Bottom-left VIZ install/download button, fixed above footer nav */
+.viz-download-bottom-left {
+  position: fixed;
+  right: 10px;
+  bottom: 80px; /* distance above bottom; tweak to sit exactly where you want */
+  z-index: 2000;
+}
+/* Small login prompt for ChargingOptions */
+/* Small login prompt for ChargingOptions */
+.login-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+}
+
+.login-popup {
+  position: relative;
+  width: 90%;
+  max-width: 360px;
+  padding: 20px 18px 16px;
+  background: #0b0e13;              /* matches your dark screen background */
+  border-radius: 14px;
+  box-shadow: 0 14px 36px rgba(0,0,0,0.45);
+  font-family: 'Open Sans', sans-serif;
+  border: 1px solid rgba(4,191,191,0.25); /* subtle teal border */
+}
+
+.login-popup.enhanced {
+  /* optional extra shadow/transition */
+  animation: popup-slide-up 0.25s ease-out;
+}
+
+@keyframes popup-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.login-popup-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #cdebf5;
+}
+
+.login-popup-title {
+  margin: 0 0 8px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #cdebf5;
+}
+
+.login-popup-text {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: #9ebac7;
+}
+
+/* Bullet list of benefits */
+.login-popup-list {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  font-size: 13px;
+  color: #9ebac7;
+}
+
+.login-popup-list li {
+  margin-bottom: 4px;
+}
+
+/* Actions and single CTA */
+.login-popup-actions.single {
+  display: flex;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+.login-popup-btn {
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: none;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-popup-btn.primary {
+  background: #F2A007;              /* your teal */
+  color: #001f26;                    /* dark text to match nav */
+  box-shadow: 0 0 16px rgba(4,191,191,0.5);
+}
+
+.login-popup-btn.primary:hover {
+  background: #F2A007;
+}
+

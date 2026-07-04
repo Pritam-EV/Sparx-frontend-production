@@ -1,5 +1,6 @@
 import React from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import QrCodeScannerIcon from "@mui/icons-material/QrCodeScanner";
 
 const FooterNav = () => {
   const navigate = useNavigate();
@@ -46,20 +47,55 @@ const FooterNav = () => {
     },
   ];
 
-  return (
-    <div className="bottom-bar">
-      {navItems.map((item) => (
+    const handleScanClick = () => {
+    // Use EXACT same navigation as your current Home QR button
+    // e.g. navigate("/scan-qr") or navigate("/scan")
+    navigate("/qr-scanner"); // ← change to your real scanner route
+  };
+
+return (
+  <div className="bottom-bar">
+    {/* Left: Home, Sessions */}
+    {navItems.slice(0, 2).map((item) => {
+      const isActive = location.pathname.startsWith(item.path);
+      return (
         <button
           key={item.path}
+          className={isActive ? "active" : ""}
           onClick={() => navigate(item.path)}
-          className={location.pathname === item.path ? "active" : ""}
         >
           {item.icon}
           <span>{item.label}</span>
         </button>
-      ))}
-    </div>
-  );
+      );
+    })}
+
+    {/* Center: QR scanner */}
+    <button
+      className="qr-footer-center-button"
+      onClick={handleScanClick}
+      aria-label="Scan QR"
+    >
+      <QrCodeScannerIcon className="qr-footer-icon" />
+      {/* Do NOT add a <span> label here to keep it clean */}
+    </button>
+
+    {/* Right: Payments, Profile */}
+    {navItems.slice(2).map((item) => {
+      const isActive = location.pathname.startsWith(item.path);
+      return (
+        <button
+          key={item.path}
+          className={isActive ? "active" : ""}
+          onClick={() => navigate(item.path)}
+        >
+          {item.icon}
+          <span>{item.label}</span>
+        </button>
+      );
+    })}
+  </div>
+);
 };
 
 export default FooterNav;

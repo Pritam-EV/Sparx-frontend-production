@@ -109,6 +109,23 @@ const clampAmount = (val) => {
   return Math.min(maxAmount, Math.max(minAmount, snapped));
 };
 
+const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+
+  // New: detect logged-in user via token or user object
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const userRaw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+  const userData =
+    userRaw && userRaw !== "undefined"
+      ? (() => {
+          try {
+            return JSON.parse(userRaw);
+          } catch {
+            return null;
+          }
+        })()
+      : null;
+
+
 // const touchStartYRef = useRef(null);
 
 // const handleAmountWheel = (event) => {
@@ -350,7 +367,22 @@ useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sliderValue, selectedOption, deviceDetails]);
 
+  // --- Show login/signup popup after 3s if not logged in ---
+  useEffect(() => {
+    // consider "logged in" when token exists; optional: also check userData
+    const isLoggedIn = !!token;
 
+    if (isLoggedIn) {
+      setShowLoginPrompt(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setShowLoginPrompt(true);
+    }, 3000); // 3 seconds delay
+
+    return () => clearTimeout(timer);
+  }, [token]);
 
 
   /* -------------------------
@@ -1385,6 +1417,39 @@ sx={{
     </Box>
   </Box>
 )}
+
+
+    {/* Not logged in popup — only on ChargingOptions page */}
+{showLoginPrompt && !token && (
+  <div className="login-popup-overlay">
+    <div className="login-popup enhanced">
+      <button
+        className="login-popup-close"
+        onClick={() => setShowLoginPrompt(false)}
+        aria-label="Close"
+      >
+        ×
+      </button>
+
+      <h3 className="login-popup-title">Ready to start charging?</h3>
+
+      <p className="login-popup-text">
+        Create a VIZ account or login 
+      </p>
+
+
+      <div className="login-popup-actions single">
+        <button
+          className="login-popup-btn primary"
+          onClick={() => navigate("/login")} // update to your actual route
+        >
+          Login/ Signup
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
 
       <FooterNav />
 </Box>
