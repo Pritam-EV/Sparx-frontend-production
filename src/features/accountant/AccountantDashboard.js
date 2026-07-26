@@ -456,6 +456,28 @@ export default function AccountantDashboard() {
 
   const liveTimer = useRef(null);
 
+    // Owner Settlement
+  const [ownerPeriod,  setOwnerPeriod] = useState("month");
+  const [ownerPage,    setOwnerPage]   = useState(1);
+  const [ownerData,    setOwnerData]   = useState(null);
+  const [ownerLoad,    setOwnerLoad]   = useState(false);
+
+  // Refunds
+  const [refPeriod,    setRefPeriod]   = useState("month");
+  const [refData,      setRefData]     = useState(null);
+  const [refLoad,      setRefLoad]     = useState(false);
+  const [refError,     setRefError]    = useState(null);
+  const [refSubTab,    setRefSubTab]   = useState("receipts"); // "receipts" | "wallet"
+
+  // Cashfree Recon
+  const [reconPeriod,  setReconPeriod] = useState("month");
+  const [reconData,    setReconData]   = useState(null);
+  const [reconLoad,    setReconLoad]   = useState(false);
+
+  // Add alongside existing state declarations
+  const [projects,    setProjects]    = useState([]);
+  const [selProject,  setSelProject]  = useState(""); // "" = All Projects
+
   // Body overflow fix
   useEffect(() => {
     const pb = document.body.style.overflow;
@@ -494,7 +516,7 @@ export default function AccountantDashboard() {
     try {
       const { data } = await axios.get(`${API}/api/accountant/financial-summary`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { period: ovPeriod },
+        params: { period: ovPeriod, projectId: selProject || undefined },
       });
       setOvData(data);
     } catch (e) {
@@ -504,10 +526,19 @@ export default function AccountantDashboard() {
     }
   }, [ovPeriod]);
 
+      // Fetch projects for dropdown (once on mount)
+    useEffect(() => {
+      axios.get(`${API}/api/accountant/projects`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+      }).then(({ data }) => setProjects(data.projects || []))
+        .catch(console.error);
+    }, []);
+    
   useEffect(() => {
     fetchOverview();
     liveTimer.current = setInterval(fetchOverview, 60000);
     return () => clearInterval(liveTimer.current);
+
   }, [fetchOverview]);
 
   // ── Fetch Invoices ────────────────────────────────────────────────────────────
@@ -517,7 +548,7 @@ export default function AccountantDashboard() {
     try {
       const { data } = await axios.get(`${API}/api/accountant/invoices`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { period: invPeriod, page: invPage, limit: 50, search: invSearch || undefined },
+        params: { period: invPeriod, page: invPage, limit: 50, search: invSearch || undefined, projectId: selProject || undefined },
       });
       setInvData(data);
     } catch (e) {
@@ -587,7 +618,7 @@ export default function AccountantDashboard() {
     try {
       const { data } = await axios.get(`${API}/api/accountant/invoices`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { period: gstPeriod, page: 1, limit: 1 }, // only need periodTotals
+        params: { period: gstPeriod, page: 1, limit: 1, projectId: selProject || undefined }, // only need periodTotals
       });
       setGstData(data);
     } catch (e) {
@@ -612,7 +643,7 @@ export default function AccountantDashboard() {
     try {
       const response = await axios.get(`${API}/api/accountant/export`, {
         headers: { Authorization: `Bearer ${token}` },
-        params: { period },
+        params: { period, projectId: selProject || undefined },
         responseType: "blob",
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));
@@ -632,12 +663,87 @@ export default function AccountantDashboard() {
     }
   };
 
+    const fetchOwners = useCallback(async () => {
+    setOwnerLoad(true);
+    try {
+      const { data } = await axios.get(`${API}/api/accountant/owner-settlement`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        params: { period: ownerPeriod, page: ownerPage, limit: 50 },
+      });
+      setOwnerData(data);
+    } catch (e) { console.error(e); }
+    finally { setOwnerLoad(false); }
+  }, [ownerPeriod, ownerPage]);
+
+  const fetchRefunds = useCallback(async () => {
+    setRefLoad(true); setRefError(null);
+    try {
+      const { data } = await axios.get(`${API}/api/accountant/refunds`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        params: { period: refPeriod, page: 1, limit: 50 },
+      });
+      setRefData(data);
+    } catch (e) { setRefError(e?.message || "Failed"); }
+    finally { setRefLoad(false); }
+  }, [refPeriod]);
+
+  const fetchRecon = useCallback(async () => {
+    setReconLoad(true);
+    try {
+      const { data } = await axios.get(`${API}/api/accountant/cashfree-recon`, {
+        headers: { Authorization: `Bearer ${getToken()}` },
+        params: { period: reconPeriod },
+      });
+      setReconData(data);
+    } catch (e) { console.error(e); }
+    finally { setReconLoad(false); }
+  }, [reconPeriod]);
+
+  useEffect(() => { if (activeTab === "owners")  fetchOwners();  }, [activeTab, fetchOwners]);
+  useEffect(() => { if (activeTab === "refunds") fetchRefunds(); }, [activeTab, fetchRefunds]);
+  useEffect(() => { if (activeTab === "recon")   fetchRecon();   }, [activeTab, fetchRecon]);
+
+function ProjectFilter({ projects, value, onChange }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <label style={{ fontSize: 12, color: T.textMuted, fontWeight: 600, whiteSpace: "nowrap" }}>
+        Project
+      </label>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          padding: "6px 28px 6px 10px",
+          border: `1px solid ${T.borderMid}`,
+          borderRadius: 8,
+          fontSize: 13,
+          color: T.textMid,
+          background: T.surface,
+          outline: "none",
+          cursor: "pointer",
+          appearance: "none",
+          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23667085' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "right 8px center",
+          minWidth: 160,
+        }}
+      >
+        <option value="">All Projects</option>
+        {projects.map(p => (
+          <option key={p._id} value={p._id}>
+            {p.name}{p.location ? ` — ${p.location}` : ""}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
   // ─── Render ──────────────────────────────────────────────────────────────────
   return (
     <>
       <style>{dashStyles}</style>
       <div className="acc-dash">
-
+      
         {/* ── Header ── */}
         <header className="acc-header">
           <div className="acc-header-brand">
@@ -648,6 +754,19 @@ export default function AccountantDashboard() {
             </div>
           </div>
           <div className="acc-header-actions">
+            {/* Project filter — global scope selector */}
+            {projects.length > 0 && (
+              <ProjectFilter
+                projects={projects}
+                value={selProject}
+                onChange={v => {
+                  setSelProject(v);
+                  // Reset pages on project change
+                  setInvPage(1);
+                  setWalPage(1);
+                }}
+              />
+            )}
             {ovData?.period?.label && (
               <span style={{ fontSize: 12, color: T.textMuted, padding: "4px 10px", background: T.bg, borderRadius: 6, border: `1px solid ${T.border}` }}>
                 {ovData.period.label}
@@ -666,6 +785,9 @@ export default function AccountantDashboard() {
             { key: "wallet",   label: "💳 Wallet Ledger" },
             { key: "gst",      label: "📋 GST Filing" },
             { key: "export",   label: "⬇ Export Reports" },
+            { key: "owners",  label: "🏠 Owner Settlement" },
+            { key: "refunds", label: "↩ Refunds" },
+            { key: "recon",   label: "🔗 PG Reconciliation" },
           ].map(t => (
             <button
               key={t.key}
@@ -903,9 +1025,12 @@ export default function AccountantDashboard() {
                 <div>
                   <h1 className="acc-section-title">Invoice Register (Outward Supplies)</h1>
                   {invData && (
-                    <p className="acc-section-sub">
-                      {invData.total} tax invoices · {invData.period?.label}
-                    </p>
+                  <p className="acc-section-sub">
+                    {invData.total} tax invoices · {invData.period?.label}
+                    {selProject && projects.find(p => p._id === selProject)
+                      ? ` · ${projects.find(p => p._id === selProject).name}`
+                      : " · All Projects"}
+                  </p>
                   )}
                 </div>
                 <button
@@ -1329,6 +1454,275 @@ export default function AccountantDashboard() {
                   <CustomExport onExport={handleExport} exporting={exporting} />
                 </div>
               </div>
+            </>
+          )}
+
+                    {/* ══════════════════════════════════════════════════════════
+              TAB 6: OWNER SETTLEMENT
+          ══════════════════════════════════════════════════════════ */}
+          {activeTab === "owners" && (
+            <>
+              <div className="acc-section-header">
+                <div>
+                  <h1 className="acc-section-title">Owner Settlement Register</h1>
+                  <p className="acc-section-sub">
+                    Per-owner aggregated billing, payout, VJRA margin, electricity cost & energy delivered.
+                  </p>
+                </div>
+                <button className="acc-btn acc-btn-success" disabled={!!exporting} onClick={() => handleExport(ownerPeriod)}>
+                  <DownloadIcon /> {exporting ? "Generating…" : "Download Excel (incl. Owner Sheet)"}
+                </button>
+              </div>
+
+              <div className="acc-filters">
+                <PeriodFilter value={ownerPeriod} onChange={p => { setOwnerPeriod(p); setOwnerPage(1); }} />
+              </div>
+
+              {ownerData?.periodTotals && (
+                <div className="acc-summary-bar">
+                  <span className="acc-summary-item">Gross Billing: <strong>{fmt(ownerData.periodTotals.totalGrossBilling)}</strong></span>
+                  <span className="acc-summary-item">Total Owner Payable: <strong style={{color:"#b45309"}}>{fmt(ownerData.periodTotals.totalOwnerPayout)}</strong></span>
+                  <span className="acc-summary-item">VJRA Margin: <strong style={{color:T.success}}>{fmt(ownerData.periodTotals.totalVjraMargin)}</strong></span>
+                  <span className="acc-summary-item">PG Charges: <strong>{fmt(ownerData.periodTotals.totalPgCharges)}</strong></span>
+                  <span className="acc-summary-item">EB Cost: <strong>{fmt(ownerData.periodTotals.totalElectricity)}</strong></span>
+                  <span className="acc-summary-item">Energy: <strong>{ownerData.periodTotals.totalEnergyKwh?.toFixed(2)} kWh</strong></span>
+                  <span className="acc-summary-item" style={{marginLeft:"auto"}}>{ownerData.periodTotals.invoiceCount} sessions · {ownerData.total} owners</span>
+                </div>
+              )}
+
+              {ownerLoad ? (
+                <div className="acc-empty">Loading owner settlement…</div>
+              ) : ownerData?.data?.length === 0 ? (
+                <div className="acc-empty">
+                  <div className="acc-empty-icon">🏠</div>
+                  <div className="acc-empty-title">No owner data found</div>
+                  <div>Try a different period.</div>
+                </div>
+              ) : ownerData?.data ? (
+                <>
+                  <div className="acc-table-wrap">
+                    <table className="acc-table">
+                      <thead>
+                        <tr>
+                          <th>Owner</th>
+                          <th>Contact</th>
+                          <th style={{textAlign:"right"}}>Sessions</th>
+                          <th style={{textAlign:"right"}}>Gross Billing (₹)</th>
+                          <th style={{textAlign:"right"}}>GST (₹)</th>
+                          <th style={{textAlign:"right"}}>PG Charges (₹)</th>
+                          <th style={{textAlign:"right"}}>EB Cost (₹)</th>
+                          <th style={{textAlign:"right"}}>VJRA Margin (₹)</th>
+                          <th style={{textAlign:"right"}}>Owner Payout (₹)</th>
+                          <th style={{textAlign:"right"}}>Energy (kWh)</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ownerData.data.map((o, i) => (
+                          <tr key={o.ownerId || i}>
+                            <td style={{fontWeight:600}}>{o.ownerName}</td>
+                            <td className="muted" style={{fontSize:11}}>{o.ownerMobile}<br/>{o.ownerEmail}</td>
+                            <td className="num">{o.invoiceCount}</td>
+                            <td className="num">{fmt(o.grossBilling)}</td>
+                            <td className="num muted">{fmt(o.gstAmount)}</td>
+                            <td className="num muted">{fmt(o.pgCharges)}</td>
+                            <td className="num muted">{fmt(o.electricityCost)}</td>
+                            <td className="num" style={{color:T.success,fontWeight:600}}>{fmt(o.vjraMargin)}</td>
+                            <td className="num" style={{color:"#b45309",fontWeight:600}}>{fmt(o.ownerPayout)}</td>
+                            <td className="num">{o.energyKwh?.toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <Pagination page={ownerPage} totalPages={ownerData.totalPages} onPage={setOwnerPage} />
+                </>
+              ) : null}
+            </>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              TAB 7: REFUNDS & ADJUSTMENTS
+          ══════════════════════════════════════════════════════════ */}
+          {activeTab === "refunds" && (
+            <>
+              <div className="acc-section-header">
+                <div>
+                  <h1 className="acc-section-title">Refunds & Adjustments Register</h1>
+                  <p className="acc-section-sub">All session refunds and wallet/bank refund transactions.</p>
+                </div>
+                <button className="acc-btn acc-btn-success" disabled={!!exporting} onClick={() => handleExport(refPeriod)}>
+                  <DownloadIcon /> Download Excel (incl. Refunds Sheet)
+                </button>
+              </div>
+
+              <div className="acc-filters">
+                <PeriodFilter value={refPeriod} onChange={setRefPeriod} />
+                <div style={{width:1,height:20,background:T.border,flexShrink:0}} />
+                {[{key:"receipts",label:"Session Refunds"},{key:"wallet",label:"Wallet/Bank Refunds"}].map(opt => (
+                  <button key={opt.key} className={`acc-period-btn${refSubTab===opt.key?" active":""}`} onClick={() => setRefSubTab(opt.key)}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {refError && <div className="acc-error"><span>{refError}</span><button className="acc-btn acc-btn-danger" onClick={fetchRefunds}>Retry</button></div>}
+
+              {refData?.periodTotals && (
+                <div className="acc-summary-bar">
+                  <span className="acc-summary-item">Session Refunds: <strong style={{color:"#b91c1c"}}>{fmt(refData.periodTotals.receiptRefunds)}</strong> ({refData.periodTotals.receiptCount} entries)</span>
+                  <span className="acc-summary-item">Wallet Refunds: <strong style={{color:"#6d28d9"}}>{fmt(refData.periodTotals.walletRefunds)}</strong></span>
+                  <span className="acc-summary-item">Bank Refunds: <strong style={{color:"#b45309"}}>{fmt(refData.periodTotals.bankRefunds)}</strong></span>
+                  <span className="acc-summary-item" style={{fontWeight:700,marginLeft:"auto"}}>Total: <strong style={{color:"#b91c1c"}}>{fmt(refData.periodTotals.totalRefunds)}</strong></span>
+                </div>
+              )}
+
+              {refLoad ? (
+                <div className="acc-empty">Loading refunds…</div>
+              ) : refSubTab === "receipts" ? (
+                refData?.receiptRefunds?.data?.length === 0 ? (
+                  <div className="acc-empty"><div className="acc-empty-icon">✅</div><div className="acc-empty-title">No session refunds</div></div>
+                ) : (
+                  <div className="acc-table-wrap">
+                    <table className="acc-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th><th>Invoice No.</th><th>Customer</th>
+                          <th style={{textAlign:"right"}}>Invoice Amt (₹)</th>
+                          <th style={{textAlign:"right"}}>Refund Amt (₹)</th>
+                          <th>Refund Mode</th><th>Status</th><th>Refund ID</th><th>Processed At</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(refData?.receiptRefunds?.data || []).map((r, i) => (
+                          <tr key={i}>
+                            <td style={{whiteSpace:"nowrap"}}>{fmtDateOnly(r.date)}</td>
+                            <td style={{fontSize:11,fontWeight:600,color:T.primary}}>{r.invoiceNo}</td>
+                            <td>{r.customerName}</td>
+                            <td className="num">{fmt(r.originalAmount)}</td>
+                            <td className="num" style={{color:"#b91c1c",fontWeight:700}}>{fmt(r.refundAmount)}</td>
+                            <td>
+                              <span className="acc-badge" style={{background: r.refundMode==="Wallet"?"#f5f3ff":"#fffbeb", color: r.refundMode==="Wallet"?"#6d28d9":"#b45309"}}>
+                                {r.refundMode}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="acc-badge" style={{background: r.refundStatus==="processed"?"#f0fdf4": r.refundStatus==="failed"?"#fef2f2":"#f9fafb", color: r.refundStatus==="processed"?T.success: r.refundStatus==="failed"?"#b91c1c":T.textMuted}}>
+                                {r.refundStatus}
+                              </span>
+                            </td>
+                            <td className="muted" style={{fontSize:11}}>{r.refundId !== "—" ? r.refundId : "—"}</td>
+                            <td className="muted" style={{whiteSpace:"nowrap",fontSize:11}}>{r.processedAt ? fmtDateOnly(r.processedAt) : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              ) : (
+                refData?.walletRefunds?.data?.length === 0 ? (
+                  <div className="acc-empty"><div className="acc-empty-icon">✅</div><div className="acc-empty-title">No wallet/bank refunds</div></div>
+                ) : (
+                  <div className="acc-table-wrap">
+                    <table className="acc-table">
+                      <thead>
+                        <tr>
+                          <th>Date</th><th>Type</th><th>Customer</th>
+                          <th style={{textAlign:"right"}}>Amount (₹)</th>
+                          <th style={{textAlign:"right"}}>Bal. Before</th>
+                          <th style={{textAlign:"right"}}>Bal. After</th>
+                          <th>Session / Order Ref.</th><th>Description</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(refData?.walletRefunds?.data || []).map((t, i) => {
+                          const meta = WALLET_TYPE_META[t.type] || {};
+                          return (
+                            <tr key={i}>
+                              <td style={{whiteSpace:"nowrap"}}>{fmtDate(t.date)}</td>
+                              <td><span className="acc-badge" style={{background:meta.bg,color:meta.color}}>{meta.label||t.type}</span></td>
+                              <td>{t.customerName}</td>
+                              <td className="num" style={{color:"#b91c1c",fontWeight:700}}>{fmt(t.amount)}</td>
+                              <td className="num muted">{fmt(t.balanceBefore)}</td>
+                              <td className="num">{fmt(t.balanceAfter)}</td>
+                              <td className="muted" style={{fontSize:11}}>{t.sessionId!=="—"?t.sessionId:t.orderId!=="—"?t.orderId:"—"}</td>
+                              <td className="muted" style={{fontSize:11}}>{t.description!=="—"?t.description:"—"}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              )}
+            </>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              TAB 8: CASHFREE RECONCILIATION
+          ══════════════════════════════════════════════════════════ */}
+          {activeTab === "recon" && (
+            <>
+              <div className="acc-section-header">
+                <div>
+                  <h1 className="acc-section-title">Payment Gateway Reconciliation</h1>
+                  <p className="acc-section-sub">Compare expected Cashfree collections (from our records) with actual settlements. Live Cashfree data coming once webhook integration is enabled.</p>
+                </div>
+              </div>
+
+              <div className="acc-filters">
+                <PeriodFilter value={reconPeriod} onChange={p => { setReconPeriod(p); }} />
+                <button className="acc-btn acc-btn-ghost" onClick={fetchRecon}>↻ Refresh</button>
+              </div>
+
+              {/* Integration notice */}
+              <div style={{background:"#fffbeb",border:"1px solid #fcd34d",borderRadius:T.radius,padding:"12px 18px",fontSize:12,color:"#78350f",marginBottom:20}}>
+                <strong>🔗 Phase 3 — Cashfree Live Integration:</strong> Once you add a{" "}
+                <code style={{background:"#fef9c3",padding:"1px 5px",borderRadius:3}}>CashfreeSettlement</code> model and webhook handler, this panel will show actual settlement batches and flag any variance automatically. Current view shows our computed expectations.
+              </div>
+
+              {reconLoad ? (
+                <div className="acc-empty">Loading reconciliation data…</div>
+              ) : reconData ? (
+                <>
+                  {/* Our records side */}
+                  <div className="acc-group-label" style={{color:T.primary}}>Our Records (Sparx DB)</div>
+                  <div className="acc-kpi-grid">
+                    <KpiCard category="CASHFREE COLLECTIONS" categoryColor={T.primary}
+                      title="Direct Session Collections" value={fmt(reconData.ourRecords.directSessionCollections)}
+                      sub={`${reconData.ourRecords.sessionCount} cashfree-paid sessions`} color={T.primary} />
+                    <KpiCard category="CASHFREE COLLECTIONS" categoryColor={T.primary}
+                      title="Wallet Topup Collections" value={fmt(reconData.ourRecords.walletTopupCollections)}
+                      sub={`${reconData.ourRecords.topupCount} topup transactions`} color={T.primary} />
+                    <KpiCard category="TOTAL CASHFREE" categoryColor={T.primary}
+                      title="Total Cashfree Collections" value={fmt(reconData.ourRecords.totalCashfreeCollections)}
+                      sub="Sessions + Topups through Cashfree PG" color={T.primary} />
+                    <KpiCard category="DEDUCTIONS" categoryColor={T.textMuted}
+                      title="PG Charges Deducted" value={fmt(reconData.ourRecords.pgChargesDeducted)}
+                      sub="Processing fees charged by Cashfree" />
+                    <KpiCard category="DEDUCTIONS" categoryColor="#b91c1c"
+                      title="Refunds via Cashfree" value={fmt(reconData.ourRecords.refundsDeducted)}
+                      sub="Cashfree-routed refunds to customers" color="#b91c1c" />
+                    <KpiCard category="EXPECTED SETTLEMENT" categoryColor={T.success}
+                      title="Expected Bank Settlement" value={fmt(reconData.ourRecords.expectedSettlement)}
+                      sub="Collections − PG charges − refunds" color={T.success} />
+                  </div>
+
+                  {/* Actual Cashfree side — placeholder */}
+                  <div className="acc-group-label" style={{color:T.textFaint,marginTop:8}}>Cashfree Actual Settlement (Pending Integration)</div>
+                  <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:T.radiusLg,padding:"32px 24px",textAlign:"center",color:T.textMuted,boxShadow:T.shadow}}>
+                    <div style={{fontSize:28,marginBottom:12}}>🔗</div>
+                    <div style={{fontWeight:700,fontSize:14,color:T.text,marginBottom:6}}>Cashfree Settlement Data Not Yet Connected</div>
+                    <div style={{fontSize:12,maxWidth:480,margin:"0 auto",marginBottom:16}}>
+                      To see actual vs expected variance, implement a <code style={{background:"#f1f5f9",padding:"1px 4px",borderRadius:3}}>CashfreeSettlement</code> Mongoose model and webhook handler that stores Cashfree settlement batches. The reconciliation engine is built and waiting.
+                    </div>
+                    <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
+                      {["POST /webhook/cashfree/settlement", "Model: CashfreeSettlement", "GET /api/accountant/cashfree-recon → live"].map(s => (
+                        <span key={s} style={{background:"#f1f5f9",border:`1px solid ${T.border}`,borderRadius:4,fontSize:11,padding:"3px 8px",fontFamily:"monospace",color:T.textMid}}>{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : null}
             </>
           )}
 
