@@ -11,7 +11,7 @@ function DeviceList() {
   useEffect(() => {
     getDevices()
       .then(({ data }) => {
-        console.log("API Response:", data);
+        // console.log("API Response:", data);
         if (Array.isArray(data)) {
           setDevices(
             data.map((device) => ({

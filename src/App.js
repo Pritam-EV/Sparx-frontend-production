@@ -81,7 +81,7 @@ const AppContent = () => {
       window.location.pathname +
       window.location.search +
       window.location.hash;
-    console.log("Initial URL:", initialUrlRef.current);
+    // console.log("Initial URL:", initialUrlRef.current);
   }, []);
 
   // 2) Run splash timer once on mount
@@ -101,7 +101,7 @@ const isPaymentSuccess = target.startsWith("/payment-success");
 const isWalletReturn   = target.startsWith("/wallet/topup-success");
 
 if (isPaymentSuccess || isWalletReturn) {
-  console.log("Payment/wallet return deep link ->", target);
+  // console.log("Payment/wallet return deep link ->", target);
   navigate(target, { replace: true });
   firstLoadRef.current = false;
   return;
@@ -109,15 +109,15 @@ if (isPaymentSuccess || isWalletReturn) {
 
 
       if (deepLink) {
-        console.log("Deep link ->", target);
+        // console.log("Deep link ->", target);
         navigate(target, { replace: true });
       } else {
         // 3b) Normal launch: auth → home, else → welcome
         if (isAuthenticated) {
-          console.log("Authenticated → /home");
+          // console.log("Authenticated → /home");
           navigate("/home", { replace: true });
         } else {
-          console.log("Not authenticated → /welcome");
+          // console.log("Not authenticated → /welcome");
           navigate("/welcome", { replace: true });
         }
       }
@@ -134,7 +134,7 @@ useEffect(() => {
   const pingBackend = async () => {
     try {
       await api.get('/ping'); // Uses your REACT_APP_APIBASE + /ping
-      console.log('✅ BE ping OK');
+      // console.log('✅ BE ping OK');
     } catch (error) {
       console.warn('⚠️ BE ping failed (likely cold start):', error.message);
       // No UI impact - just log

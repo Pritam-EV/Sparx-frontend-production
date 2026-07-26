@@ -512,7 +512,7 @@ async function consumeCoupon() {
         deviceId,
       }),
     });
-    console.log("Coupon consumed successfully");
+    // console.log("Coupon consumed successfully");
   } catch (err) {
     console.error("Failed to consume coupon:", err);
   }

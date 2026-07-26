@@ -469,7 +469,7 @@ termsHash: acceptedTermsSnapshot?.hash,
       }
 
       const data = await response.json();
-      console.log('Device onboarded successfully:', data);
+      // console.log('Device onboarded successfully:', data);
 
       setSuccess(true);
       

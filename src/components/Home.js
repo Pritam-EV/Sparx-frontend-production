@@ -61,11 +61,11 @@ useEffect(() => {
   const handleBeforeInstallPrompt = (e) => {
     e.preventDefault();
     setDeferredPrompt(e);
-    console.log("[PWA] beforeinstallprompt captured");
+    // console.log("[PWA] beforeinstallprompt captured");
   };
 
   const handleAppInstalled = () => {
-    console.log("[PWA] app installed");
+    // console.log("[PWA] app installed");
     setIsVizInstalled(true);
     setDeferredPrompt(null);
     setShowInstallModal(false);
@@ -180,7 +180,7 @@ useEffect(() => {
 
 const handleInstallViz = async () => {
   if (isVizInstalled) {
-    console.log("[PWA] already installed");
+    // console.log("[PWA] already installed");
     return;
   }
 
@@ -189,12 +189,12 @@ const handleInstallViz = async () => {
       await deferredPrompt.prompt();
       const choice = await deferredPrompt.userChoice;
 
-      console.log("[PWA] user choice:", choice?.outcome);
+      // console.log("[PWA] user choice:", choice?.outcome);
 
       setDeferredPrompt(null);
 
       if (choice?.outcome !== "accepted") {
-        console.log("[PWA] install dismissed");
+        // console.log("[PWA] install dismissed");
       }
     } catch (error) {
       console.error("[PWA] install prompt failed:", error);
@@ -274,7 +274,7 @@ const attemptLocate = () => {
   navigator.geolocation.getCurrentPosition(
     ({ coords }) => {
       const latlng = [coords.latitude, coords.longitude];
-      console.log("[Locate] Got position:", latlng);
+      // console.log("[Locate] Got position:", latlng);
 
       mapRef.current.setView(latlng, 16, { animate: true });
 
@@ -308,7 +308,7 @@ useEffect(() => {
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(
       () => {
-        console.log("Location permission granted ✅");
+        // console.log("Location permission granted ✅");
       },
       (err) => {
         console.warn("Location permission denied ❌", err);
@@ -785,7 +785,7 @@ function smoothShrinkMarker(marker) {
               zoom={12}
               style={{ height: "100%", width: "100%" }}
               whenCreated={(mapInstance) => {
-                console.log("[Map] Ready");
+                // console.log("[Map] Ready");
                 mapRef.current = mapInstance;
               }}
             >

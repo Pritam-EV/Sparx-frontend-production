@@ -28,7 +28,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (res.data?.sessionId) {
-          console.log("📦 Existing session loaded from DB");
+          // console.log("📦 Existing session loaded from DB");
           setSession(res.data);
           localStorage.setItem("activeSession", JSON.stringify(res.data));
           setSessionStarted(true);
@@ -47,7 +47,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
   const startSession = async (txnId, amountPaid, energySelected) => {
     try {
       const token = localStorage.getItem("token");
-      console.log("🔐 Token:", token);
+      // console.log("🔐 Token:", token);
       if (!token) throw new Error("No auth token");
       const now = new Date();   
       const sessionId = "session_" + now.getTime();
@@ -59,16 +59,16 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
         startEnergyRaw !== null ? parseFloat(startEnergyRaw) : null;
       const userId = user?._id || user?.id;
 
-      console.log("🧪 Starting session with:", {
-        sessionId,
-        userId,
-        deviceId,
-        transactionId: txnId,
-        startTime,
-        startDate,
-        amountPaid,
-        energySelected,
-      });
+      // console.log("🧪 Starting session with:", {
+      //   sessionId,
+      //   userId,
+      //   deviceId,
+      //   transactionId: txnId,
+      //   startTime,
+      //   startDate,
+      //   amountPaid,
+      //   energySelected,
+      // });
 
       const res = await axios.post(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/start`,
@@ -84,8 +84,8 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      console.log("📬 POST response:", res);
-      console.log("📦 res.data:", res.data);
+      // console.log("📬 POST response:", res);
+      // console.log("📦 res.data:", res.data);
 
     } catch (err) {
       console.error("❌ Failed to start session:", err.message);
@@ -116,7 +116,7 @@ function useSessionManager({ txnId, deviceId, amountPaid, energySelected, connec
       transactionId: txnId,
     };
 
-    console.log("🚀 Sending sessionCommand to device:", payload);
+    // console.log("🚀 Sending sessionCommand to device:", payload);
     publish(
       `device/${deviceId}/sessionCommand`,
       JSON.stringify(payload),
@@ -207,7 +207,7 @@ function useEnergyMeter(
         const delta = parseFloat((value - startEnergy).toFixed(3));
         setDeltaEnergy(delta);
         const usedAmount = parseFloat((delta * FIXED_RATE).toFixed(2));
-        console.log("📊 Energy Update:", { startEnergy, currentEnergy: value, delta, usedAmount });
+        // console.log("📊 Energy Update:", { startEnergy, currentEnergy: value, delta, usedAmount });
         onUpdateSessionUsage(delta, usedAmount);
         if (!autoStopped && amountPaid && usedAmount >= amountPaid) {
           stopSession("auto");
@@ -218,7 +218,7 @@ function useEnergyMeter(
       const isOn = msg === "ON";
       setCharging(isOn);
       setRelayConfirmed(isOn);
-      console.log(`🔌 Relay state: ${isOn ? "ON" : "OFF"}`);
+      // console.log(`🔌 Relay state: ${isOn ? "ON" : "OFF"}`);
     }
   };
 
@@ -333,7 +333,7 @@ const SessionStatus = () => {
 
   const handleStop = () => {
     if (connected && mqttClient && deviceId && session.sessionId) {
-      console.log("🛑 Sending session STOP command...");
+      // console.log("🛑 Sending session STOP command...");
       publish(
         `device/${deviceId}/sessionCommand`,
         JSON.stringify({ command: "stop", sessionId: session.sessionId, deviceId })

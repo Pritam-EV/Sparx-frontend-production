@@ -75,7 +75,7 @@ const startChargingSession = async ({ sessionId, deviceId, orderId }) => {
   );
 
   const startData = await startResp.json();
-  console.log("⚡ session start response:", startData);
+  // console.log("⚡ session start response:", startData);
 
   if (!startResp.ok) {
     throw new Error(startData?.error || "Session start failed");
@@ -87,8 +87,8 @@ const startChargingSession = async ({ sessionId, deviceId, orderId }) => {
   useEffect(() => {
     async function run() {
       try {
-        console.log("🔁 PaymentSuccess loaded");
-        console.log("🧾 order_id:", orderId);
+        // console.log("🔁 PaymentSuccess loaded");
+        // console.log("🧾 order_id:", orderId);
 
         if (!orderId) {
           setError("Missing order id");
@@ -118,7 +118,7 @@ tokenRef.current = token;
         const pending = JSON.parse(pendingRaw);
 pendingRef.current = pending;
 
-        console.log("📦 pendingPayment:", pending);
+        // console.log("📦 pendingPayment:", pending);
 
         const {
           deviceId,
@@ -147,9 +147,9 @@ pendingRef.current = pending;
          * ------------------------------------------------ */
         if (paymentGateway === "wallet") {
           // Wallet payments are already debited atomically on backend — no verify needed
-          console.log("👛 Wallet flow → skipping external verification");
+          // console.log("👛 Wallet flow → skipping external verification");
         } else if (paymentGateway !== "free") {
-          console.log("💰 Paid flow → verifying payment");
+          // console.log("💰 Paid flow → verifying payment");
 
           const verifyResp = await fetch(
             `${process.env.REACT_APP_Backend_API_Base_URL}/api/payment/verify?orderId=${orderId}`,
@@ -159,7 +159,7 @@ pendingRef.current = pending;
           );
 
           const verifyData = await verifyResp.json();
-          console.log("💰 verify response:", verifyData);
+          // console.log("💰 verify response:", verifyData);
 
           if (!verifyResp.ok || !verifyData.success) {
             setError("Payment verification failed");
@@ -167,17 +167,17 @@ pendingRef.current = pending;
             return;
           }
         } else {
-          console.log("🎟️ Free flow → skipping payment verification");
+          // console.log("🎟️ Free flow → skipping payment verification");
         }
 
         /* ------------------------------------------------
          * START SESSION
          * ------------------------------------------------ */
-        console.log("🚀 Starting session", {
-          sessionId,
-          deviceId,
-          transactionId: paymentGateway === "free" ? null : orderId,
-        });
+        // console.log("🚀 Starting session", {
+        //   sessionId,
+        //   deviceId,
+        //   transactionId: paymentGateway === "free" ? null : orderId,
+        // });
 
 
 

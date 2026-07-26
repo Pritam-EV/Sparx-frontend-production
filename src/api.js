@@ -4,7 +4,7 @@ import { clearAuth } from "./utils/auth";
 // BASE URL
 // ==============================
 export const API_BASE =
-  process.env.REACT_APP_API_BASE || "https://sparx-backend-production-vuaj.onrender.com";
+  process.env.REACT_APP_API_BASE || "https://sparx-backend-production-gy2h.onrender.com";
 
 // ==============================
 // AXIOS INSTANCE

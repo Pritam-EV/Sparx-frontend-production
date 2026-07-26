@@ -126,7 +126,7 @@ function normalizeSession(s = {}) {
 const handleStart = async () => {
     // Atomic check-and-set operation
     if (startedRef.current) {
-        console.log('Start already in progress, ignoring duplicate call');
+        // console.log('Start already in progress, ignoring duplicate call');
         return;
     }
     
@@ -164,7 +164,7 @@ const handleStart = async () => {
         
         if (resp.status === 409) {
             // Session already exists - fetch it
-            console.log('Session exists, fetching existing session...');
+            // console.log('Session exists, fetching existing session...');
             const fetchResp = await fetch(
                 `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/by-transaction/${transactionId}`,
                 {

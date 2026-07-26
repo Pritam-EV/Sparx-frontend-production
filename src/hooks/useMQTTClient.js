@@ -30,7 +30,7 @@ export default function useMQTTClient(deviceId, onMessage) {
     clientRef.current = client;
 
     const handleConnect = () => {
-      console.log("✅ MQTT Connected");
+      // console.log("✅ MQTT Connected");
       setConnected(true);
       client.subscribe([voltageTopic, currentTopic, energyTopic, relayStateTopic], { qos: 1 });
     };
@@ -65,7 +65,7 @@ client.on("message", (topic, message) => {
     client.on("close", handleClose);
 
     return () => {
-      console.log("🧹 Cleaning up MQTT client...");
+      // console.log("🧹 Cleaning up MQTT client...");
       client.removeListener("connect", handleConnect);
       client.removeListener("message", handleMessage);
       client.removeListener("error", handleError);

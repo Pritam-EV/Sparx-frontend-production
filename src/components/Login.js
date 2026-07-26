@@ -49,7 +49,7 @@ export default function Login() {
       // render and store widget id
       const widgetId = await window.recaptchaVerifier.render();
       window.recaptchaWidgetId = widgetId;
-      console.log("Recaptcha (re)created:", widgetId);
+      // console.log("Recaptcha (re)created:", widgetId);
     } catch (err) {
       console.warn("createRecaptcha failed:", err);
       // do not set a user-visible error here; attempts to create recaptcha may fail silently
@@ -129,11 +129,11 @@ export default function Login() {
 
   async function checkProfileExists(idToken) {
     try {
-      console.log("checkProfileExists: calling /auth/me with idToken (prefix):", idToken?.slice(0,20));
+      // console.log("checkProfileExists: calling /auth/me with idToken (prefix):", idToken?.slice(0,20));
       const res = await api.get("/auth/me", {
         headers: { Authorization: `Bearer ${idToken}` },
       });
-      console.log("checkProfileExists: /auth/me success", res.status, res.data);
+      // console.log("checkProfileExists: /auth/me success", res.status, res.data);
       if (res.data?.token) {
         localStorage.setItem("token", res.data.token);
       } else {

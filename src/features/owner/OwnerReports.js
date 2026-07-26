@@ -641,20 +641,26 @@ const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       ? "EB_PROCESSED"
       : "EB_UPLOADED";
 
-  const eb = {
-    wheelingCharges:   report?.charges?.wheelingCharges?.amount,
-    demandCharges:     report?.charges?.demandCharges?.amount,
-    energyCharges:     report?.charges?.energyCharges?.amount,
-    fac:               report?.charges?.fac?.amount,
-    fixedCharges:      report?.charges?.fixedCharges?.amount,
-    electricityDuty:   report?.charges?.electricityDuty?.amount,
-    meterRent:         report?.charges?.meterRent?.amount,
-    powerFactorAdjust: report?.charges?.powerFactorAdjustment?.amount,
-    delayedPayment:    report?.charges?.delayedPaymentCharges?.amount,
-    regulatoryCharges: report?.charges?.regulatoryCharges?.amount,
-    otherCharges:      report?.extraCharges || [],
-    totalBillAmount:   report?.totalEBAmount,
-  };
+const eb = {
+  wheelingCharges: report?.charges?.wheelingCharges?.amount,
+  demandCharges: report?.charges?.demandCharges?.amount,
+  energyCharges: report?.charges?.energyCharges?.amount,
+  todTariffEc: report?.charges?.todTariffEc?.amount,
+  fac: report?.charges?.fac?.amount,
+  fixedCharges: report?.charges?.fixedCharges?.amount,
+  electricityDuty: report?.charges?.electricityDuty?.amount,
+  taxOnSale: report?.charges?.taxOnSale?.amount,
+  chargesForExcessDemand: report?.charges?.chargesForExcessDemand?.amount,
+  pfPenalCharges: report?.charges?.pfPenalCharges?.amount,
+  debitBillAdjustment: report?.charges?.debitBillAdjustment?.amount,
+  roundingOffCharges: report?.charges?.roundingOffCharges?.amount,
+  meterRent: report?.charges?.meterRent?.amount,
+  powerFactorAdjust: report?.charges?.powerFactorAdjustment?.amount,
+  delayedPayment: report?.charges?.delayedPaymentCharges?.amount,
+  regulatoryCharges: report?.charges?.regulatoryCharges?.amount,
+  otherCharges: report?.extraCharges || [],
+  totalBillAmount: report?.totalEBAmount,
+};
   const rd        = report?.reportData || {};
   const hasReport = status === "EB_PROCESSED";
   const hasEB     = status === "EB_UPLOADED" || hasReport;
@@ -808,23 +814,33 @@ const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
 
                 <SectionLabel mt={0}>Charge Breakdown</SectionLabel>
 
-                {[
-                  { label: "Energy Charges",         value: eb.energyCharges,     note: "VJRA bears this component" },
-                  { label: "Wheeling Charges",        value: eb.wheelingCharges },
-                  { label: "Demand Charges",          value: eb.demandCharges },
-                  { label: "FAC (Fuel Adj. Charge)",  value: eb.fac },
-                  { label: "Fixed Charges",           value: eb.fixedCharges,      note: "Owner bears this component" },
-                  { label: "Electricity Duty",        value: eb.electricityDuty },
-                  { label: "Meter Rent",              value: eb.meterRent },
-                  { label: "Power Factor Adj.",       value: eb.powerFactorAdjust },
-                  { label: "Delayed Payment Charges", value: eb.delayedPayment },
-                  { label: "Regulatory Charges",      value: eb.regulatoryCharges },
-                ]
-                  .filter(({ value }) => value > 0)
-                  .map(({ label, value, note }) => (
-                    <ChargeRow key={label} label={label} value={fmtMoney(value)} note={note} />
-                  ))
-                }
+{[
+  { label: "Energy Charges", value: eb.energyCharges, note: "VJRA bears this component" },
+  { label: "TOD Tariff EC", value: eb.todTariffEc, note: "VJRA bears this component" },
+  { label: "Wheeling Charges", value: eb.wheelingCharges },
+  { label: "Demand Charges", value: eb.demandCharges },
+  { label: "FAC (Fuel Adj. Charge)", value: eb.fac },
+  { label: "Fixed Charges", value: eb.fixedCharges, note: "Owner bears this component" },
+  { label: "Electricity Duty", value: eb.electricityDuty },
+  { label: "Tax on Sale", value: eb.taxOnSale },
+  { label: "Charges For Excess Demand", value: eb.chargesForExcessDemand },
+  { label: "P.F. Penal Charges", value: eb.pfPenalCharges },
+  { label: "Debit Bill Adjustment", value: eb.debitBillAdjustment },
+  { label: "Rounding off charges", value: eb.roundingOffCharges },
+  { label: "Meter Rent", value: eb.meterRent },
+  { label: "Power Factor Adj.", value: eb.powerFactorAdjust },
+  { label: "Delayed Payment Charges", value: eb.delayedPayment },
+  { label: "Regulatory Charges", value: eb.regulatoryCharges },
+]
+  .filter((item) => Number(item.value || 0) !== 0)
+  .map((item) => (
+    <ChargeRow
+      key={item.label}
+      label={item.label}
+      value={fmtMoney(item.value)}
+      note={item.note}
+    />
+  ))}
 
                 {(eb.otherCharges || []).map((o, i) => (
                   <ChargeRow key={i} label={o.label} value={fmtMoney(o.amount)} />

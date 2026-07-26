@@ -179,7 +179,7 @@ const endDrag = async () => {
 
   useEffect(() => {
     if (isFull && isCharging) {
-      console.log('100% reached → redirecting');
+      // console.log('100% reached → redirecting');
       const lastId = lastSessionIdRef.current;
       if (lastId) {
         lastSessionIdRef.current = null;
@@ -198,7 +198,7 @@ const endDrag = async () => {
   const savePauseEndTime = (endTimeMs) => {
     if (sessionId) {
       localStorage.setItem(`pause_${sessionId}`, endTimeMs.toString());
-      console.log('[PAUSE] Saved pause end time to localStorage:', endTimeMs);
+      // console.log('[PAUSE] Saved pause end time to localStorage:', endTimeMs);
     }
   };
 
@@ -207,7 +207,7 @@ const endDrag = async () => {
       const stored = localStorage.getItem(`pause_${sessionId}`);
       if (stored) {
         const endTime = parseInt(stored, 10);
-        console.log('[PAUSE] Loaded pause end time from localStorage:', endTime);
+        // console.log('[PAUSE] Loaded pause end time from localStorage:', endTime);
         return endTime;
       }
     }
@@ -217,7 +217,7 @@ const endDrag = async () => {
   const clearPauseEndTime = () => {
     if (sessionId) {
       localStorage.removeItem(`pause_${sessionId}`);
-      console.log('[PAUSE] Cleared pause end time from localStorage');
+      // console.log('[PAUSE] Cleared pause end time from localStorage');
     }
   };
 
@@ -228,17 +228,17 @@ const endDrag = async () => {
       const secondsLeft = Math.max(0, Math.ceil((storedEndTime - now) / 1000));
 
       if (secondsLeft > 0) {
-        console.log(
-          '[PAUSE] Restoring pause state from localStorage, secondsLeft=',
-          secondsLeft
-        );
+        // console.log(
+        //   '[PAUSE] Restoring pause state from localStorage, secondsLeft=',
+        //   secondsLeft
+        // );
         pauseEndTimeRef.current = storedEndTime;
         pauseInitializedRef.current = true;
         setShowPausePopup(true);
         setPausedReason('button');
         setTimeLeft(secondsLeft);
       } else {
-        console.log('[PAUSE] Stored pause already expired, clearing');
+        // console.log('[PAUSE] Stored pause already expired, clearing');
         clearPauseEndTime();
       }
     }
@@ -248,7 +248,7 @@ const stopSessionAndRedirect = async (triggerType, finalEnergy) => {   // ← AD
     const sid = lastSessionIdRef.current || sessionData?.sessionId;
 
     if (!sid) {
-      console.log('[STOP] No sessionId found, cannot stop');
+      // console.log('[STOP] No sessionId found, cannot stop');
       return;
     }
 
@@ -278,7 +278,7 @@ const stopSessionAndRedirect = async (triggerType, finalEnergy) => {   // ← AD
         throw new Error(errorText);
       }
 
-      console.log(`[STOP] Session stopped via ${triggerType}`);
+      // console.log(`[STOP] Session stopped via ${triggerType}`);
 
       clearPauseEndTime();
       lastSessionIdRef.current = null;
@@ -332,15 +332,15 @@ useEffect(() => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        console.log('No token found, redirecting to login');
+        // console.log('No token found, redirecting to login');
         navigate('/login');
         return;
       }
 
-      console.log(
-        'Fetching from URL:',
-        `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/active`
-      );
+      // console.log(
+      //   'Fetching from URL:',
+      //   `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/active`
+      // );
 
       const res = await fetch(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/active`,
@@ -353,7 +353,7 @@ useEffect(() => {
         }
       );
 
-      console.log('Response status:', res.status, res.statusText);
+      // console.log('Response status:', res.status, res.statusText);
 
       if (res.status === 404) {
         const sid = lastSessionIdRef.current;
@@ -361,7 +361,7 @@ useEffect(() => {
         if (sid && !autoStopCalledRef.current) {
           autoStopCalledRef.current = true;
 
-          console.log('Session missing → ensuring stop API called');
+          // console.log('Session missing → ensuring stop API called');
 
           const token = localStorage.getItem('token');
 
@@ -383,7 +383,7 @@ useEffect(() => {
               }
             );
           } catch (err) {
-            console.log('404 stop fallback failed:', err);
+            // console.log('404 stop fallback failed:', err);
           }
 
           lastSessionIdRef.current = null;
@@ -402,7 +402,7 @@ useEffect(() => {
       }
 
       const data = await res.json();
-      console.log('FE DEBUG: fetchActiveSession data:', data);
+      // console.log('FE DEBUG: fetchActiveSession data:', data);
 
       const deviceStatus = data.status?.toString().toLowerCase();
       const normalizedRelay =
@@ -447,7 +447,7 @@ useEffect(() => {
         if (!pauseInitializedRef.current) {
           pauseInitializedRef.current = true;
 
-          console.log('[PAUSE] Device paused → initializing pause popup (once)');
+          // console.log('[PAUSE] Device paused → initializing pause popup (once)');
           setShowPausePopup(true);
           setPausedReason('button');
 
@@ -469,12 +469,12 @@ useEffect(() => {
           );
           setTimeLeft(initialSecondsLeft);
 
-          console.log(
-            '[PAUSE] Pause end time:',
-            new Date(endTime).toISOString(),
-            '| Seconds left:',
-            initialSecondsLeft
-          );
+          // console.log(
+          //   '[PAUSE] Pause end time:',
+          //   new Date(endTime).toISOString(),
+          //   '| Seconds left:',
+          //   initialSecondsLeft
+          // );
         }
 
         return;
@@ -482,9 +482,9 @@ useEffect(() => {
 
       if (deviceStatus === 'occupied') {
         if (showPausePopup || pauseInitializedRef.current) {
-          console.log(
-            '[PAUSE] Device resumed → hiding pause popup and resetting pause state'
-          );
+          // console.log(
+          //   '[PAUSE] Device resumed → hiding pause popup and resetting pause state'
+          // );
           setShowPausePopup(false);
           setPausedReason(null);
           setTimeLeft(0);
@@ -580,12 +580,12 @@ useEffect(() => {
   useEffect(() => {
     const interval = setInterval(() => {
       if (process.env.NODE_ENV !== 'production') {
-        console.log(
-          'Current relay state:',
-          relayRef.current,
-          ' showPausePopup=',
-          showPausePopup
-        );
+        // console.log(
+        //   'Current relay state:',
+        //   relayRef.current,
+        //   ' showPausePopup=',
+        //   showPausePopup
+        // );
       }
     }, 10000);
     return () => clearInterval(interval);
@@ -602,10 +602,10 @@ useEffect(() => {
       pauseEndTimeRef.current &&
       !timerRef.current
     ) {
-      console.log(
-        '[PAUSE] Starting countdown interval (absolute), endTime=',
-        pauseEndTimeRef.current
-      );
+      // console.log(
+      //   '[PAUSE] Starting countdown interval (absolute), endTime=',
+      //   pauseEndTimeRef.current
+      // );
       timerRef.current = setInterval(async () => {
         const now = Date.now();
         const endTime = pauseEndTimeRef.current;
@@ -621,7 +621,7 @@ useEffect(() => {
         const secondsLeft = Math.max(0, Math.ceil((endTime - now) / 1000));
 
         if (secondsLeft <= 0) {
-          console.log('[PAUSE] Countdown reached zero, clearing interval');
+          // console.log('[PAUSE] Countdown reached zero, clearing interval');
           setTimeLeft(0);
 
           if (timerRef.current) {
@@ -632,7 +632,7 @@ useEffect(() => {
           if (!pauseTimeoutCalledRef.current) {
             pauseTimeoutCalledRef.current = true;
 
-            console.log('[PAUSE] Timeout expired → stopping session properly');
+            // console.log('[PAUSE] Timeout expired → stopping session properly');
 
             await stopSessionAndRedirect('pause_timeout');
           }
@@ -648,9 +648,9 @@ useEffect(() => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
-        console.log(
-          '[PAUSE] Cleared countdown interval because pause ended or popup hidden'
-        );
+        // console.log(
+        //   '[PAUSE] Cleared countdown interval because pause ended or popup hidden'
+        // );
       }
     }
 
@@ -663,7 +663,7 @@ useEffect(() => {
   }, [showPausePopup, pausedReason, deviceId, deviceIdFromState, navigate, sessionData]);
 
   const handleDismissPopup = () => {
-    console.log('[PAUSE] User dismissed popup, will re-show in 5 seconds');
+    // console.log('[PAUSE] User dismissed popup, will re-show in 5 seconds');
     setShowPausePopup(false);
     popupDismissedAtRef.current = Date.now();
   };
@@ -682,9 +682,9 @@ useEffect(() => {
         const elapsed = Date.now() - dismissedAt;
 
         if (elapsed >= 5000) {
-          console.log(
-            '[PAUSE] 5 seconds elapsed since dismiss, re-showing popup'
-          );
+          // console.log(
+          //   '[PAUSE] 5 seconds elapsed since dismiss, re-showing popup'
+          // );
           setShowPausePopup(true);
           popupDismissedAtRef.current = null;
           clearInterval(checkInterval);
