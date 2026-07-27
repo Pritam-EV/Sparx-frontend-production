@@ -478,6 +478,52 @@ export default function AccountantDashboard() {
   const [projects,    setProjects]    = useState([]);
   const [selProject,  setSelProject]  = useState(""); // "" = All Projects
 
+  // Add recon state at top of component:
+const [reconFrom, setReconFrom] = useState(() => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-01`;
+});
+const [reconTo, setReconTo]     = useState(() => new Date().toISOString().split("T")[0]);
+const [reconError, setReconError] = useState(null);
+
+// Verify single order state:
+const [verifyOrderId, setVerifyOrderId] = useState("");
+const [verifyResult,  setVerifyResult]  = useState(null);
+const [verifyLoad,    setVerifyLoad]    = useState(false);
+
+// Fetch recon:
+const fetchRecon = async () => {
+  setReconLoad(true); setReconError(null);
+  try {
+    const { data } = await axios.get(`${API}/api/cashfree/settlements`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+      params: { from: reconFrom, to: reconTo },
+    });
+    setReconData(data);
+  } catch (e) {
+    setReconError(e?.response?.data?.error || "Failed to load recon data");
+  } finally {
+    setReconLoad(false);
+  }
+};
+
+// Verify single order:
+const verifyOrder = async () => {
+  if (!verifyOrderId.trim()) return;
+  setVerifyLoad(true); setVerifyResult(null);
+  try {
+    const { data } = await axios.get(`${API}/api/cashfree/verify/${verifyOrderId.trim()}`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    setVerifyResult(data);
+  } catch (e) {
+    setVerifyResult({ error: e?.response?.data?.error || "Verification failed" });
+  } finally {
+    setVerifyLoad(false);
+  }
+};
+
+
   // Body overflow fix
   useEffect(() => {
     const pb = document.body.style.overflow;
@@ -533,7 +579,7 @@ export default function AccountantDashboard() {
       }).then(({ data }) => setProjects(data.projects || []))
         .catch(console.error);
     }, []);
-    
+
   useEffect(() => {
     fetchOverview();
     liveTimer.current = setInterval(fetchOverview, 60000);
@@ -687,17 +733,6 @@ export default function AccountantDashboard() {
     finally { setRefLoad(false); }
   }, [refPeriod]);
 
-  const fetchRecon = useCallback(async () => {
-    setReconLoad(true);
-    try {
-      const { data } = await axios.get(`${API}/api/accountant/cashfree-recon`, {
-        headers: { Authorization: `Bearer ${getToken()}` },
-        params: { period: reconPeriod },
-      });
-      setReconData(data);
-    } catch (e) { console.error(e); }
-    finally { setReconLoad(false); }
-  }, [reconPeriod]);
 
   useEffect(() => { if (activeTab === "owners")  fetchOwners();  }, [activeTab, fetchOwners]);
   useEffect(() => { if (activeTab === "refunds") fetchRefunds(); }, [activeTab, fetchRefunds]);
@@ -787,7 +822,7 @@ function ProjectFilter({ projects, value, onChange }) {
             { key: "export",   label: "⬇ Export Reports" },
             { key: "owners",  label: "🏠 Owner Settlement" },
             { key: "refunds", label: "↩ Refunds" },
-            { key: "recon",   label: "🔗 PG Reconciliation" },
+            { key: "recon",   label: "🔗 Payment Recon" },
           ].map(t => (
             <button
               key={t.key}
@@ -1660,71 +1695,159 @@ function ProjectFilter({ projects, value, onChange }) {
           {/* ══════════════════════════════════════════════════════════
               TAB 8: CASHFREE RECONCILIATION
           ══════════════════════════════════════════════════════════ */}
-          {activeTab === "recon" && (
-            <>
-              <div className="acc-section-header">
-                <div>
-                  <h1 className="acc-section-title">Payment Gateway Reconciliation</h1>
-                  <p className="acc-section-sub">Compare expected Cashfree collections (from our records) with actual settlements. Live Cashfree data coming once webhook integration is enabled.</p>
-                </div>
-              </div>
+{/* ══ TAB 6: PAYMENT RECON ══ */}
+{activeTab === "recon" && (
+  <>
+    <div className="acc-section-header">
+      <div>
+        <h1 className="acc-section-title">Payment Reconciliation</h1>
+        <p className="acc-section-sub">
+          Compare Cashfree settlement data with your database records. Spot mismatches instantly.
+        </p>
+      </div>
+    </div>
 
-              <div className="acc-filters">
-                <PeriodFilter value={reconPeriod} onChange={p => { setReconPeriod(p); }} />
-                <button className="acc-btn acc-btn-ghost" onClick={fetchRecon}>↻ Refresh</button>
-              </div>
+    {/* Date range picker */}
+    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 20 }}>
+      <div>
+        <label style={{ fontSize: 12, color: T.textMuted, display: "block", marginBottom: 4 }}>From</label>
+        <input type="date" value={reconFrom} onChange={e => setReconFrom(e.target.value)}
+          style={{ padding: "7px 12px", border: `1px solid ${T.borderMid}`, borderRadius: 8, fontSize: 13 }} />
+      </div>
+      <div>
+        <label style={{ fontSize: 12, color: T.textMuted, display: "block", marginBottom: 4 }}>To</label>
+        <input type="date" value={reconTo} onChange={e => setReconTo(e.target.value)}
+          style={{ padding: "7px 12px", border: `1px solid ${T.borderMid}`, borderRadius: 8, fontSize: 13 }} />
+      </div>
+      <button className="acc-btn acc-btn-primary" onClick={fetchRecon} disabled={reconLoad}>
+        {reconLoad ? "Fetching from Cashfree…" : "Run Reconciliation"}
+      </button>
+    </div>
 
-              {/* Integration notice */}
-              <div style={{background:"#fffbeb",border:"1px solid #fcd34d",borderRadius:T.radius,padding:"12px 18px",fontSize:12,color:"#78350f",marginBottom:20}}>
-                <strong>🔗 Phase 3 — Cashfree Live Integration:</strong> Once you add a{" "}
-                <code style={{background:"#fef9c3",padding:"1px 5px",borderRadius:3}}>CashfreeSettlement</code> model and webhook handler, this panel will show actual settlement batches and flag any variance automatically. Current view shows our computed expectations.
-              </div>
+    {reconError && <div className="acc-error"><span>{reconError}</span></div>}
 
-              {reconLoad ? (
-                <div className="acc-empty">Loading reconciliation data…</div>
-              ) : reconData ? (
-                <>
-                  {/* Our records side */}
-                  <div className="acc-group-label" style={{color:T.primary}}>Our Records (Sparx DB)</div>
-                  <div className="acc-kpi-grid">
-                    <KpiCard category="CASHFREE COLLECTIONS" categoryColor={T.primary}
-                      title="Direct Session Collections" value={fmt(reconData.ourRecords.directSessionCollections)}
-                      sub={`${reconData.ourRecords.sessionCount} cashfree-paid sessions`} color={T.primary} />
-                    <KpiCard category="CASHFREE COLLECTIONS" categoryColor={T.primary}
-                      title="Wallet Topup Collections" value={fmt(reconData.ourRecords.walletTopupCollections)}
-                      sub={`${reconData.ourRecords.topupCount} topup transactions`} color={T.primary} />
-                    <KpiCard category="TOTAL CASHFREE" categoryColor={T.primary}
-                      title="Total Cashfree Collections" value={fmt(reconData.ourRecords.totalCashfreeCollections)}
-                      sub="Sessions + Topups through Cashfree PG" color={T.primary} />
-                    <KpiCard category="DEDUCTIONS" categoryColor={T.textMuted}
-                      title="PG Charges Deducted" value={fmt(reconData.ourRecords.pgChargesDeducted)}
-                      sub="Processing fees charged by Cashfree" />
-                    <KpiCard category="DEDUCTIONS" categoryColor="#b91c1c"
-                      title="Refunds via Cashfree" value={fmt(reconData.ourRecords.refundsDeducted)}
-                      sub="Cashfree-routed refunds to customers" color="#b91c1c" />
-                    <KpiCard category="EXPECTED SETTLEMENT" categoryColor={T.success}
-                      title="Expected Bank Settlement" value={fmt(reconData.ourRecords.expectedSettlement)}
-                      sub="Collections − PG charges − refunds" color={T.success} />
-                  </div>
-
-                  {/* Actual Cashfree side — placeholder */}
-                  <div className="acc-group-label" style={{color:T.textFaint,marginTop:8}}>Cashfree Actual Settlement (Pending Integration)</div>
-                  <div style={{background:T.surface,border:`1px solid ${T.border}`,borderRadius:T.radiusLg,padding:"32px 24px",textAlign:"center",color:T.textMuted,boxShadow:T.shadow}}>
-                    <div style={{fontSize:28,marginBottom:12}}>🔗</div>
-                    <div style={{fontWeight:700,fontSize:14,color:T.text,marginBottom:6}}>Cashfree Settlement Data Not Yet Connected</div>
-                    <div style={{fontSize:12,maxWidth:480,margin:"0 auto",marginBottom:16}}>
-                      To see actual vs expected variance, implement a <code style={{background:"#f1f5f9",padding:"1px 4px",borderRadius:3}}>CashfreeSettlement</code> Mongoose model and webhook handler that stores Cashfree settlement batches. The reconciliation engine is built and waiting.
-                    </div>
-                    <div style={{display:"flex",gap:8,justifyContent:"center",flexWrap:"wrap"}}>
-                      {["POST /webhook/cashfree/settlement", "Model: CashfreeSettlement", "GET /api/accountant/cashfree-recon → live"].map(s => (
-                        <span key={s} style={{background:"#f1f5f9",border:`1px solid ${T.border}`,borderRadius:4,fontSize:11,padding:"3px 8px",fontFamily:"monospace",color:T.textMid}}>{s}</span>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              ) : null}
-            </>
+    {reconData && (
+      <>
+        {/* Recon status banner */}
+        <div style={{
+          background: reconData.reconciliation.status === "MATCHED" ? "#f0fdf4" : "#fef2f2",
+          border: `1px solid ${reconData.reconciliation.status === "MATCHED" ? "#bbf7d0" : "#fecaca"}`,
+          borderRadius: T.radius, padding: "14px 20px", marginBottom: 20,
+          display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+        }}>
+          <span style={{ fontSize: 20 }}>{reconData.reconciliation.status === "MATCHED" ? "✅" : "⚠️"}</span>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: 14, color: reconData.reconciliation.status === "MATCHED" ? "#065f46" : "#991b1b" }}>
+              {reconData.reconciliation.status}
+            </div>
+            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+              {reconData.reconciliation.note}
+            </div>
+          </div>
+          {reconData.reconciliation.difference !== 0 && (
+            <div style={{ marginLeft: "auto", fontWeight: 700, fontSize: 16, color: "#991b1b" }}>
+              Δ {fmt(Math.abs(reconData.reconciliation.difference))}
+            </div>
           )}
+        </div>
+
+        {/* Side-by-side comparison */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
+          {/* Cashfree side */}
+          <div className="acc-card">
+            <div className="acc-card-header" style={{ background: "#eff6ff" }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: T.primary }}>Cashfree Settlements</div>
+            </div>
+            <div className="acc-card-body">
+              <KpiCard title="Total Settled (₹)" value={fmt(reconData.cashfree.totalSettled)} color={T.primary} />
+              <KpiCard title="Settlement Batches" value={reconData.cashfree.settlementCount} color={T.textMid} />
+            </div>
+          </div>
+          {/* DB side */}
+          <div className="acc-card">
+            <div className="acc-card-header" style={{ background: "#f0fdf4" }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: T.success }}>Database (Your Records)</div>
+            </div>
+            <div className="acc-card-body">
+              <KpiCard title="Gross Billed (₹)"    value={fmt(reconData.database.totalBilled)} color={T.success} />
+              <KpiCard title="Less: PG Charges"     value={fmt(reconData.database.pgCharges)}   color={T.textMid} />
+              <KpiCard title="Less: Refunds"         value={fmt(reconData.database.refunds)}     color={T.textMid} />
+              <KpiCard title="Net Expected (₹)"     value={fmt(reconData.database.netExpected)} color={T.success} />
+              <KpiCard title="Cashfree Orders"      value={reconData.database.cashfreeOrders}   color={T.textMid} />
+            </div>
+          </div>
+        </div>
+      </>
+    )}
+
+    <hr className="acc-divider" />
+
+    {/* Single order verify */}
+    <div>
+      <h2 className="acc-section-title" style={{ marginBottom: 6 }}>Verify Single Order</h2>
+      <p className="acc-section-sub" style={{ marginBottom: 14 }}>
+        Enter a Cashfree Order ID to cross-check its status between your database and Cashfree live API.
+      </p>
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
+        <input
+          className="acc-search-input"
+          style={{ width: 320 }}
+          placeholder="e.g. order_xxxxxxxxxxxxx"
+          value={verifyOrderId}
+          onChange={e => setVerifyOrderId(e.target.value)}
+          onKeyDown={e => e.key === "Enter" && verifyOrder()}
+        />
+        <button className="acc-btn acc-btn-primary" onClick={verifyOrder} disabled={verifyLoad}>
+          {verifyLoad ? "Verifying…" : "Verify with Cashfree"}
+        </button>
+      </div>
+
+      {verifyResult && !verifyResult.error && (
+        <div className="acc-card">
+          <div className="acc-card-header">
+            <div style={{ fontWeight: 700 }}>Order: {verifyResult.orderId}</div>
+            <span className="acc-badge" style={{
+              background: verifyResult.mismatch ? "#fef2f2" : "#f0fdf4",
+              color: verifyResult.mismatch ? "#991b1b" : "#065f46",
+            }}>
+              {verifyResult.mismatch ? "⚠ MISMATCH" : "✓ MATCHED"}
+            </span>
+          </div>
+          <div className="acc-card-body">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 8, textTransform: "uppercase" }}>Cashfree Says</div>
+                {Object.entries(verifyResult.cashfree || {}).map(([k, v]) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: `1px solid ${T.border}` }}>
+                    <span style={{ color: T.textMuted }}>{k}</span>
+                    <span style={{ fontWeight: 600, color: T.text }}>{v?.toString() || "—"}</span>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 8, textTransform: "uppercase" }}>Your Database Says</div>
+                {Object.entries(verifyResult.database || {}).map(([k, v]) => (
+                  <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: `1px solid ${T.border}` }}>
+                    <span style={{ color: T.textMuted }}>{k}</span>
+                    <span style={{ fontWeight: 600, color: T.text }}>{v?.toString() || "—"}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {verifyResult.action && (
+              <div style={{ marginTop: 12, fontSize: 12, color: verifyResult.mismatch ? "#991b1b" : T.textMuted, fontStyle: "italic" }}>
+                {verifyResult.action}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      {verifyResult?.error && (
+        <div className="acc-error"><span>{verifyResult.error}</span></div>
+      )}
+    </div>
+  </>
+)}
 
         </main>
       </div>
