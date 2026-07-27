@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import PaymentRecon from "./PaymentRecon";
 
 const API = process.env.REACT_APP_API_URL || "";
 
@@ -1695,158 +1696,159 @@ function ProjectFilter({ projects, value, onChange }) {
           {/* ══════════════════════════════════════════════════════════
               TAB 8: CASHFREE RECONCILIATION
           ══════════════════════════════════════════════════════════ */}
-{/* ══ TAB 6: PAYMENT RECON ══ */}
+══ TAB 6: PAYMENT RECON ══
 {activeTab === "recon" && (
-  <>
-    <div className="acc-section-header">
-      <div>
-        <h1 className="acc-section-title">Payment Reconciliation</h1>
-        <p className="acc-section-sub">
-          Compare Cashfree settlement data with your database records. Spot mismatches instantly.
-        </p>
-      </div>
-    </div>
+   <PaymentRecon />
+  // <>
+  //   <div className="acc-section-header">
+  //     <div>
+  //       <h1 className="acc-section-title">Payment Reconciliation</h1>
+  //       <p className="acc-section-sub">
+  //         Compare Cashfree settlement data with your database records. Spot mismatches instantly.
+  //       </p>
+  //     </div>
+  //   </div>
 
-    {/* Date range picker */}
-    <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 20 }}>
-      <div>
-        <label style={{ fontSize: 12, color: T.textMuted, display: "block", marginBottom: 4 }}>From</label>
-        <input type="date" value={reconFrom} onChange={e => setReconFrom(e.target.value)}
-          style={{ padding: "7px 12px", border: `1px solid ${T.borderMid}`, borderRadius: 8, fontSize: 13 }} />
-      </div>
-      <div>
-        <label style={{ fontSize: 12, color: T.textMuted, display: "block", marginBottom: 4 }}>To</label>
-        <input type="date" value={reconTo} onChange={e => setReconTo(e.target.value)}
-          style={{ padding: "7px 12px", border: `1px solid ${T.borderMid}`, borderRadius: 8, fontSize: 13 }} />
-      </div>
-      <button className="acc-btn acc-btn-primary" onClick={fetchRecon} disabled={reconLoad}>
-        {reconLoad ? "Fetching from Cashfree…" : "Run Reconciliation"}
-      </button>
-    </div>
+  //   {/* Date range picker */}
+  //   <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 20 }}>
+  //     <div>
+  //       <label style={{ fontSize: 12, color: T.textMuted, display: "block", marginBottom: 4 }}>From</label>
+  //       <input type="date" value={reconFrom} onChange={e => setReconFrom(e.target.value)}
+  //         style={{ padding: "7px 12px", border: `1px solid ${T.borderMid}`, borderRadius: 8, fontSize: 13 }} />
+  //     </div>
+  //     <div>
+  //       <label style={{ fontSize: 12, color: T.textMuted, display: "block", marginBottom: 4 }}>To</label>
+  //       <input type="date" value={reconTo} onChange={e => setReconTo(e.target.value)}
+  //         style={{ padding: "7px 12px", border: `1px solid ${T.borderMid}`, borderRadius: 8, fontSize: 13 }} />
+  //     </div>
+  //     <button className="acc-btn acc-btn-primary" onClick={fetchRecon} disabled={reconLoad}>
+  //       {reconLoad ? "Fetching from Cashfree…" : "Run Reconciliation"}
+  //     </button>
+  //   </div>
 
-    {reconError && <div className="acc-error"><span>{reconError}</span></div>}
+  //   {reconError && <div className="acc-error"><span>{reconError}</span></div>}
 
-    {reconData && (
-      <>
-        {/* Recon status banner */}
-        <div style={{
-          background: reconData.reconciliation.status === "MATCHED" ? "#f0fdf4" : "#fef2f2",
-          border: `1px solid ${reconData.reconciliation.status === "MATCHED" ? "#bbf7d0" : "#fecaca"}`,
-          borderRadius: T.radius, padding: "14px 20px", marginBottom: 20,
-          display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
-        }}>
-          <span style={{ fontSize: 20 }}>{reconData.reconciliation.status === "MATCHED" ? "✅" : "⚠️"}</span>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: 14, color: reconData.reconciliation.status === "MATCHED" ? "#065f46" : "#991b1b" }}>
-              {reconData.reconciliation.status}
-            </div>
-            <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
-              {reconData.reconciliation.note}
-            </div>
-          </div>
-          {reconData.reconciliation.difference !== 0 && (
-            <div style={{ marginLeft: "auto", fontWeight: 700, fontSize: 16, color: "#991b1b" }}>
-              Δ {fmt(Math.abs(reconData.reconciliation.difference))}
-            </div>
-          )}
-        </div>
+  //   {reconData && (
+  //     <>
+  //       {/* Recon status banner */}
+  //       <div style={{
+  //         background: reconData.reconciliation.status === "MATCHED" ? "#f0fdf4" : "#fef2f2",
+  //         border: `1px solid ${reconData.reconciliation.status === "MATCHED" ? "#bbf7d0" : "#fecaca"}`,
+  //         borderRadius: T.radius, padding: "14px 20px", marginBottom: 20,
+  //         display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap",
+  //       }}>
+  //         <span style={{ fontSize: 20 }}>{reconData.reconciliation.status === "MATCHED" ? "✅" : "⚠️"}</span>
+  //         <div>
+  //           <div style={{ fontWeight: 700, fontSize: 14, color: reconData.reconciliation.status === "MATCHED" ? "#065f46" : "#991b1b" }}>
+  //             {reconData.reconciliation.status}
+  //           </div>
+  //           <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>
+  //             {reconData.reconciliation.note}
+  //           </div>
+  //         </div>
+  //         {reconData.reconciliation.difference !== 0 && (
+  //           <div style={{ marginLeft: "auto", fontWeight: 700, fontSize: 16, color: "#991b1b" }}>
+  //             Δ {fmt(Math.abs(reconData.reconciliation.difference))}
+  //           </div>
+  //         )}
+  //       </div>
 
-        {/* Side-by-side comparison */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
-          {/* Cashfree side */}
-          <div className="acc-card">
-            <div className="acc-card-header" style={{ background: "#eff6ff" }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: T.primary }}>Cashfree Settlements</div>
-            </div>
-            <div className="acc-card-body">
-              <KpiCard title="Total Settled (₹)" value={fmt(reconData.cashfree.totalSettled)} color={T.primary} />
-              <KpiCard title="Settlement Batches" value={reconData.cashfree.settlementCount} color={T.textMid} />
-            </div>
-          </div>
-          {/* DB side */}
-          <div className="acc-card">
-            <div className="acc-card-header" style={{ background: "#f0fdf4" }}>
-              <div style={{ fontWeight: 700, fontSize: 14, color: T.success }}>Database (Your Records)</div>
-            </div>
-            <div className="acc-card-body">
-              <KpiCard title="Gross Billed (₹)"    value={fmt(reconData.database.totalBilled)} color={T.success} />
-              <KpiCard title="Less: PG Charges"     value={fmt(reconData.database.pgCharges)}   color={T.textMid} />
-              <KpiCard title="Less: Refunds"         value={fmt(reconData.database.refunds)}     color={T.textMid} />
-              <KpiCard title="Net Expected (₹)"     value={fmt(reconData.database.netExpected)} color={T.success} />
-              <KpiCard title="Cashfree Orders"      value={reconData.database.cashfreeOrders}   color={T.textMid} />
-            </div>
-          </div>
-        </div>
-      </>
-    )}
+  //       {/* Side-by-side comparison */}
+  //       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
+  //         {/* Cashfree side */}
+  //         <div className="acc-card">
+  //           <div className="acc-card-header" style={{ background: "#eff6ff" }}>
+  //             <div style={{ fontWeight: 700, fontSize: 14, color: T.primary }}>Cashfree Settlements</div>
+  //           </div>
+  //           <div className="acc-card-body">
+  //             <KpiCard title="Total Settled (₹)" value={fmt(reconData.cashfree.totalSettled)} color={T.primary} />
+  //             <KpiCard title="Settlement Batches" value={reconData.cashfree.settlementCount} color={T.textMid} />
+  //           </div>
+  //         </div>
+  //         {/* DB side */}
+  //         <div className="acc-card">
+  //           <div className="acc-card-header" style={{ background: "#f0fdf4" }}>
+  //             <div style={{ fontWeight: 700, fontSize: 14, color: T.success }}>Database (Your Records)</div>
+  //           </div>
+  //           <div className="acc-card-body">
+  //             <KpiCard title="Gross Billed (₹)"    value={fmt(reconData.database.totalBilled)} color={T.success} />
+  //             <KpiCard title="Less: PG Charges"     value={fmt(reconData.database.pgCharges)}   color={T.textMid} />
+  //             <KpiCard title="Less: Refunds"         value={fmt(reconData.database.refunds)}     color={T.textMid} />
+  //             <KpiCard title="Net Expected (₹)"     value={fmt(reconData.database.netExpected)} color={T.success} />
+  //             <KpiCard title="Cashfree Orders"      value={reconData.database.cashfreeOrders}   color={T.textMid} />
+  //           </div>
+  //         </div>
+  //       </div>
+  //     </>
+  //   )}
 
-    <hr className="acc-divider" />
+  //   <hr className="acc-divider" />
 
-    {/* Single order verify */}
-    <div>
-      <h2 className="acc-section-title" style={{ marginBottom: 6 }}>Verify Single Order</h2>
-      <p className="acc-section-sub" style={{ marginBottom: 14 }}>
-        Enter a Cashfree Order ID to cross-check its status between your database and Cashfree live API.
-      </p>
-      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
-        <input
-          className="acc-search-input"
-          style={{ width: 320 }}
-          placeholder="e.g. order_xxxxxxxxxxxxx"
-          value={verifyOrderId}
-          onChange={e => setVerifyOrderId(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && verifyOrder()}
-        />
-        <button className="acc-btn acc-btn-primary" onClick={verifyOrder} disabled={verifyLoad}>
-          {verifyLoad ? "Verifying…" : "Verify with Cashfree"}
-        </button>
-      </div>
+  //   {/* Single order verify */}
+  //   <div>
+  //     <h2 className="acc-section-title" style={{ marginBottom: 6 }}>Verify Single Order</h2>
+  //     <p className="acc-section-sub" style={{ marginBottom: 14 }}>
+  //       Enter a Cashfree Order ID to cross-check its status between your database and Cashfree live API.
+  //     </p>
+  //     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 16 }}>
+  //       <input
+  //         className="acc-search-input"
+  //         style={{ width: 320 }}
+  //         placeholder="e.g. order_xxxxxxxxxxxxx"
+  //         value={verifyOrderId}
+  //         onChange={e => setVerifyOrderId(e.target.value)}
+  //         onKeyDown={e => e.key === "Enter" && verifyOrder()}
+  //       />
+  //       <button className="acc-btn acc-btn-primary" onClick={verifyOrder} disabled={verifyLoad}>
+  //         {verifyLoad ? "Verifying…" : "Verify with Cashfree"}
+  //       </button>
+  //     </div>
 
-      {verifyResult && !verifyResult.error && (
-        <div className="acc-card">
-          <div className="acc-card-header">
-            <div style={{ fontWeight: 700 }}>Order: {verifyResult.orderId}</div>
-            <span className="acc-badge" style={{
-              background: verifyResult.mismatch ? "#fef2f2" : "#f0fdf4",
-              color: verifyResult.mismatch ? "#991b1b" : "#065f46",
-            }}>
-              {verifyResult.mismatch ? "⚠ MISMATCH" : "✓ MATCHED"}
-            </span>
-          </div>
-          <div className="acc-card-body">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 8, textTransform: "uppercase" }}>Cashfree Says</div>
-                {Object.entries(verifyResult.cashfree || {}).map(([k, v]) => (
-                  <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: `1px solid ${T.border}` }}>
-                    <span style={{ color: T.textMuted }}>{k}</span>
-                    <span style={{ fontWeight: 600, color: T.text }}>{v?.toString() || "—"}</span>
-                  </div>
-                ))}
-              </div>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 8, textTransform: "uppercase" }}>Your Database Says</div>
-                {Object.entries(verifyResult.database || {}).map(([k, v]) => (
-                  <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: `1px solid ${T.border}` }}>
-                    <span style={{ color: T.textMuted }}>{k}</span>
-                    <span style={{ fontWeight: 600, color: T.text }}>{v?.toString() || "—"}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            {verifyResult.action && (
-              <div style={{ marginTop: 12, fontSize: 12, color: verifyResult.mismatch ? "#991b1b" : T.textMuted, fontStyle: "italic" }}>
-                {verifyResult.action}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-      {verifyResult?.error && (
-        <div className="acc-error"><span>{verifyResult.error}</span></div>
-      )}
-    </div>
-  </>
+  //     {verifyResult && !verifyResult.error && (
+  //       <div className="acc-card">
+  //         <div className="acc-card-header">
+  //           <div style={{ fontWeight: 700 }}>Order: {verifyResult.orderId}</div>
+  //           <span className="acc-badge" style={{
+  //             background: verifyResult.mismatch ? "#fef2f2" : "#f0fdf4",
+  //             color: verifyResult.mismatch ? "#991b1b" : "#065f46",
+  //           }}>
+  //             {verifyResult.mismatch ? "⚠ MISMATCH" : "✓ MATCHED"}
+  //           </span>
+  //         </div>
+  //         <div className="acc-card-body">
+  //           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+  //             <div>
+  //               <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 8, textTransform: "uppercase" }}>Cashfree Says</div>
+  //               {Object.entries(verifyResult.cashfree || {}).map(([k, v]) => (
+  //                 <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: `1px solid ${T.border}` }}>
+  //                   <span style={{ color: T.textMuted }}>{k}</span>
+  //                   <span style={{ fontWeight: 600, color: T.text }}>{v?.toString() || "—"}</span>
+  //                 </div>
+  //               ))}
+  //             </div>
+  //             <div>
+  //               <div style={{ fontSize: 11, fontWeight: 700, color: T.textMuted, marginBottom: 8, textTransform: "uppercase" }}>Your Database Says</div>
+  //               {Object.entries(verifyResult.database || {}).map(([k, v]) => (
+  //                 <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: `1px solid ${T.border}` }}>
+  //                   <span style={{ color: T.textMuted }}>{k}</span>
+  //                   <span style={{ fontWeight: 600, color: T.text }}>{v?.toString() || "—"}</span>
+  //                 </div>
+  //               ))}
+  //             </div>
+  //           </div>
+  //           {verifyResult.action && (
+  //             <div style={{ marginTop: 12, fontSize: 12, color: verifyResult.mismatch ? "#991b1b" : T.textMuted, fontStyle: "italic" }}>
+  //               {verifyResult.action}
+  //             </div>
+  //           )}
+  //         </div>
+  //       </div>
+  //     )}
+  //     {verifyResult?.error && (
+  //       <div className="acc-error"><span>{verifyResult.error}</span></div>
+  //     )}
+  //   </div>
+  // </>
 )}
 
         </main>
