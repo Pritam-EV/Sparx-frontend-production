@@ -1,113 +1,125 @@
+// Production.js
+// Admin production lifecycle console:
+// Group A -> Group B -> Live Device configuration
+//
+// Backend contract used by this page:
+//   /api/provision/group-a
+//   /api/provision/group-a/:serial
+//   /api/provision/group-a/:serial/promote
+//   /api/devices/admin-dashboard
+//   /api/devices/admin/config/:deviceId
+//
+// The frontend never publishes MQTT directly. The backend owns MQTT delivery,
+// NVS versioning and configuration acknowledgement tracking.
 
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import axios from "axios";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Grid,
+  IconButton,
+  Paper,
+  Snackbar,
+  Stack,
+  Tab,
+  Tabs,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TablePagination,
+  TableRow,
+  TextField,
+  Tooltip,
+  Typography,
+} from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import EditIcon from "@mui/icons-material/Edit";
+import FactoryIcon from "@mui/icons-material/Factory";
+import MemoryIcon from "@mui/icons-material/Memory";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import SearchIcon from "@mui/icons-material/Search";
+import SettingsIcon from "@mui/icons-material/Settings";
+import TuneIcon from "@mui/icons-material/Tune";
 
-import { auth } from "../../firebase";
-import { API_BASE } from "../../api";
+import { api } from "../../api"; // Assumes API_BASE is handled inside api instance
 
-/*
-|--------------------------------------------------------------------------
-| ADMIN API
-|--------------------------------------------------------------------------
-|
-| IMPORTANT:
-|
-| The normal `api` instance uses localStorage.token.
-|
-| localStorage.token contains the backend JWT returned by /auth/me.
-|
-| BUT /api/admin/provision/* uses adminAuth middleware, which expects
-| a Firebase ID token.
-|
-| Therefore Production.js MUST use this separate Axios instance.
-|
-*/
+const PAGE_SIZE = 25;
 
-const adminApi = axios.create({
-  baseURL: API_BASE,
-});
+const DEFAULT_GROUP_A = {
+  serialNumber: "",
+  hardwareRevision: "PCB_V1.2",
+  project: "VIZ",
+  pcbBatch: "",
+  manufacturedAt: "",
+  notes: "",
+};
 
-/*
-|--------------------------------------------------------------------------
-| Attach Firebase ID token to every admin request
-|--------------------------------------------------------------------------
-*/
+const DEFAULT_GROUP_B = {
+  deviceId: "",
+  wifiSSID: "",
+  wifiPassword: "",
+  cf: "0.231",
+  vf: "1.880",
+  currentRF: "0.001",
+  rate: "20",
+  location: "",
+  lat: "",
+  lng: "",
+  area: "",
+  city: "",
+  state: "Maharashtra",
+  charger_type: "AC_3.3KW",
+  meterType: "Commercial",
+  meterConsumerNumber: "",
+  electricityBearer: "OWNER",
+  userRatePerKwh: "",
+  vjraMarginPerKwh: "",
+  ownerSharePerKwh: "",
+  pgPercent: "",
+  targetFirmwareVersion: "",
+  notes: "",
+};
 
-adminApi.interceptors.request.use(
-  async (config) => {
-    const currentUser = auth.currentUser;
-
-    if (!currentUser) {
-      return config;
-    }
-
-    try {
-      const firebaseToken =
-        await currentUser.getIdToken();
-
-      config.headers = config.headers || {};
-
-      config.headers.Authorization =
-        `Bearer ${firebaseToken}`;
-
-      return config;
-    } catch (error) {
-      console.error(
-        "[PRODUCTION] Failed to obtain Firebase token:",
-        error
-      );
-
-      return Promise.reject(error);
-    }
-  },
-  (error) =>
-    Promise.reject(error)
-);
-
-/*
-|--------------------------------------------------------------------------
-| IMPORTANT:
-|
-| DO NOT redirect to /login automatically here.
-|
-| A 403 means the Firebase user exists but does not have the admin claim.
-| A 401 means the Firebase token is invalid/expired.
-|
-| We display the actual error inside Production instead of destroying
-| the user's normal backend session.
-|--------------------------------------------------------------------------
-*/
-
-adminApi.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-
-/* ==========================================================================
-   CONSTANTS
-   ========================================================================== */
-
-const PAGE_SIZE = 20;
-const ACK_POLL_INTERVAL = 3000;
-
-
-/* ==========================================================================
-   HELPERS
-   ========================================================================== */
+const DEFAULT_DEVICE_CONFIG = {
+  cf: "",
+  vf: "",
+  currentRF: "",
+  wifiSSID: "",
+  wifiPassword: "",
+  rate: "",
+  location: "",
+  lat: "",
+  lng: "",
+  area: "",
+  city: "",
+  state: "",
+  meterType: "",
+  meterConsumerNumber: "",
+  electricityBearer: "OWNER",
+  userRatePerKwh: "",
+  vjraMarginPerKwh: "",
+  ownerSharePerKwh: "",
+  pgPercent: "",
+  targetFirmwareVersion: "",
+};
 
 function getErrorMessage(error) {
   return (
-    error?.response?.data?.error ||
     error?.response?.data?.message ||
+    error?.response?.data?.error ||
     error?.response?.data?.details ||
     error?.message ||
     "Something went wrong."
@@ -118,2291 +130,1200 @@ function normalize(value) {
   return String(value ?? "").trim();
 }
 
-function getAckStatus(device) {
-  return normalize(
-    device?.configAck?.status
-  ).toLowerCase();
-}
-
-function getProvisionStatus(device) {
-  return normalize(
-    device?.provisionStatus
-  ).toLowerCase();
-}
-
-function getDeviceId(device) {
-  return (
-    device?.deviceId ||
-    device?.device_id ||
-    ""
-  );
+function titleStatus(value) {
+  const text = normalize(value).replace(/_/g, " ");
+  if (!text) return "Unknown";
+  return text
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function formatDate(value) {
   if (!value) return "—";
-
   const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return "—";
-  }
-
+  if (Number.isNaN(date.getTime())) return "—";
   return date.toLocaleString();
 }
 
-function badgeClass(status) {
-  const value =
-    normalize(status).toLowerCase();
-
-  if (
-    value === "ok" ||
-    value === "acknowledged" ||
-    value === "online"
-  ) {
-    return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
-  }
-
-  if (
-    value === "sent" ||
-    value === "publishing" ||
-    value === "published"
-  ) {
-    return "bg-blue-500/10 text-blue-400 border-blue-500/30";
-  }
-
-  if (
-    value === "pending" ||
-    value === "queued"
-  ) {
-    return "bg-amber-500/10 text-amber-400 border-amber-500/30";
-  }
-
-  if (
-    value === "error" ||
-    value === "failed"
-  ) {
-    return "bg-rose-500/10 text-rose-400 border-rose-500/30";
-  }
-
-  return "bg-slate-800 text-slate-400 border-slate-700";
+function formatDateInput(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-function Badge({ status }) {
+function toNumber(value) {
+  if (value === "" || value === null || value === undefined) return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+}
+
+function statusColor(status) {
+  const normalized = normalize(status).toLowerCase();
+  if (["ok", "acknowledged", "online", "available", "live"].includes(normalized)) {
+    return "success";
+  }
+  if (["sent", "group_b", "dispatched", "pending"].includes(normalized)) {
+    return "warning";
+  }
+  if (["error", "failed", "offline", "faulty"].includes(normalized)) {
+    return "error";
+  }
+  return "default";
+}
+
+function statusLabel(device) {
+  const lifecycle = device?.manufacturingStatus;
+  if (lifecycle) return titleStatus(lifecycle);
+  if (device?.status) return titleStatus(device.status);
+  return "Unknown";
+}
+
+function createCommercial(form) {
+  const commercial = {
+    electricityBearer: form.electricityBearer || "OWNER",
+  };
+  const fieldMap = [
+    ["userRatePerKwh", "userRatePerKwh"],
+    ["vjraMarginPerKwh", "vjraMarginPerKwh"],
+    ["ownerSharePerKwh", "ownerSharePerKwh"],
+    ["pgPercent", "pgPercent"],
+  ];
+
+  fieldMap.forEach(([source, target]) => {
+    const value = toNumber(form[source]);
+    if (value !== undefined) commercial[target] = value;
+  });
+
+  return commercial;
+}
+
+// --- UI Styling Constants (Light Theme / Industrial) ---
+const buttonPrimarySx = {
+  textTransform: "none",
+  fontWeight: 600,
+  boxShadow: "none",
+  borderRadius: 2,
+  px: 3,
+  bgcolor: "#2563eb",
+  "&:hover": { bgcolor: "#1d4ed8", boxShadow: "none" },
+};
+
+const buttonSecondarySx = {
+  textTransform: "none",
+  fontWeight: 600,
+  borderRadius: 2,
+  px: 3,
+  borderColor: "#cbd5e1",
+  color: "#475569",
+  "&:hover": { bgcolor: "#f8fafc", borderColor: "#94a3b8" },
+};
+
+const fieldSx = {
+  "& .MuiOutlinedInput-root": {
+    bgcolor: "#ffffff",
+    borderRadius: 1.5,
+    "& fieldset": { borderColor: "#cbd5e1" },
+    "&:hover fieldset": { borderColor: "#94a3b8" },
+    "&.Mui-focused fieldset": { borderColor: "#2563eb" },
+  },
+  "& .MuiInputLabel-root": {
+    color: "#64748b",
+  },
+};
+
+const dialogPaperSx = {
+  borderRadius: 3,
+  boxShadow: "0px 20px 25px -5px rgba(0, 0, 0, 0.1), 0px 10px 10px -5px rgba(0, 0, 0, 0.04)",
+};
+
+function StatusBadge({ label, statusColorType }) {
+  const colors = {
+    success: { bg: "#dcfce7", color: "#166534", border: "#bbf7d0" },
+    warning: { bg: "#fef3c7", color: "#92400e", border: "#fde68a" },
+    error: { bg: "#fee2e2", color: "#991b1b", border: "#fecaca" },
+    default: { bg: "#f1f5f9", color: "#475569", border: "#e2e8f0" },
+  };
+  const theme = colors[statusColorType] || colors.default;
+
   return (
-    <span
-      className={`
-        inline-flex
-        items-center
-        gap-1.5
-        px-2.5
-        py-1
-        rounded-full
-        border
-        text-[10px]
-        font-bold
-        uppercase
-        tracking-wider
-        ${badgeClass(status)}
-      `}
-    >
-      <span className="w-1.5 h-1.5 rounded-full bg-current" />
-      {status || "unknown"}
-    </span>
+    <Chip
+      label={label}
+      size="small"
+      sx={{
+        bgcolor: theme.bg,
+        color: theme.color,
+        border: `1px solid ${theme.border}`,
+        fontWeight: 600,
+        borderRadius: 1.5,
+      }}
+    />
   );
 }
 
+function StatCard({ icon, label, value, accent = "#2563eb", helper }) {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: 2.5,
+        minHeight: 120,
+        borderRadius: 3,
+        border: "1px solid #e2e8f0",
+        bgcolor: "#ffffff",
+        boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.02)",
+      }}
+    >
+      <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+        <Box>
+          <Typography variant="body2" sx={{ color: "#64748b", mb: 0.5, fontWeight: 600 }}>
+            {label}
+          </Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>
+            {value}
+          </Typography>
+          {helper ? (
+            <Typography variant="caption" sx={{ color: "#94a3b8", mt: 1, display: "block" }}>
+              {helper}
+            </Typography>
+          ) : null}
+        </Box>
+        <Box
+          sx={{
+            width: 48,
+            height: 48,
+            borderRadius: 2.5,
+            display: "grid",
+            placeItems: "center",
+            color: accent,
+            background: `${accent}15`, // Light transparent background
+          }}
+        >
+          {icon}
+        </Box>
+      </Stack>
+    </Paper>
+  );
+}
 
-/* ==========================================================================
-   CONFIGURATION FIELDS
-   ========================================================================== */
+function Field({ label, value, onChange, type = "text", placeholder, helperText, disabled, required }) {
+  return (
+    <TextField
+      fullWidth
+      size="small"
+      label={label}
+      value={value ?? ""}
+      onChange={onChange}
+      type={type}
+      placeholder={placeholder}
+      helperText={helperText}
+      disabled={disabled}
+      required={required}
+      InputLabelProps={type === "date" ? { shrink: true } : undefined}
+      sx={fieldSx}
+    />
+  );
+}
 
-const CONFIG_FIELDS = [
-  {
-    key: "cf",
-    label: "Current Factor",
-    type: "number",
-    step: "any",
-    category: "Metering",
-    description:
-      "Current sensor calibration factor.",
-  },
-
-  {
-    key: "vf",
-    label: "Voltage Factor",
-    type: "number",
-    step: "any",
-    category: "Metering",
-    description:
-      "Voltage measurement calibration factor.",
-  },
-
-  {
-    key: "currentRF",
-    label: "Current RF",
-    type: "number",
-    step: "any",
-    category: "Metering",
-    description:
-      "Current/shunt scaling factor.",
-  },
-
-  {
-    key: "wifiSSID",
-    label: "Wi-Fi SSID",
-    type: "text",
-    category: "Network",
-    description:
-      "Wi-Fi network name.",
-  },
-
-  {
-    key: "wifiPassword",
-    label: "Wi-Fi Password",
-    type: "password",
-    category: "Network",
-    description:
-      "Enter only when changing the password. Existing password is never returned.",
-  },
-
-  {
-    key: "targetFirmwareVersion",
-    label: "Target Firmware Version",
-    type: "text",
-    category: "Firmware",
-    description:
-      "Target firmware version.",
-  },
-
-  {
-    key: "notes",
-    label: "Notes",
-    type: "text",
-    category: "General",
-    description:
-      "Production notes.",
-  },
-
-  {
-    key: "hardwareRevision",
-    label: "Hardware Revision",
-    type: "text",
-    category: "General",
-    description:
-      "PCB / hardware revision.",
-  },
-];
-
-
-/* ==========================================================================
-   MAIN COMPONENT
-   ========================================================================== */
+function EmptyState({ title, subtitle, action }) {
+  return (
+    <Box sx={{ p: 8, textAlign: "center", bgcolor: "#ffffff", borderRadius: 3, border: "1px dashed #cbd5e1", m: 2 }}>
+      <Typography variant="h6" sx={{ fontWeight: 700, color: "#0f172a", mb: 1 }}>
+        {title}
+      </Typography>
+      <Typography variant="body2" sx={{ color: "#64748b", mb: 3 }}>
+        {subtitle}
+      </Typography>
+      {action}
+    </Box>
+  );
+}
 
 export default function Production() {
-
-  const [activeTab, setActiveTab] =
-    useState("all");
-
-  const [devices, setDevices] =
-    useState([]);
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  const [success, setSuccess] =
-    useState("");
-
-  const [search, setSearch] =
-    useState("");
-
-  const [statusFilter, setStatusFilter] =
-    useState("");
-
-  const [ackFilter, setAckFilter] =
-    useState("");
-
-  const [page, setPage] =
-    useState(1);
-
-  const [total, setTotal] =
-    useState(0);
-
-  /*
-  |--------------------------------------------------------------------------
-  | Group A
-  |--------------------------------------------------------------------------
-  */
-
-  const [showGroupAModal, setShowGroupAModal] =
-    useState(false);
-
-  const [groupAForm, setGroupAForm] =
-    useState({
-      serialNumber: "",
-      deviceId: "",
-      cf: 0.231,
-      vf: 1.88,
-      currentRF: 0.001,
-      wifiSSID: "",
-      wifiPassword: "",
-      hardwareRevision: "PCB_V1.2",
-      notes: "",
-    });
-
-  /*
-  |--------------------------------------------------------------------------
-  | Configuration drawer
-  |--------------------------------------------------------------------------
-  */
-
-  const [selectedDevice, setSelectedDevice] =
-    useState(null);
-
-  const [showDrawer, setShowDrawer] =
-    useState(false);
-
-  const [config, setConfig] =
-    useState({});
-
-  const [configStatus, setConfigStatus] =
-    useState("draft");
-
-  const [savingConfig, setSavingConfig] =
-    useState(false);
-
-  const pollTimerRef =
-    useRef(null);
-
-  const selectedSerialRef =
-    useRef("");
-
-
-  /* ==========================================================================
-     AUTH CHECK
-     ========================================================================== */
-
-  const checkAdminAuth =
-    useCallback(async () => {
-
-      const currentUser =
-        auth.currentUser;
-
-      if (!currentUser) {
-        setError(
-          "Firebase authentication is not available. Please log in again."
-        );
-
-        return false;
-      }
-
-      try {
-        await currentUser.getIdToken();
-
-        return true;
-      } catch (error) {
-        setError(
-          `Unable to obtain admin authentication token: ${getErrorMessage(
-            error
-          )}`
-        );
-
-        return false;
-      }
-
-    }, []);
-
-
-  /* ==========================================================================
-     FETCH PROVISION DEVICES
-     ========================================================================== */
-
-  const fetchDevices =
-    useCallback(async () => {
-
-      setLoading(true);
-      setError("");
-
-      try {
-
-        const authenticated =
-          await checkAdminAuth();
-
-        if (!authenticated) {
-          return;
-        }
-
-        const response =
-          await adminApi.get(
-            "/api/admin/provision",
-            {
-              params: {
-                page,
-                limit: PAGE_SIZE,
-                search:
-                  search.trim() ||
-                  undefined,
-                status:
-                  statusFilter ||
-                  undefined,
-              },
-            }
-          );
-
-        const data =
-          response?.data || {};
-
-        const list =
-          Array.isArray(data?.docs)
-            ? data.docs
-            : Array.isArray(data?.data)
-            ? data.data
-            : Array.isArray(data)
-            ? data
-            : [];
-
-        setDevices(list);
-
-        setTotal(
-          Number(data?.total) ||
-          list.length
-        );
-
-      } catch (requestError) {
-
-        const status =
-          requestError?.response?.status;
-
-        if (status === 401) {
-          setError(
-            "Production authentication failed. Your Firebase session is invalid or expired. Please log out and log in again."
-          );
-        } else if (status === 403) {
-          setError(
-            "You are authenticated, but your Firebase account does not have the admin permission required for Production."
-          );
-        } else {
-          setError(
-            `Failed to load production devices: ${getErrorMessage(
-              requestError
-            )}`
-          );
-        }
-
-        setDevices([]);
-        setTotal(0);
-
-      } finally {
-
-        setLoading(false);
-
-      }
-
-    }, [
-      checkAdminAuth,
-      page,
-      search,
-      statusFilter,
-    ]);
-
-
-  useEffect(() => {
-    fetchDevices();
-  }, [fetchDevices]);
-
-
-  /* ==========================================================================
-     FILTER
-     ========================================================================== */
-
-  const filteredDevices =
-    useMemo(() => {
-
-      return devices.filter(
-        (device) => {
-
-          const query =
-            search
-              .trim()
-              .toLowerCase();
-
-          const serial =
-            normalize(
-              device?.serialNumber
-            ).toLowerCase();
-
-          const deviceId =
-            normalize(
-              getDeviceId(device)
-            ).toLowerCase();
-
-          const matchesSearch =
-            !query ||
-            serial.includes(query) ||
-            deviceId.includes(query);
-
-          const matchesAck =
-            !ackFilter ||
-            getAckStatus(device) ===
-              ackFilter;
-
-          return (
-            matchesSearch &&
-            matchesAck
-          );
-        }
-      );
-
-    }, [
-      devices,
-      search,
-      ackFilter,
-    ]);
-
-
-  /* ==========================================================================
-     GROUP A
-     ========================================================================== */
-
-  const createGroupA =
-    async (event) => {
-
-      event.preventDefault();
-
-      setLoading(true);
-      setError("");
-
-      try {
-
-        const authenticated =
-          await checkAdminAuth();
-
-        if (!authenticated) {
-          return;
-        }
-
-        const payload = {
-          serialNumber:
-            normalize(
-              groupAForm.serialNumber
-            ),
-
-          deviceId:
-            normalize(
-              groupAForm.deviceId
-            ),
-
-          cf:
-            Number(groupAForm.cf),
-
-          vf:
-            Number(groupAForm.vf),
-
-          currentRF:
-            Number(
-              groupAForm.currentRF
-            ),
-
-          wifiSSID:
-            normalize(
-              groupAForm.wifiSSID
-            ),
-
-          wifiPassword:
-            groupAForm.wifiPassword,
-
-          hardwareRevision:
-            normalize(
-              groupAForm.hardwareRevision
-            ),
-
-          notes:
-            normalize(
-              groupAForm.notes
-            ),
-        };
-
-        if (
-          !payload.serialNumber ||
-          !payload.deviceId ||
-          !payload.wifiSSID ||
-          !payload.wifiPassword
-        ) {
-          setError(
-            "Serial number, Device ID, Wi-Fi SSID and Wi-Fi password are required."
-          );
-
-          return;
-        }
-
-        await adminApi.post(
-          "/api/admin/provision",
-          payload
-        );
-
-        setSuccess(
-          `Device ${payload.serialNumber} registered successfully.`
-        );
-
-        setShowGroupAModal(false);
-
-        setGroupAForm({
-          serialNumber: "",
-          deviceId: "",
-          cf: 0.231,
-          vf: 1.88,
-          currentRF: 0.001,
-          wifiSSID: "",
-          wifiPassword: "",
-          hardwareRevision: "PCB_V1.2",
-          notes: "",
-        });
-
-        await fetchDevices();
-
-      } catch (requestError) {
-
-        setError(
-          `Unable to create production record: ${getErrorMessage(
-            requestError
-          )}`
-        );
-
-      } finally {
-
-        setLoading(false);
-
-      }
-    };
-
-
-  /* ==========================================================================
-     OPEN CONFIGURATION
-     ========================================================================== */
-
-  const openConfiguration =
-    (device) => {
-
-      setSelectedDevice(device);
-
-      selectedSerialRef.current =
-        normalize(
-          device?.serialNumber
-        );
-
-      setConfig({
-        cf:
-          device?.cf ?? "",
-
-        vf:
-          device?.vf ?? "",
-
-        currentRF:
-          device?.currentRF ?? "",
-
-        wifiSSID:
-          device?.wifiSSID ?? "",
-
-        /*
-         * IMPORTANT:
-         *
-         * Backend deliberately does NOT return password.
-         *
-         * Leave this empty.
-         */
-        wifiPassword: "",
-
-        targetFirmwareVersion:
-          device?.targetFirmwareVersion ??
-          "",
-
-        notes:
-          device?.notes ?? "",
-
-        hardwareRevision:
-          device?.hardwareRevision ??
-          "",
-      });
-
-      setConfigStatus(
-        getProvisionStatus(
-          device
-        ) || "draft"
-      );
-
-      setShowDrawer(true);
-
-    };
-
-
-  /* ==========================================================================
-     CLOSE DRAWER
-     ========================================================================== */
-
-  const closeConfiguration =
-    () => {
-
-      setShowDrawer(false);
-
-      setSelectedDevice(null);
-
-      selectedSerialRef.current =
-        "";
-
-      if (
-        pollTimerRef.current
-      ) {
-        clearTimeout(
-          pollTimerRef.current
-        );
-
-        pollTimerRef.current =
-          null;
-      }
-    };
-
-
-  /* ==========================================================================
-     UPDATE CONFIG FIELD
-     ========================================================================== */
-
-  const updateConfig =
-    (key, value) => {
-
-      setConfig(
-        (previous) => ({
-          ...previous,
-          [key]: value,
-        })
-      );
-
-    };
-
-
-  /* ==========================================================================
-     SAVE CONFIGURATION
-     ========================================================================== */
-
-  const saveConfiguration =
-    async () => {
-
-      if (!selectedDevice) {
-        return;
-      }
-
-      const serial =
-        normalize(
-          selectedDevice.serialNumber
-        );
-
-      if (!serial) {
-        setError(
-          "Serial number is missing."
-        );
-
-        return;
-      }
-
-      setSavingConfig(true);
-      setConfigStatus(
-        "publishing"
-      );
-      setError("");
-
-      try {
-
-        const authenticated =
-          await checkAdminAuth();
-
-        if (!authenticated) {
-          return;
-        }
-
-        /*
-         * The backend's admin provisioning controller accepts:
-         *
-         * cf
-         * vf
-         * currentRF
-         * wifiSSID
-         * wifiPassword
-         * targetFirmwareVersion
-         * notes
-         * hardwareRevision
-         */
-
-        const payload = {};
-
-        Object.entries(
-          config
-        ).forEach(
-          ([key, value]) => {
-
-            /*
-             * Never send an empty Wi-Fi password.
-             *
-             * Empty password would be ambiguous and could accidentally
-             * overwrite the stored credential.
-             */
-            if (
-              key ===
-                "wifiPassword" &&
-              !normalize(value)
-            ) {
-              return;
-            }
-
-            if (
-              value === "" ||
-              value === undefined ||
-              value === null
-            ) {
-              return;
-            }
-
-            if (
-              [
-                "cf",
-                "vf",
-                "currentRF",
-              ].includes(key)
-            ) {
-              const number =
-                Number(value);
-
-              if (
-                !Number.isFinite(
-                  number
-                )
-              ) {
-                throw new Error(
-                  `${key} must be a valid number.`
-                );
-              }
-
-              payload[key] =
-                number;
-
-              return;
-            }
-
-            payload[key] =
-              value;
-          }
-        );
-
-        /*
-         * Step 1:
-         * Save configuration to DeviceProvision.
-         *
-         * Backend marks provisionStatus = pending.
-         */
-
-        await adminApi.patch(
-          `/api/admin/provision/${encodeURIComponent(
-            serial
-          )}`,
-          payload
-        );
-
-        /*
-         * Step 2:
-         * Explicitly publish configuration through MQTT.
-         */
-
-        const sendResponse =
-          await adminApi.post(
-            `/api/admin/provision/${encodeURIComponent(
-              serial
-            )}/send`
-          );
-
-        setConfigStatus(
-          "published"
-        );
-
-        setSuccess(
-          `Configuration published to ${sendResponse?.data?.topic || `viz/${serial}/config`}. Waiting for device ACK.`
-        );
-
-        /*
-         * Refresh immediately.
-         */
-
-        await fetchDevices();
-
-        /*
-         * Poll ACK.
-         */
-
-        startAckPolling(serial);
-
-      } catch (requestError) {
-
-        setConfigStatus(
-          "failed"
-        );
-
-        setError(
-          `Configuration update failed: ${getErrorMessage(
-            requestError
-          )}`
-        );
-
-      } finally {
-
-        setSavingConfig(false);
-
-      }
-    };
-
-
-  /* ==========================================================================
-     ACK POLLING
-     ========================================================================== */
-
-  const startAckPolling =
-    useCallback(
-      (serial) => {
-
-        if (
-          pollTimerRef.current
-        ) {
-          clearTimeout(
-            pollTimerRef.current
-          );
-        }
-
-        let attempts = 0;
-
-        const poll = async () => {
-
-          attempts += 1;
-
-          try {
-
-            const response =
-              await adminApi.get(
-                `/api/admin/provision/${encodeURIComponent(
-                  serial
-                )}`
-              );
-
-            const device =
-              response?.data?.device;
-
-            if (device) {
-
-              setSelectedDevice(
-                device
-              );
-
-              const ack =
-                getAckStatus(
-                  device
-                );
-
-              const provision =
-                getProvisionStatus(
-                  device
-                );
-
-              if (
-                ack === "ok" ||
-                provision ===
-                  "acknowledged"
-              ) {
-
-                setConfigStatus(
-                  "acknowledged"
-                );
-
-                await fetchDevices();
-
-                return;
-              }
-
-              if (
-                ack === "error"
-              ) {
-
-                setConfigStatus(
-                  "failed"
-                );
-
-                setError(
-                  device?.configAck
-                    ?.message ||
-                    "Device rejected the configuration."
-                );
-
-                return;
-              }
-            }
-
-          } catch (error) {
-
-            /*
-             * Do not destroy the auth session because a polling request
-             * failed.
-             */
-
-            console.warn(
-              "[PRODUCTION] ACK polling failed:",
-              error
-            );
-          }
-
-          /*
-           * Stop after roughly 2 minutes.
-           */
-
-          if (
-            attempts >= 40
-          ) {
-
-            setConfigStatus(
-              "timeout"
-            );
-
-            return;
-          }
-
-          pollTimerRef.current =
-            setTimeout(
-              poll,
-              ACK_POLL_INTERVAL
-            );
-        };
-
-        poll();
-
-      },
-      [fetchDevices]
-    );
-
-
-  /* ==========================================================================
-     ADMIN COMMAND
-     ========================================================================== */
-
-  const sendAdminCommand =
-    async (action) => {
-
-      if (!selectedDevice) {
-        return;
-      }
-
-      const deviceId =
-        normalize(
-          getDeviceId(
-            selectedDevice
-          )
-        );
-
-      if (!deviceId) {
-        setError(
-          "Device ID is missing."
-        );
-
-        return;
-      }
-
-      const confirmed =
-        window.confirm(
-          `Send "${action}" command to ${deviceId}?`
-        );
-
-      if (!confirmed) {
-        return;
-      }
-
-      setLoading(true);
-      setError("");
-
-      try {
-
-        const authenticated =
-          await checkAdminAuth();
-
-        if (!authenticated) {
-          return;
-        }
-
-        const response =
-          await adminApi.post(
-            `/api/admin/provision/cmd/${encodeURIComponent(
-              deviceId
-            )}/admin`,
-            {
-              action,
-            }
-          );
-
-        setSuccess(
-          `Command "${action}" published to ${response?.data?.topic || "device"}.`
-        );
-
-      } catch (requestError) {
-
-        setError(
-          `Admin command failed: ${getErrorMessage(
-            requestError
-          )}`
-        );
-
-      } finally {
-
-        setLoading(false);
-
-      }
-    };
-
-
-  /* ==========================================================================
-     CLEANUP
-     ========================================================================== */
-
-  useEffect(() => {
-
-    return () => {
-
-      if (
-        pollTimerRef.current
-      ) {
-        clearTimeout(
-          pollTimerRef.current
-        );
-      }
-
-    };
-
+  const [tab, setTab] = useState(0);
+
+  const [groupA, setGroupA] = useState([]);
+  const [groupATotal, setGroupATotal] = useState(0);
+  const [groupAPage, setGroupAPage] = useState(0);
+  const [groupALoading, setGroupALoading] = useState(false);
+  const [groupAFilter, setGroupAFilter] = useState({
+    search: "",
+    hardwareRevision: "",
+    pcbBatch: "",
+  });
+
+  const [liveDevices, setLiveDevices] = useState([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+  const [liveSearch, setLiveSearch] = useState("");
+  const [liveStatus, setLiveStatus] = useState("");
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState(DEFAULT_GROUP_A);
+  const [creating, setCreating] = useState(false);
+
+  const [promoteOpen, setPromoteOpen] = useState(false);
+  const [promoteDevice, setPromoteDevice] = useState(null);
+  const [promoteForm, setPromoteForm] = useState(DEFAULT_GROUP_B);
+  const [promoting, setPromoting] = useState(false);
+
+  const [editAOpen, setEditAOpen] = useState(false);
+  const [editADevice, setEditADevice] = useState(null);
+  const [editAForm, setEditAForm] = useState(DEFAULT_GROUP_A);
+  const [savingA, setSavingA] = useState(false);
+
+  const [deviceConfigOpen, setDeviceConfigOpen] = useState(false);
+  const [selectedLiveDevice, setSelectedLiveDevice] = useState(null);
+  const [deviceConfig, setDeviceConfig] = useState(DEFAULT_DEVICE_CONFIG);
+  const [savingDeviceConfig, setSavingDeviceConfig] = useState(false);
+
+  const [busySerial, setBusySerial] = useState("");
+
+  const [toast, setToast] = useState({
+    open: false,
+    severity: "success",
+    message: "",
+  });
+
+  const showToast = useCallback((message, severity = "success") => {
+    setToast({ open: true, severity, message });
   }, []);
 
+  const handleRequestError = useCallback(
+    (error, fallback) => {
+      const status = error?.response?.status;
+      if (status === 401) {
+        showToast("Your admin session has expired. Please sign in again.", "error");
+      } else if (status === 403) {
+        showToast("Admin access is required for this operation.", "error");
+      } else {
+        showToast(`${fallback}: ${getErrorMessage(error)}`, "error");
+      }
+    },
+    [showToast]
+  );
 
-  /* ==========================================================================
-     PAGINATION
-     ========================================================================== */
+  const fetchGroupA = useCallback(async () => {
+    setGroupALoading(true);
+    try {
+      const response = await api.get("/api/provision/group-a", {
+        params: {
+          page: groupAPage + 1,
+          limit: PAGE_SIZE,
+          hardwareRevision: groupAFilter.hardwareRevision || undefined,
+          pcbBatch: groupAFilter.pcbBatch || undefined,
+        },
+      });
 
-  const totalPages =
-    Math.max(
-      1,
-      Math.ceil(
-        total / PAGE_SIZE
-      )
+      const payload = response?.data || {};
+      const data = Array.isArray(payload?.data) ? payload.data : [];
+      const search = normalize(groupAFilter.search).toLowerCase();
+
+      const searched = search
+        ? data.filter((item) => {
+            const serial = normalize(item.serialNumber).toLowerCase();
+            const project = normalize(item.project).toLowerCase();
+            return serial.includes(search) || project.includes(search);
+          })
+        : data;
+
+      setGroupA(searched);
+      setGroupATotal(Number(payload?.total) || searched.length);
+    } catch (error) {
+      setGroupA([]);
+      setGroupATotal(0);
+      handleRequestError(error, "Unable to load Group A devices");
+    } finally {
+      setGroupALoading(false);
+    }
+  }, [groupAFilter.hardwareRevision, groupAFilter.pcbBatch, groupAFilter.search, groupAPage, handleRequestError]);
+
+  const fetchLiveDevices = useCallback(async () => {
+    setLiveLoading(true);
+    try {
+      const response = await api.get("/api/devices/admin-dashboard");
+      const payload = response?.data || {};
+      setLiveDevices(Array.isArray(payload?.devices) ? payload.devices : []);
+    } catch (error) {
+      setLiveDevices([]);
+      handleRequestError(error, "Unable to load live devices");
+    } finally {
+      setLiveLoading(false);
+    }
+  }, [handleRequestError]);
+
+  useEffect(() => {
+    fetchGroupA();
+  }, [fetchGroupA]);
+
+  useEffect(() => {
+    if (tab === 1) fetchLiveDevices();
+  }, [fetchLiveDevices, tab]);
+
+  const liveFiltered = useMemo(() => {
+    const query = normalize(liveSearch).toLowerCase();
+    const status = normalize(liveStatus).toLowerCase();
+
+    return liveDevices.filter((device) => {
+      const matchesStatus = !status || normalize(device.status).toLowerCase() === status;
+      if (!matchesStatus) return false;
+      if (!query) return true;
+
+      const haystack = [
+        device.device_id,
+        device.serialNumber,
+        device.location,
+        device.project,
+        device.city,
+        device.area,
+      ]
+        .map((item) => normalize(item).toLowerCase())
+        .join(" ");
+
+      return haystack.includes(query);
+    });
+  }, [liveDevices, liveSearch, liveStatus]);
+
+  const stats = useMemo(() => {
+    const live = liveDevices.length;
+    const online = liveDevices.filter((d) => ["online", "available"].includes(normalize(d.status).toLowerCase())).length;
+    const charging = liveDevices.filter((d) => ["occupied", "busy"].includes(normalize(d.status).toLowerCase())).length;
+    const pending = liveDevices.filter((d) => normalize(d.onboardingStatus).toLowerCase() === "pending").length;
+
+    return {
+      groupA: groupATotal,
+      live,
+      online,
+      charging,
+      pending,
+    };
+  }, [groupATotal, liveDevices]);
+
+  const updateForm = (setter) => (field) => (event) => {
+    setter((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
+  const closeCreate = () => {
+    setCreateOpen(false);
+    setCreateForm(DEFAULT_GROUP_A);
+  };
+
+  const submitCreate = async (event) => {
+    event.preventDefault();
+    if (!normalize(createForm.serialNumber) || !normalize(createForm.hardwareRevision)) {
+      showToast("Serial number and hardware revision are required.", "error");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const payload = {
+        serialNumber: normalize(createForm.serialNumber),
+        hardwareRevision: normalize(createForm.hardwareRevision),
+        project: normalize(createForm.project),
+        pcbBatch: normalize(createForm.pcbBatch) || undefined,
+        manufacturedAt: createForm.manufacturedAt
+          ? new Date(`${createForm.manufacturedAt}T00:00:00`).toISOString()
+          : undefined,
+        notes: normalize(createForm.notes),
+      };
+
+      await api.post("/api/provision/group-a", payload);
+      showToast(`Serial ${payload.serialNumber} added to Group A.`);
+      closeCreate();
+      setGroupAPage(0);
+      await fetchGroupA();
+    } catch (error) {
+      handleRequestError(error, "Unable to create Group A record");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const openEditA = (device) => {
+    setEditADevice(device);
+    setEditAForm({
+      serialNumber: device?.serialNumber || "",
+      hardwareRevision: device?.hardwareRevision || "",
+      project: device?.project || "",
+      pcbBatch: device?.pcbBatch || "",
+      manufacturedAt: formatDateInput(device?.manufacturedAt),
+      notes: device?.notes || "",
+    });
+    setEditAOpen(true);
+  };
+
+  const submitEditA = async (event) => {
+    event.preventDefault();
+    if (!editADevice?.serialNumber) return;
+
+    setSavingA(true);
+    try {
+      const payload = {
+        hardwareRevision: normalize(editAForm.hardwareRevision),
+        project: normalize(editAForm.project),
+        pcbBatch: normalize(editAForm.pcbBatch) || undefined,
+        manufacturedAt: editAForm.manufacturedAt
+          ? new Date(`${editAForm.manufacturedAt}T00:00:00`).toISOString()
+          : undefined,
+        notes: normalize(editAForm.notes),
+      };
+
+      await api.patch(
+        `/api/provision/group-a/${encodeURIComponent(editADevice.serialNumber)}`,
+        payload
+      );
+
+      showToast(`Group A record ${editADevice.serialNumber} updated.`);
+      setEditAOpen(false);
+      await fetchGroupA();
+    } catch (error) {
+      handleRequestError(error, "Unable to update Group A record");
+    } finally {
+      setSavingA(false);
+    }
+  };
+
+  const deleteGroupA = async (device) => {
+    if (!device?.serialNumber) return;
+
+    const confirmed = window.confirm(
+      `Delete Group A record ${device.serialNumber}?\n\nThis is allowed only while the device remains in Group A.`
     );
+    if (!confirmed) return;
 
+    setBusySerial(device.serialNumber);
+    try {
+      await api.delete(
+        `/api/provision/group-a/${encodeURIComponent(device.serialNumber)}`
+      );
+      showToast(`Group A record ${device.serialNumber} deleted.`);
+      await fetchGroupA();
+    } catch (error) {
+      handleRequestError(error, "Unable to delete Group A record");
+    } finally {
+      setBusySerial("");
+    }
+  };
 
-  /* ==========================================================================
-     RENDER
-     ========================================================================== */
+  const openPromote = (device) => {
+    setPromoteDevice(device);
+    setPromoteForm({
+      ...DEFAULT_GROUP_B,
+      cf: String(device?.cf ?? DEFAULT_GROUP_B.cf),
+      vf: String(device?.vf ?? DEFAULT_GROUP_B.vf),
+      currentRF: String(device?.currentRF ?? DEFAULT_GROUP_B.currentRF),
+      rate: String(device?.rate ?? DEFAULT_GROUP_B.rate),
+      charger_type: device?.charger_type || DEFAULT_GROUP_B.charger_type,
+      targetFirmwareVersion: device?.targetFirmwareVersion || "",
+      notes: device?.notes || "",
+    });
+    setPromoteOpen(true);
+  };
+
+  const closePromote = () => {
+    setPromoteOpen(false);
+    setPromoteDevice(null);
+    setPromoteForm(DEFAULT_GROUP_B);
+  };
+
+  const submitPromote = async (event) => {
+    event.preventDefault();
+    if (!promoteDevice?.serialNumber) return;
+
+    const required = {
+      deviceId: promoteForm.deviceId,
+      wifiSSID: promoteForm.wifiSSID,
+      wifiPassword: promoteForm.wifiPassword,
+      rate: promoteForm.rate,
+      location: promoteForm.location,
+      lat: promoteForm.lat,
+      lng: promoteForm.lng,
+      area: promoteForm.area,
+      city: promoteForm.city,
+      state: promoteForm.state,
+      charger_type: promoteForm.charger_type,
+    };
+
+    const missing = Object.entries(required)
+      .filter(([, value]) => normalize(value) === "")
+      .map(([key]) => key);
+
+    const numericCheck = [
+      ["cf", promoteForm.cf],
+      ["vf", promoteForm.vf],
+      ["currentRF", promoteForm.currentRF],
+      ["rate", promoteForm.rate],
+      ["lat", promoteForm.lat],
+      ["lng", promoteForm.lng],
+    ];
+
+    const invalidNumbers = numericCheck
+      .filter(([, value]) => value !== "" && toNumber(value) === undefined)
+      .map(([key]) => key);
+
+    if (missing.length) {
+      showToast(`Complete required Group B fields: ${missing.join(", ")}.`, "error");
+      return;
+    }
+
+    if (invalidNumbers.length) {
+      showToast(`Enter valid numbers for: ${invalidNumbers.join(", ")}.`, "error");
+      return;
+    }
+
+    setPromoting(true);
+    try {
+      const payload = {
+        deviceId: normalize(promoteForm.deviceId).toUpperCase(),
+        wifiSSID: normalize(promoteForm.wifiSSID),
+        wifiPassword: promoteForm.wifiPassword,
+        cf: toNumber(promoteForm.cf),
+        vf: toNumber(promoteForm.vf),
+        currentRF: toNumber(promoteForm.currentRF),
+        rate: toNumber(promoteForm.rate),
+        location: normalize(promoteForm.location),
+        lat: toNumber(promoteForm.lat),
+        lng: toNumber(promoteForm.lng),
+        area: normalize(promoteForm.area),
+        city: normalize(promoteForm.city),
+        state: normalize(promoteForm.state),
+        charger_type: normalize(promoteForm.charger_type),
+        meterType: promoteForm.meterType || null,
+        meterConsumerNumber: normalize(promoteForm.meterConsumerNumber) || null,
+        commercial: createCommercial(promoteForm),
+        targetFirmwareVersion: normalize(promoteForm.targetFirmwareVersion) || null,
+        notes: normalize(promoteForm.notes),
+      };
+
+      const response = await api.post(
+        `/api/provision/group-a/${encodeURIComponent(promoteDevice.serialNumber)}/promote`,
+        payload
+      );
+
+      const nvsVersion = response?.data?.config?.nvsVersion;
+      const topic = response?.data?.config?.topic;
+
+      showToast(
+        `Promoted ${promoteDevice.serialNumber} to Group B${
+          nvsVersion ? ` · NVS v${nvsVersion}` : ""
+        }${topic ? ` · ${topic}` : ""}`
+      );
+
+      closePromote();
+      await fetchGroupA();
+      if (tab === 1) await fetchLiveDevices();
+    } catch (error) {
+      handleRequestError(error, "Unable to promote device to Group B");
+    } finally {
+      setPromoting(false);
+    }
+  };
+
+  const openDeviceConfig = (device) => {
+    setSelectedLiveDevice(device);
+    const commercial = device?.commercial || {};
+
+    setDeviceConfig({
+      cf: device?.cf ?? "",
+      vf: device?.vf ?? "",
+      currentRF: device?.currentRF ?? "",
+      wifiSSID: device?.wifiSSID ?? "",
+      wifiPassword: "",
+      rate: device?.rate ?? "",
+      location: device?.location ?? "",
+      lat: device?.lat ?? "",
+      lng: device?.lng ?? "",
+      area: device?.area ?? "",
+      city: device?.city ?? "",
+      state: device?.state ?? "",
+      meterType: device?.meterType ?? "",
+      meterConsumerNumber: device?.meterConsumerNumber ?? "",
+      electricityBearer: commercial?.electricityBearer || "OWNER",
+      userRatePerKwh: commercial?.userRatePerKwh ?? "",
+      vjraMarginPerKwh: commercial?.vjraMarginPerKwh ?? "",
+      ownerSharePerKwh: commercial?.ownerSharePerKwh ?? "",
+      pgPercent: commercial?.pgPercent ?? "",
+      targetFirmwareVersion: device?.targetFirmwareVersion ?? "",
+    });
+    setDeviceConfigOpen(true);
+  };
+
+  const buildDeviceConfigPatch = () => {
+    const patch = {};
+    const current = selectedLiveDevice || {};
+
+    const setNumericIfChanged = (field) => {
+      const raw = deviceConfig[field];
+      if (raw === "") return;
+      const value = toNumber(raw);
+      if (value === undefined) throw new Error(`${field} must be numeric.`);
+      if (String(current[field] ?? "") !== String(value)) patch[field] = value;
+    };
+
+    ["cf", "vf", "currentRF", "rate", "lat", "lng"].forEach(setNumericIfChanged);
+
+    const textFields = [
+      "wifiSSID",
+      "location",
+      "area",
+      "city",
+      "state",
+      "meterType",
+      "meterConsumerNumber",
+      "targetFirmwareVersion",
+    ];
+
+    textFields.forEach((field) => {
+      const next = normalize(deviceConfig[field]);
+      const previous = normalize(current[field]);
+      if (next !== previous) patch[field] = next;
+    });
+
+    if (normalize(deviceConfig.wifiPassword)) {
+      patch.wifiPassword = deviceConfig.wifiPassword;
+    }
+
+    const currentCommercial = current?.commercial || {};
+    const nextCommercial = createCommercial(deviceConfig);
+    const commercialChanged = JSON.stringify(currentCommercial || {}) !== JSON.stringify(nextCommercial);
+    if (commercialChanged) patch.commercial = nextCommercial;
+
+    return patch;
+  };
+
+  const saveDeviceConfig = async () => {
+    if (!selectedLiveDevice?.device_id) return;
+
+    let patch;
+    try {
+      patch = buildDeviceConfigPatch();
+    } catch (error) {
+      showToast(error.message, "error");
+      return;
+    }
+
+    if (!Object.keys(patch).length) {
+      showToast("No changes to save.", "info");
+      return;
+    }
+
+    setSavingDeviceConfig(true);
+    try {
+      await api.patch(
+        `/api/devices/admin/config/${encodeURIComponent(selectedLiveDevice.device_id)}`,
+        patch
+      );
+
+      showToast(
+        `Configuration saved for ${selectedLiveDevice.device_id}. Backend will deliver the updated firmware configuration.`
+      );
+      setDeviceConfigOpen(false);
+      await fetchLiveDevices();
+    } catch (error) {
+      handleRequestError(error, "Unable to update device configuration");
+    } finally {
+      setSavingDeviceConfig(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-4 md:p-6">
+    <Box
+      sx={{
+        minHeight: "100vh",
+        color: "#0f172a",
+        bgcolor: "#f4f6f8", // Light industrial background
+        px: { xs: 2, md: 4 },
+        py: 4,
+      }}
+    >
+      <Box sx={{ maxWidth: 1600, mx: "auto" }}>
+        {/* Header Section */}
+        <Stack
+          direction={{ xs: "column", md: "row" }}
+          alignItems={{ xs: "flex-start", md: "center" }}
+          justifyContent="space-between"
+          spacing={2}
+          sx={{ mb: 4 }}
+        >
+          <Box>
+            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1 }}>
+              <Box sx={{ p: 1, borderRadius: 2, bgcolor: "#e0e7ff", color: "#4f46e5" }}>
+                <FactoryIcon />
+              </Box>
+              <Typography variant="h4" sx={{ fontWeight: 800, color: "#0f172a" }}>
+                Production Console
+              </Typography>
+            </Stack>
+            <Typography variant="body1" sx={{ color: "#64748b", maxWidth: 820 }}>
+              Manage the physical device lifecycle from manufacturing entry to calibrated Group B deployment, then edit live-device configuration securely.
+            </Typography>
+          </Box>
 
-      <div className="max-w-[1800px] mx-auto">
-
-        {/* HEADER */}
-
-        <div className="
-          flex
-          flex-col
-          md:flex-row
-          md:items-center
-          md:justify-between
-          gap-4
-          pb-6
-          border-b
-          border-slate-800
-        ">
-
-          <div>
-
-            <div className="flex items-center gap-3">
-
-              <div className="
-                w-11
-                h-11
-                rounded-xl
-                bg-emerald-500/10
-                border
-                border-emerald-500/20
-                flex
-                items-center
-                justify-center
-                text-xl
-              ">
-                ⚡
-              </div>
-
-              <div>
-
-                <h1 className="text-2xl font-bold">
-                  Production
-                </h1>
-
-                <p className="text-sm text-slate-500 mt-1">
-                  Device provisioning and production configuration
-                </p>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          <div className="flex gap-2">
-
-            <button
-              onClick={() =>
-                setShowGroupAModal(
-                  true
-                )
-              }
-              className="
-                px-4
-                py-2.5
-                rounded-lg
-                bg-slate-800
-                hover:bg-slate-700
-                border
-                border-slate-700
-                text-sm
-                font-semibold
-              "
-            >
-              + Register Device
-            </button>
-
-            <button
-              onClick={
-                fetchDevices
-              }
-              disabled={loading}
-              className="
-                px-4
-                py-2.5
-                rounded-lg
-                bg-emerald-600
-                hover:bg-emerald-500
-                disabled:opacity-50
-                text-sm
-                font-semibold
-              "
+          <Stack direction="row" spacing={1.5}>
+            <Button
+              variant="outlined"
+              startIcon={<RefreshIcon />}
+              onClick={() => {
+                fetchGroupA();
+                if (tab === 1) fetchLiveDevices();
+              }}
+              sx={buttonSecondarySx}
             >
               Refresh
-            </button>
-
-          </div>
-
-        </div>
-
-
-        {/* ALERTS */}
-
-        {error && (
-          <div className="
-            mt-4
-            p-4
-            rounded-lg
-            bg-rose-500/10
-            border
-            border-rose-500/30
-            text-rose-300
-            text-sm
-          ">
-            {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="
-            mt-4
-            p-4
-            rounded-lg
-            bg-emerald-500/10
-            border
-            border-emerald-500/30
-            text-emerald-300
-            text-sm
-          ">
-            {success}
-          </div>
-        )}
-
-
-        {/* FILTERS */}
-
-        <div className="
-          mt-6
-          grid
-          grid-cols-1
-          md:grid-cols-3
-          gap-3
-        ">
-
-          <input
-            value={search}
-            onChange={(event) => {
-              setSearch(
-                event.target.value
-              );
-              setPage(1);
-            }}
-            placeholder="Search serial / device ID..."
-            className="
-              px-4
-              py-2.5
-              rounded-lg
-              bg-slate-900
-              border
-              border-slate-800
-              text-sm
-              outline-none
-              focus:border-emerald-500
-            "
-          />
-
-          <select
-            value={statusFilter}
-            onChange={(event) => {
-              setStatusFilter(
-                event.target.value
-              );
-              setPage(1);
-            }}
-            className="
-              px-4
-              py-2.5
-              rounded-lg
-              bg-slate-900
-              border
-              border-slate-800
-              text-sm
-              outline-none
-            "
-          >
-            <option value="">
-              All Provision Status
-            </option>
-
-            <option value="pending">
-              Pending
-            </option>
-
-            <option value="sent">
-              Sent
-            </option>
-
-            <option value="acknowledged">
-              Acknowledged
-            </option>
-          </select>
-
-          <select
-            value={ackFilter}
-            onChange={(event) => {
-              setAckFilter(
-                event.target.value
-              );
-              setPage(1);
-            }}
-            className="
-              px-4
-              py-2.5
-              rounded-lg
-              bg-slate-900
-              border
-              border-slate-800
-              text-sm
-              outline-none
-            "
-          >
-            <option value="">
-              All ACK Status
-            </option>
-
-            <option value="ok">
-              ACK OK
-            </option>
-
-            <option value="error">
-              ACK Error
-            </option>
-          </select>
-
-        </div>
-
-
-        {/* TABLE */}
-
-        <div className="
-          mt-5
-          overflow-x-auto
-          rounded-xl
-          border
-          border-slate-800
-          bg-slate-900/40
-        ">
-
-          <table className="w-full min-w-[1000px]">
-
-            <thead>
-
-              <tr className="
-                bg-slate-900
-                border-b
-                border-slate-800
-                text-left
-              ">
-
-                <th className="px-4 py-3 text-[10px] uppercase tracking-wider text-slate-500">
-                  Serial
-                </th>
-
-                <th className="px-4 py-3 text-[10px] uppercase tracking-wider text-slate-500">
-                  Device ID
-                </th>
-
-                <th className="px-4 py-3 text-[10px] uppercase tracking-wider text-slate-500">
-                  Calibration
-                </th>
-
-                <th className="px-4 py-3 text-[10px] uppercase tracking-wider text-slate-500">
-                  Provision
-                </th>
-
-                <th className="px-4 py-3 text-[10px] uppercase tracking-wider text-slate-500">
-                  ACK
-                </th>
-
-                <th className="px-4 py-3 text-[10px] uppercase tracking-wider text-slate-500">
-                  Updated
-                </th>
-
-                <th className="px-4 py-3 text-[10px] uppercase tracking-wider text-slate-500 text-right">
-                  Action
-                </th>
-
-              </tr>
-
-            </thead>
-
-
-            <tbody className="divide-y divide-slate-800">
-
-              {loading ? (
-
-                <tr>
-
-                  <td
-                    colSpan={7}
-                    className="
-                      px-6
-                      py-16
-                      text-center
-                      text-slate-500
-                    "
-                  >
-                    Loading production devices...
-                  </td>
-
-                </tr>
-
-              ) : filteredDevices.length ===
-                0 ? (
-
-                <tr>
-
-                  <td
-                    colSpan={7}
-                    className="
-                      px-6
-                      py-16
-                      text-center
-                      text-slate-500
-                    "
-                  >
-                    No production devices found.
-                  </td>
-
-                </tr>
-
-              ) : (
-
-                filteredDevices.map(
-                  (device) => {
-
-                    const serial =
-                      normalize(
-                        device?.serialNumber
-                      );
-
-                    const deviceId =
-                      getDeviceId(
-                        device
-                      );
-
-                    return (
-                      <tr
-                        key={
-                          device?._id ||
-                          serial
-                        }
-                        className="
-                          hover:bg-slate-800/30
-                          transition
-                        "
-                      >
-
-                        <td className="px-4 py-4">
-
-                          <div className="font-mono text-sm font-semibold">
-                            {serial ||
-                              "—"}
-                          </div>
-
-                          <div className="text-[10px] text-slate-600 mt-1">
-                            {formatDate(
-                              device?.updatedAt
-                            )}
-                          </div>
-
-                        </td>
-
-
-                        <td className="px-4 py-4">
-
-                          <span className="font-mono text-sm text-emerald-400">
-                            {deviceId ||
-                              "—"}
-                          </span>
-
-                        </td>
-
-
-                        <td className="px-4 py-4">
-
-                          <div className="font-mono text-xs text-slate-300">
-                            CF:{" "}
-                            {device?.cf ??
-                              "—"}
-                          </div>
-
-                          <div className="font-mono text-xs text-slate-400 mt-1">
-                            VF:{" "}
-                            {device?.vf ??
-                              "—"}
-                          </div>
-
-                          <div className="font-mono text-xs text-slate-500 mt-1">
-                            RF:{" "}
-                            {device?.currentRF ??
-                              "—"}
-                          </div>
-
-                        </td>
-
-
-                        <td className="px-4 py-4">
-
-                          <Badge
-                            status={
-                              getProvisionStatus(
-                                device
-                              ) ||
-                              "unknown"
-                            }
-                          />
-
-                        </td>
-
-
-                        <td className="px-4 py-4">
-
-                          {getAckStatus(
-                            device
-                          ) ? (
-
-                            <Badge
-                              status={
-                                getAckStatus(
-                                  device
-                                )
-                              }
-                            />
-
-                          ) : (
-
-                            <span className="text-xs text-slate-600">
-                              No ACK
-                            </span>
-
-                          )}
-
-                        </td>
-
-
-                        <td className="px-4 py-4">
-
-                          <span className="text-xs text-slate-400">
-                            {formatDate(
-                              device?.updatedAt
-                            )}
-                          </span>
-
-                        </td>
-
-
-                        <td className="px-4 py-4 text-right">
-
-                          <button
-                            onClick={() =>
-                              openConfiguration(
-                                device
-                              )
-                            }
-                            className="
-                              px-3
-                              py-2
-                              rounded-lg
-                              bg-slate-800
-                              hover:bg-slate-700
-                              border
-                              border-slate-700
-                              text-xs
-                              font-semibold
-                            "
-                          >
-                            Configure
-                          </button>
-
-                        </td>
-
-                      </tr>
-                    );
-                  }
-                )
-
-              )}
-
-            </tbody>
-
-          </table>
-
-
-          {/* PAGINATION */}
-
-          <div className="
-            px-4
-            py-3
-            border-t
-            border-slate-800
-            flex
-            justify-between
-            items-center
-          ">
-
-            <span className="text-xs text-slate-500">
-              Page {page} of{" "}
-              {totalPages}
-            </span>
-
-            <div className="flex gap-2">
-
-              <button
-                disabled={
-                  page <= 1
-                }
-                onClick={() =>
-                  setPage(
-                    (p) =>
-                      Math.max(
-                        1,
-                        p - 1
-                      )
-                  )
-                }
-                className="
-                  px-3
-                  py-1.5
-                  rounded
-                  bg-slate-800
-                  border
-                  border-slate-700
-                  text-xs
-                  disabled:opacity-30
-                "
-              >
-                Previous
-              </button>
-
-              <button
-                disabled={
-                  page >=
-                  totalPages
-                }
-                onClick={() =>
-                  setPage(
-                    (p) =>
-                      Math.min(
-                        totalPages,
-                        p + 1
-                      )
-                  )
-                }
-                className="
-                  px-3
-                  py-1.5
-                  rounded
-                  bg-slate-800
-                  border
-                  border-slate-700
-                  text-xs
-                  disabled:opacity-30
-                "
-              >
-                Next
-              </button>
-
-            </div>
-
-          </div>
-
-        </div>
-
-      </div>
-
-
-      {/* ========================================================================
-         CREATE DEVICE MODAL
-         ====================================================================== */}
-
-      {showGroupAModal && (
-
-        <div className="
-          fixed
-          inset-0
-          z-50
-          bg-black/70
-          backdrop-blur-sm
-          flex
-          items-center
-          justify-center
-          p-4
-        ">
-
-          <div className="
-            w-full
-            max-w-xl
-            bg-slate-900
-            border
-            border-slate-800
-            rounded-2xl
-            shadow-2xl
-          ">
-
-            <div className="
-              p-5
-              border-b
-              border-slate-800
-              flex
-              justify-between
-            ">
-
-              <div>
-
-                <h2 className="font-bold text-lg">
-                  Register Production Device
-                </h2>
-
-                <p className="text-xs text-slate-500 mt-1">
-                  Creates the backend DeviceProvision record.
-                </p>
-
-              </div>
-
-              <button
-                onClick={() =>
-                  setShowGroupAModal(
-                    false
-                  )
-                }
-                className="text-slate-500 hover:text-white text-xl"
-              >
-                ×
-              </button>
-
-            </div>
-
-
-            <form
-              onSubmit={
-                createGroupA
-              }
-              className="p-5 space-y-4"
+            </Button>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => setCreateOpen(true)}
+              sx={buttonPrimarySx}
             >
+              Add Group A
+            </Button>
+          </Stack>
+        </Stack>
 
-              {[
-                [
-                  "serialNumber",
-                  "Serial Number",
-                  "text",
-                ],
+        {/* Stats Row */}
+        <Grid container spacing={2} sx={{ mb: 4 }}>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              icon={<FactoryIcon />}
+              label="Group A"
+              value={stats.groupA}
+              helper="Awaiting calibration / config"
+              accent="#2563eb" // Blue
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              icon={<MemoryIcon />}
+              label="Live Devices"
+              value={stats.live}
+              helper="Device documents available"
+              accent="#8b5cf6" // Purple
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              icon={<CheckCircleIcon />}
+              label="Online / Available"
+              value={stats.online}
+              helper="Recent runtime status"
+              accent="#10b981" // Green
+            />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard
+              icon={<TuneIcon />}
+              label="Charging / Pending"
+              value={`${stats.charging} / ${stats.pending}`}
+              helper="Operational attention"
+              accent="#f59e0b" // Amber
+            />
+          </Grid>
+        </Grid>
 
-                [
-                  "deviceId",
-                  "Device ID",
-                  "text",
-                ],
+        {/* Main Content Area */}
+        <Paper
+          elevation={0}
+          sx={{
+            borderRadius: 3,
+            border: "1px solid #e2e8f0",
+            bgcolor: "#ffffff",
+            overflow: "hidden",
+            boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.05)",
+          }}
+        >
+          <Tabs
+            value={tab}
+            onChange={(_, next) => setTab(next)}
+            sx={{
+              px: 2,
+              borderBottom: "1px solid #e2e8f0",
+              bgcolor: "#f8fafc",
+              "& .MuiTab-root": {
+                minHeight: 60,
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: "0.95rem",
+                color: "#64748b",
+              },
+              "& .Mui-selected": { color: "#2563eb !important" },
+              "& .MuiTabs-indicator": { backgroundColor: "#2563eb", height: 3, borderRadius: "3px 3px 0 0" },
+            }}
+          >
+            <Tab icon={<FactoryIcon fontSize="small" sx={{ mr: 1 }} />} iconPosition="start" label="Production Lifecycle (Group A)" />
+            <Tab icon={<MemoryIcon fontSize="small" sx={{ mr: 1 }} />} iconPosition="start" label="Live Device Configuration" />
+          </Tabs>
 
-                [
-                  "wifiSSID",
-                  "Wi-Fi SSID",
-                  "text",
-                ],
-
-                [
-                  "wifiPassword",
-                  "Wi-Fi Password",
-                  "password",
-                ],
-
-                [
-                  "hardwareRevision",
-                  "Hardware Revision",
-                  "text",
-                ],
-
-                [
-                  "notes",
-                  "Notes",
-                  "text",
-                ],
-              ].map(
-                ([key, label, type]) => (
-
-                  <div key={key}>
-
-                    <label className="block text-xs text-slate-400 mb-1.5">
-                      {label}
-                    </label>
-
-                    <input
-                      type={type}
-                      value={
-                        groupAForm[key]
-                      }
-                      onChange={(event) =>
-                        setGroupAForm(
-                          (previous) => ({
-                            ...previous,
-                            [key]:
-                              event.target
-                                .value,
-                          })
-                        )
-                      }
-                      className="
-                        w-full
-                        px-3
-                        py-2.5
-                        rounded-lg
-                        bg-slate-950
-                        border
-                        border-slate-700
-                        text-white
-                        text-sm
-                        outline-none
-                        focus:border-emerald-500
-                      "
-                    />
-
-                  </div>
-
-                )
-              )}
-
-
-              <div className="
-                grid
-                grid-cols-3
-                gap-3
-              ">
-
-                {[
-                  ["cf", "CF"],
-                  ["vf", "VF"],
-                  [
-                    "currentRF",
-                    "Current RF",
-                  ],
-                ].map(
-                  ([key, label]) => (
-
-                    <div key={key}>
-
-                      <label className="block text-xs text-slate-400 mb-1.5">
-                        {label}
-                      </label>
-
-                      <input
-                        type="number"
-                        step="any"
-                        value={
-                          groupAForm[
-                            key
-                          ]
-                        }
-                        onChange={(event) =>
-                          setGroupAForm(
-                            (previous) => ({
-                              ...previous,
-                              [key]:
-                                event.target
-                                  .value,
-                            })
-                          )
-                        }
-                        className="
-                          w-full
-                          px-3
-                          py-2.5
-                          rounded-lg
-                          bg-slate-950
-                          border
-                          border-slate-700
-                          text-white
-                          text-sm
-                        "
-                      />
-
-                    </div>
-
-                  )
-                )}
-
-              </div>
-
-
-              <div className="
-                flex
-                justify-end
-                gap-3
-                pt-4
-                border-t
-                border-slate-800
-              ">
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setShowGroupAModal(
-                      false
-                    )
-                  }
-                  className="
-                    px-4
-                    py-2.5
-                    rounded-lg
-                    bg-slate-800
-                    border
-                    border-slate-700
-                    text-sm
-                  "
-                >
-                  Cancel
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="
-                    px-5
-                    py-2.5
-                    rounded-lg
-                    bg-emerald-600
-                    hover:bg-emerald-500
-                    disabled:opacity-50
-                    text-sm
-                    font-semibold
-                  "
-                >
-                  {loading
-                    ? "Creating..."
-                    : "Register Device"}
-                </button>
-
-              </div>
-
-            </form>
-
-          </div>
-
-        </div>
-
-      )}
-
-
-      {/* ========================================================================
-         CONFIGURATION DRAWER
-         ====================================================================== */}
-
-      {showDrawer &&
-        selectedDevice && (
-
-          <div className="
-            fixed
-            inset-0
-            z-50
-            bg-black/70
-          ">
-
-            <div className="
-              absolute
-              right-0
-              top-0
-              bottom-0
-              w-full
-              max-w-2xl
-              bg-slate-950
-              border-l
-              border-slate-800
-              overflow-y-auto
-              shadow-2xl
-            ">
-
-              {/* HEADER */}
-
-              <div className="
-                sticky
-                top-0
-                z-20
-                bg-slate-950/95
-                backdrop-blur
-                border-b
-                border-slate-800
-                p-5
-              ">
-
-                <div className="
-                  flex
-                  justify-between
-                  items-start
-                ">
-
-                  <div>
-
-                    <h2 className="text-lg font-bold">
-                      Device Configuration
-                    </h2>
-
-                    <div className="font-mono text-xs text-slate-500 mt-2">
-                      {selectedDevice.serialNumber}
-                    </div>
-
-                    <div className="font-mono text-xs text-emerald-400 mt-1">
-                      {getDeviceId(
-                        selectedDevice
-                      )}
-                    </div>
-
-                  </div>
-
-                  <button
-                    onClick={
-                      closeConfiguration
-                    }
-                    className="text-slate-500 hover:text-white text-xl"
-                  >
-                    ×
-                  </button>
-
-                </div>
-
-
-                <div className="mt-4">
-
-                  <Badge
-                    status={
-                      configStatus
-                    }
+          {/* TAB 0: Group A */}
+          {tab === 0 && (
+            <Box>
+              <Box sx={{ p: 2.5, borderBottom: "1px solid #e2e8f0", bgcolor: "#ffffff" }}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
+                  <TextField
+                    size="small"
+                    placeholder="Search serial number or project…"
+                    value={groupAFilter.search}
+                    onChange={(event) => {
+                      setGroupAPage(0);
+                      setGroupAFilter((prev) => ({ ...prev, search: event.target.value }));
+                    }}
+                    InputProps={{
+                      startAdornment: <SearchIcon sx={{ mr: 1, color: "#94a3b8" }} fontSize="small" />,
+                    }}
+                    sx={{ ...fieldSx, minWidth: { md: 320 } }}
                   />
+                  <TextField
+                    size="small"
+                    label="Hardware revision"
+                    value={groupAFilter.hardwareRevision}
+                    onChange={(event) => {
+                      setGroupAPage(0);
+                      setGroupAFilter((prev) => ({ ...prev, hardwareRevision: event.target.value }));
+                    }}
+                    sx={{ ...fieldSx, minWidth: { md: 200 } }}
+                  />
+                  <TextField
+                    size="small"
+                    label="PCB batch"
+                    value={groupAFilter.pcbBatch}
+                    onChange={(event) => {
+                      setGroupAPage(0);
+                      setGroupAFilter((prev) => ({ ...prev, pcbBatch: event.target.value }));
+                    }}
+                    sx={{ ...fieldSx, minWidth: { md: 200 } }}
+                  />
+                  <Box sx={{ flex: 1 }} />
+                  <Typography variant="body2" sx={{ color: "#64748b", fontWeight: 600 }}>
+                    {groupATotal} Record{groupATotal === 1 ? "" : "s"}
+                  </Typography>
+                </Stack>
+              </Box>
 
-                </div>
-
-              </div>
-
-
-              {/* BODY */}
-
-              <div className="p-5 space-y-6">
-
-                {[
-                  "Metering",
-                  "Network",
-                  "Firmware",
-                  "General",
-                ].map(
-                  (category) => {
-
-                    const fields =
-                      CONFIG_FIELDS.filter(
-                        (field) =>
-                          field.category ===
-                          category
-                      );
-
-                    return (
-
-                      <section
-                        key={
-                          category
-                        }
-                      >
-
-                        <h3 className="text-sm font-bold mb-3">
-                          {category}
-                        </h3>
-
-                        <div className="
-                          grid
-                          grid-cols-1
-                          md:grid-cols-2
-                          gap-4
-                        ">
-
-                          {fields.map(
-                            (field) => (
-
-                              <div
-                                key={
-                                  field.key
-                                }
-                                className="
-                                  p-4
-                                  rounded-xl
-                                  bg-slate-900
-                                  border
-                                  border-slate-800
-                                "
-                              >
-
-                                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                                  {
-                                    field.label
-                                  }
-                                </label>
-
-                                <input
-                                  type={
-                                    field.type ===
-                                    "text"
-                                      ? "text"
-                                      : field.type
-                                  }
-                                  step={
-                                    field.step
-                                  }
-                                  value={
-                                    config[
-                                      field.key
-                                    ] ??
-                                    ""
-                                  }
-                                  onChange={(event) =>
-                                    updateConfig(
-                                      field.key,
-                                      event.target
-                                        .value
-                                    )
-                                  }
-                                  className="
-                                    w-full
-                                    px-3
-                                    py-2.5
-                                    rounded-lg
-                                    bg-slate-950
-                                    border
-                                    border-slate-700
-                                    text-white
-                                    text-sm
-                                    outline-none
-                                    focus:border-emerald-500
-                                  "
-                                />
-
-                                <p className="text-[10px] text-slate-600 mt-2">
-                                  {
-                                    field.description
-                                  }
-                                </p>
-
-                              </div>
-
-                            )
-                          )}
-
-                        </div>
-
-                      </section>
-
-                    );
-
+              {groupALoading ? (
+                <Box sx={{ py: 10, display: "grid", placeItems: "center" }}>
+                  <CircularProgress size={32} sx={{ color: "#2563eb" }} />
+                </Box>
+              ) : groupA.length === 0 ? (
+                <EmptyState
+                  title="No Group A devices found"
+                  subtitle="Production entries created through this console will appear here."
+                  action={
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateOpen(true)} sx={buttonPrimarySx}>
+                      Create Entry
+                    </Button>
                   }
-                )}
+                />
+              ) : (
+                <Box>
+                  <TableContainer sx={{ maxHeight: '60vh' }}>
+                    <Table stickyHeader size="medium">
+                      <TableHead>
+                        <TableRow sx={{ "& th": { bgcolor: "#f8fafc", color: "#64748b", fontWeight: 700, textTransform: "uppercase", fontSize: "0.75rem", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" } }}>
+                          <TableCell>Serial Number</TableCell>
+                          <TableCell>Hardware Rev</TableCell>
+                          <TableCell>Project</TableCell>
+                          <TableCell>PCB Batch</TableCell>
+                          <TableCell>Manufactured</TableCell>
+                          <TableCell>Notes</TableCell>
+                          <TableCell align="right">Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {groupA.map((device) => (
+                          <TableRow 
+                            key={device.serialNumber}
+                            hover 
+                            sx={{ "& td": { borderBottom: "1px solid #f1f5f9", color: "#334155" }, "&:hover": { bgcolor: "#f8fafc" } }}
+                          >
+                            <TableCell sx={{ fontWeight: 600 }}>{device.serialNumber}</TableCell>
+                            <TableCell>{device.hardwareRevision}</TableCell>
+                            <TableCell>{device.project || "—"}</TableCell>
+                            <TableCell>{device.pcbBatch || "—"}</TableCell>
+                            <TableCell>{formatDate(device.manufacturedAt)}</TableCell>
+                            <TableCell sx={{ maxWidth: 200, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {device.notes || "—"}
+                            </TableCell>
+                            <TableCell align="right">
+                              <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                                <Tooltip title="Promote to Group B">
+                                  <IconButton size="small" onClick={() => openPromote(device)} sx={{ color: "#10b981", bgcolor: "#ecfdf5", "&:hover": { bgcolor: "#d1fae5" } }}>
+                                    <ArrowForwardIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Edit">
+                                  <IconButton size="small" onClick={() => openEditA(device)} sx={{ color: "#2563eb", bgcolor: "#eff6ff", "&:hover": { bgcolor: "#dbeafe" } }}>
+                                    <EditIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Delete">
+                                  <IconButton size="small" onClick={() => deleteGroupA(device)} disabled={busySerial === device.serialNumber} sx={{ color: "#ef4444", bgcolor: "#fef2f2", "&:hover": { bgcolor: "#fee2e2" } }}>
+                                    <DeleteOutlineIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                  <TablePagination
+                    component="div"
+                    count={groupATotal}
+                    page={groupAPage}
+                    onPageChange={(e, newPage) => setGroupAPage(newPage)}
+                    rowsPerPage={PAGE_SIZE}
+                    rowsPerPageOptions={[PAGE_SIZE]}
+                    sx={{ borderTop: "1px solid #e2e8f0", bgcolor: "#f8fafc" }}
+                  />
+                </Box>
+              )}
+            </Box>
+          )}
 
+          {/* TAB 1: Live Devices */}
+          {tab === 1 && (
+            <Box>
+              <Box sx={{ p: 2.5, borderBottom: "1px solid #e2e8f0", bgcolor: "#ffffff" }}>
+                <Stack direction={{ xs: "column", md: "row" }} spacing={2} alignItems={{ xs: "stretch", md: "center" }}>
+                  <TextField
+                    size="small"
+                    placeholder="Search Live Devices..."
+                    value={liveSearch}
+                    onChange={(e) => setLiveSearch(e.target.value)}
+                    InputProps={{
+                      startAdornment: <SearchIcon sx={{ mr: 1, color: "#94a3b8" }} fontSize="small" />,
+                    }}
+                    sx={{ ...fieldSx, minWidth: { md: 320 } }}
+                  />
+                  <Box sx={{ flex: 1 }} />
+                  <Typography variant="body2" sx={{ color: "#64748b", fontWeight: 600 }}>
+                    {liveFiltered.length} Device{liveFiltered.length === 1 ? "" : "s"} found
+                  </Typography>
+                </Stack>
+              </Box>
+              
+              {liveLoading ? (
+                <Box sx={{ py: 10, display: "grid", placeItems: "center" }}>
+                  <CircularProgress size={32} sx={{ color: "#2563eb" }} />
+                </Box>
+              ) : liveFiltered.length === 0 ? (
+                <EmptyState
+                  title="No Live Devices Found"
+                  subtitle="No devices match your current search criteria."
+                />
+              ) : (
+                <TableContainer sx={{ maxHeight: '60vh' }}>
+                  <Table stickyHeader size="medium">
+                    <TableHead>
+                      <TableRow sx={{ "& th": { bgcolor: "#f8fafc", color: "#64748b", fontWeight: 700, textTransform: "uppercase", fontSize: "0.75rem", letterSpacing: "0.05em", borderBottom: "1px solid #e2e8f0" } }}>
+                        <TableCell>Device ID</TableCell>
+                        <TableCell>Serial Number</TableCell>
+                        <TableCell>Location</TableCell>
+                        <TableCell>Project</TableCell>
+                        <TableCell>Status</TableCell>
+                        <TableCell align="right">Configuration</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {liveFiltered.map((device) => (
+                        <TableRow 
+                          key={device.device_id}
+                          hover 
+                          sx={{ "& td": { borderBottom: "1px solid #f1f5f9", color: "#334155" }, "&:hover": { bgcolor: "#f8fafc" } }}
+                        >
+                          <TableCell sx={{ fontWeight: 600, color: "#2563eb" }}>{device.device_id}</TableCell>
+                          <TableCell>{device.serialNumber || "—"}</TableCell>
+                          <TableCell>
+                            {device.location || "—"}
+                            {(device.city || device.area) && (
+                              <Typography variant="caption" display="block" color="#64748b">
+                                {[device.area, device.city].filter(Boolean).join(", ")}
+                              </Typography>
+                            )}
+                          </TableCell>
+                          <TableCell>{device.project || "—"}</TableCell>
+                          <TableCell>
+                            <StatusBadge label={statusLabel(device)} statusColorType={statusColor(device.status)} />
+                          </TableCell>
+                          <TableCell align="right">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<SettingsIcon />}
+                              onClick={() => openDeviceConfig(device)}
+                              sx={{ textTransform: "none", borderRadius: 1.5, borderColor: "#cbd5e1", color: "#475569" }}
+                            >
+                              Config
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+              )}
+            </Box>
+          )}
+        </Paper>
+      </Box>
 
-                {/* ACK INFORMATION */}
+      {/* --- DIALOGS --- */}
 
-                <div className="
-                  p-4
-                  rounded-xl
-                  bg-slate-900
-                  border
-                  border-slate-800
-                ">
+      {/* 1. Create Group A Dialog */}
+      <Dialog open={createOpen} onClose={closeCreate} maxWidth="sm" fullWidth PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle sx={{ fontWeight: 800, color: "#0f172a" }}>Add to Group A</DialogTitle>
+        <Divider sx={{ borderColor: "#e2e8f0" }} />
+        <DialogContent sx={{ p: 3 }}>
+          <Stack spacing={2.5}>
+            <Field label="Serial Number" required value={createForm.serialNumber} onChange={updateForm(setCreateForm)("serialNumber")} />
+            <Field label="Hardware Revision" required value={createForm.hardwareRevision} onChange={updateForm(setCreateForm)("hardwareRevision")} />
+            <Field label="Project" value={createForm.project} onChange={updateForm(setCreateForm)("project")} />
+            <Field label="PCB Batch" value={createForm.pcbBatch} onChange={updateForm(setCreateForm)("pcbBatch")} />
+            <Field label="Manufactured Date" type="date" value={createForm.manufacturedAt} onChange={updateForm(setCreateForm)("manufacturedAt")} />
+            <Field label="Notes" value={createForm.notes} onChange={updateForm(setCreateForm)("notes")} />
+          </Stack>
+        </DialogContent>
+        <Divider sx={{ borderColor: "#e2e8f0" }} />
+        <DialogActions sx={{ p: 2, bgcolor: "#f8fafc" }}>
+          <Button onClick={closeCreate} sx={buttonSecondarySx} disabled={creating}>Cancel</Button>
+          <Button onClick={submitCreate} variant="contained" sx={buttonPrimarySx} disabled={creating}>
+            {creating ? "Adding..." : "Add Device"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-                  <h3 className="text-sm font-bold mb-3">
-                    Device ACK
-                  </h3>
+      {/* 2. Edit Group A Dialog */}
+      <Dialog open={editAOpen} onClose={() => setEditAOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle sx={{ fontWeight: 800, color: "#0f172a" }}>Edit Group A Record</DialogTitle>
+        <Divider sx={{ borderColor: "#e2e8f0" }} />
+        <DialogContent sx={{ p: 3 }}>
+          <Stack spacing={2.5}>
+            <Field label="Serial Number" disabled value={editAForm.serialNumber} />
+            <Field label="Hardware Revision" value={editAForm.hardwareRevision} onChange={updateForm(setEditAForm)("hardwareRevision")} />
+            <Field label="Project" value={editAForm.project} onChange={updateForm(setEditAForm)("project")} />
+            <Field label="PCB Batch" value={editAForm.pcbBatch} onChange={updateForm(setEditAForm)("pcbBatch")} />
+            <Field label="Manufactured Date" type="date" value={editAForm.manufacturedAt} onChange={updateForm(setEditAForm)("manufacturedAt")} />
+            <Field label="Notes" value={editAForm.notes} onChange={updateForm(setEditAForm)("notes")} />
+          </Stack>
+        </DialogContent>
+        <Divider sx={{ borderColor: "#e2e8f0" }} />
+        <DialogActions sx={{ p: 2, bgcolor: "#f8fafc" }}>
+          <Button onClick={() => setEditAOpen(false)} sx={buttonSecondarySx} disabled={savingA}>Cancel</Button>
+          <Button onClick={submitEditA} variant="contained" sx={buttonPrimarySx} disabled={savingA}>
+            {savingA ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-                  {getAckStatus(
-                    selectedDevice
-                  ) ? (
+      {/* 3. Promote Dialog (Group A -> B) */}
+      <Dialog open={promoteOpen} onClose={closePromote} maxWidth="md" fullWidth PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle sx={{ fontWeight: 800, color: "#0f172a" }}>
+          Promote to Group B
+          <Typography variant="body2" sx={{ color: "#64748b", mt: 0.5, fontWeight: 400 }}>
+            Configuring {promoteDevice?.serialNumber} for live deployment.
+          </Typography>
+        </DialogTitle>
+        <Divider sx={{ borderColor: "#e2e8f0" }} />
+        <DialogContent sx={{ p: 3 }}>
+          <Grid container spacing={2.5}>
+            <Grid item xs={12}><Typography variant="subtitle2" color="#2563eb" fontWeight={700}>Identity & Network</Typography></Grid>
+            <Grid item xs={12} sm={4}><Field label="Device ID" required value={promoteForm.deviceId} onChange={updateForm(setPromoteForm)("deviceId")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="WiFi SSID" required value={promoteForm.wifiSSID} onChange={updateForm(setPromoteForm)("wifiSSID")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="WiFi Password" required value={promoteForm.wifiPassword} onChange={updateForm(setPromoteForm)("wifiPassword")} /></Grid>
 
-                    <Badge
-                      status={
-                        getAckStatus(
-                          selectedDevice
-                        )
-                      }
-                    />
+            <Grid item xs={12}><Divider sx={{ my: 1, borderColor: "#f1f5f9" }} /></Grid>
+            <Grid item xs={12}><Typography variant="subtitle2" color="#2563eb" fontWeight={700}>Calibration & Hardware</Typography></Grid>
+            <Grid item xs={12} sm={3}><Field label="CF (Calibration)" value={promoteForm.cf} onChange={updateForm(setPromoteForm)("cf")} /></Grid>
+            <Grid item xs={12} sm={3}><Field label="VF (Voltage)" value={promoteForm.vf} onChange={updateForm(setPromoteForm)("vf")} /></Grid>
+            <Grid item xs={12} sm={3}><Field label="Current RF" value={promoteForm.currentRF} onChange={updateForm(setPromoteForm)("currentRF")} /></Grid>
+            <Grid item xs={12} sm={3}><Field label="Charger Type" value={promoteForm.charger_type} onChange={updateForm(setPromoteForm)("charger_type")} /></Grid>
+            
+            <Grid item xs={12}><Divider sx={{ my: 1, borderColor: "#f1f5f9" }} /></Grid>
+            <Grid item xs={12}><Typography variant="subtitle2" color="#2563eb" fontWeight={700}>Location & Mapping</Typography></Grid>
+            <Grid item xs={12} sm={6}><Field label="Location Name" required value={promoteForm.location} onChange={updateForm(setPromoteForm)("location")} /></Grid>
+            <Grid item xs={12} sm={3}><Field label="Latitude" required value={promoteForm.lat} onChange={updateForm(setPromoteForm)("lat")} /></Grid>
+            <Grid item xs={12} sm={3}><Field label="Longitude" required value={promoteForm.lng} onChange={updateForm(setPromoteForm)("lng")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="Area" required value={promoteForm.area} onChange={updateForm(setPromoteForm)("area")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="City" required value={promoteForm.city} onChange={updateForm(setPromoteForm)("city")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="State" required value={promoteForm.state} onChange={updateForm(setPromoteForm)("state")} /></Grid>
 
-                  ) : (
+            <Grid item xs={12}><Divider sx={{ my: 1, borderColor: "#f1f5f9" }} /></Grid>
+            <Grid item xs={12}><Typography variant="subtitle2" color="#2563eb" fontWeight={700}>Commercials</Typography></Grid>
+            <Grid item xs={12} sm={4}><Field label="Rate (₹)" required value={promoteForm.rate} onChange={updateForm(setPromoteForm)("rate")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="User Rate / KWh" value={promoteForm.userRatePerKwh} onChange={updateForm(setPromoteForm)("userRatePerKwh")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="Margin / KWh" value={promoteForm.vjraMarginPerKwh} onChange={updateForm(setPromoteForm)("vjraMarginPerKwh")} /></Grid>
+          </Grid>
+        </DialogContent>
+        <Divider sx={{ borderColor: "#e2e8f0" }} />
+        <DialogActions sx={{ p: 2, bgcolor: "#f8fafc" }}>
+          <Button onClick={closePromote} sx={buttonSecondarySx} disabled={promoting}>Cancel</Button>
+          <Button onClick={submitPromote} variant="contained" sx={buttonPrimarySx} disabled={promoting}>
+            {promoting ? "Promoting..." : "Promote to Live"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-                    <span className="text-xs text-slate-500">
-                      No configuration ACK received.
-                    </span>
+      {/* 4. Live Device Config Dialog */}
+      <Dialog open={deviceConfigOpen} onClose={() => setDeviceConfigOpen(false)} maxWidth="md" fullWidth PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle sx={{ fontWeight: 800, color: "#0f172a" }}>
+          Edit Device Configuration
+          <Typography variant="body2" sx={{ color: "#64748b", mt: 0.5, fontWeight: 400 }}>
+            {selectedLiveDevice?.device_id}
+          </Typography>
+        </DialogTitle>
+        <Divider sx={{ borderColor: "#e2e8f0" }} />
+        <DialogContent sx={{ p: 3 }}>
+          <Grid container spacing={2.5}>
+            <Grid item xs={12}><Typography variant="subtitle2" color="#2563eb" fontWeight={700}>Network Settings</Typography></Grid>
+            <Grid item xs={12} sm={6}><Field label="WiFi SSID" value={deviceConfig.wifiSSID} onChange={updateForm(setDeviceConfig)("wifiSSID")} /></Grid>
+            <Grid item xs={12} sm={6}><Field label="New WiFi Password (leave blank to keep)" type="password" value={deviceConfig.wifiPassword} onChange={updateForm(setDeviceConfig)("wifiPassword")} /></Grid>
 
-                  )}
+            <Grid item xs={12}><Divider sx={{ my: 1, borderColor: "#f1f5f9" }} /></Grid>
+            <Grid item xs={12}><Typography variant="subtitle2" color="#2563eb" fontWeight={700}>Calibration</Typography></Grid>
+            <Grid item xs={12} sm={4}><Field label="CF" value={deviceConfig.cf} onChange={updateForm(setDeviceConfig)("cf")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="VF" value={deviceConfig.vf} onChange={updateForm(setDeviceConfig)("vf")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="Current RF" value={deviceConfig.currentRF} onChange={updateForm(setDeviceConfig)("currentRF")} /></Grid>
+            
+            <Grid item xs={12}><Divider sx={{ my: 1, borderColor: "#f1f5f9" }} /></Grid>
+            <Grid item xs={12}><Typography variant="subtitle2" color="#2563eb" fontWeight={700}>Location Details</Typography></Grid>
+            <Grid item xs={12} sm={12}><Field label="Location Name" value={deviceConfig.location} onChange={updateForm(setDeviceConfig)("location")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="Area" value={deviceConfig.area} onChange={updateForm(setDeviceConfig)("area")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="City" value={deviceConfig.city} onChange={updateForm(setDeviceConfig)("city")} /></Grid>
+            <Grid item xs={12} sm={4}><Field label="State" value={deviceConfig.state} onChange={updateForm(setDeviceConfig)("state")} /></Grid>
+            <Grid item xs={12} sm={6}><Field label="Latitude" value={deviceConfig.lat} onChange={updateForm(setDeviceConfig)("lat")} /></Grid>
+            <Grid item xs={12} sm={6}><Field label="Longitude" value={deviceConfig.lng} onChange={updateForm(setDeviceConfig)("lng")} /></Grid>
 
-                  {selectedDevice
-                    ?.configAck
-                    ?.message && (
+            <Grid item xs={12}><Divider sx={{ my: 1, borderColor: "#f1f5f9" }} /></Grid>
+            <Grid item xs={12}><Typography variant="subtitle2" color="#2563eb" fontWeight={700}>System Updates</Typography></Grid>
+            <Grid item xs={12} sm={12}><Field label="Target Firmware Version" value={deviceConfig.targetFirmwareVersion} onChange={updateForm(setDeviceConfig)("targetFirmwareVersion")} helperText="Backend handles deployment automatically on update" /></Grid>
+          </Grid>
+        </DialogContent>
+        <Divider sx={{ borderColor: "#e2e8f0" }} />
+        <DialogActions sx={{ p: 2, bgcolor: "#f8fafc" }}>
+          <Button onClick={() => setDeviceConfigOpen(false)} sx={buttonSecondarySx} disabled={savingDeviceConfig}>Cancel</Button>
+          <Button onClick={saveDeviceConfig} variant="contained" sx={buttonPrimarySx} disabled={savingDeviceConfig}>
+            {savingDeviceConfig ? "Saving & Syncing..." : "Save Configuration"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-                    <div className="mt-3 text-xs text-slate-400">
-                      {
-                        selectedDevice
-                          .configAck
-                          .message
-                      }
-                    </div>
-
-                  )}
-
-                  {selectedDevice
-                    ?.configAck
-                    ?.ackedAt && (
-
-                    <div className="mt-2 text-[10px] text-slate-600">
-                      ACK received:{" "}
-                      {formatDate(
-                        selectedDevice
-                          .configAck
-                          .ackedAt
-                      )}
-                    </div>
-
-                  )}
-
-                </div>
-
-              </div>
-
-
-              {/* FOOTER */}
-
-              <div className="
-                sticky
-                bottom-0
-                p-5
-                bg-slate-950/95
-                backdrop-blur
-                border-t
-                border-slate-800
-              ">
-
-                <div className="
-                  flex
-                  flex-col
-                  sm:flex-row
-                  gap-3
-                ">
-
-                  <button
-                    onClick={
-                      saveConfiguration
-                    }
-                    disabled={
-                      savingConfig
-                    }
-                    className="
-                      flex-1
-                      px-4
-                      py-3
-                      rounded-lg
-                      bg-emerald-600
-                      hover:bg-emerald-500
-                      disabled:opacity-50
-                      font-semibold
-                      text-sm
-                    "
-                  >
-                    {savingConfig
-                      ? "Publishing..."
-                      : "Save & Publish"}
-                  </button>
-
-                  <button
-                    onClick={() =>
-                      sendAdminCommand(
-                        "reboot"
-                      )
-                    }
-                    className="
-                      px-5
-                      py-3
-                      rounded-lg
-                      bg-rose-500/10
-                      hover:bg-rose-500/20
-                      border
-                      border-rose-500/30
-                      text-rose-400
-                      font-semibold
-                      text-sm
-                    "
-                  >
-                    Reboot
-                  </button>
-
-                </div>
-
-                <p className="text-[10px] text-slate-600 text-center mt-3">
-                  Configuration is saved by the backend, published through MQTT, and confirmed through the device ACK.
-                </p>
-
-              </div>
-
-            </div>
-
-          </div>
-
-        )}
-
-    </div>
+      {/* Global Toast */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={6000}
+        onClose={() => setToast((prev) => ({ ...prev, open: false }))}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert severity={toast.severity} sx={{ borderRadius: 2, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)" }}>
+          {toast.message}
+        </Alert>
+      </Snackbar>
+    </Box>
   );
 }
