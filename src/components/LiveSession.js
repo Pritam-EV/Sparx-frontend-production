@@ -66,7 +66,6 @@ export default function LiveSessionPage() {
   const timerRef = useRef(null);
   const lastSessionIdRef = useRef(null);
   const pauseInitializedRef = useRef(false);
-  const autoStopCalledRef = useRef(false);
   const pauseEndTimeRef = useRef(null);
   const popupDismissedAtRef = useRef(null);
   const pauseTimeoutCalledRef = useRef(false);
@@ -355,43 +354,24 @@ useEffect(() => {
 
       // console.log('Response status:', res.status, res.statusText);
 
-      if (res.status === 404) {
-        const sid = lastSessionIdRef.current;
+if (res.status === 404) {
+  const sid = lastSessionIdRef.current;
 
-        if (sid && !autoStopCalledRef.current) {
-          autoStopCalledRef.current = true;
+  console.log(
+    'No active session returned by backend; not sending automatic stop request.'
+  );
 
-          // console.log('Session missing → ensuring stop API called');
+  lastSessionIdRef.current = null;
+  clearPauseEndTime();
 
-          const token = localStorage.getItem('token');
+  if (sid) {
+    navigate('/session-summary', {
+      state: { sessionId: sid },
+    });
+  }
 
-          try {
-            await fetch(
-              `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/stop`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: `Bearer ${token}`,
-                },
-                body: JSON.stringify({
-                  sessionId: sid,
-                  endTime: new Date().toISOString(),
-                  endTrigger: 'device_auto_available',           // ← better trigger label
-                  ...(energyConsumed > 0 && { deltaEnergy: energyConsumed }), // ← pass state value
-                }),
-              }
-            );
-          } catch (err) {
-            // console.log('404 stop fallback failed:', err);
-          }
-
-          lastSessionIdRef.current = null;
-          navigate('/session-summary', { state: { sessionId: sid } });
-        }
-
-        return;
-      }
+  return;
+}
 
       if (!res.ok) {
         if (res.status === 401) {
@@ -419,18 +399,6 @@ useEffect(() => {
         return;
       }
 
-      if (deviceStatus === 'available') {
-        if (!autoStopCalledRef.current) {
-          autoStopCalledRef.current = true;
-          try {
-            await stopSessionAndRedirect('device_auto_available', data.energyConsumed); // ← pass energy
-          } catch (err) {
-            console.error('[AUTO-STOP] Failed, resetting flag for retry:', err);
-            autoStopCalledRef.current = false;
-          }
-        }
-        return;
-      }
 
       setVoltage(Number(data.voltage) || 0);
       setCurrent(Number(data.current) || 0);

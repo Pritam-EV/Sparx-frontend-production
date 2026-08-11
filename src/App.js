@@ -38,6 +38,7 @@ import EBManagement  from "./features/admin/EBManagement";
 import ReceiptsOverview from "./features/admin/ReceiptsOverview.js";
 import UserActivity from './features/admin/UserActivity';
 import TransactionsOverview from "./features/admin/TransactionsOverview";
+import Production from "./features/admin/Production";
 
 import AccountantDashboard from "./features/accountant/AccountantDashboard";
 
@@ -187,6 +188,7 @@ if (showSplash) return <SplashScreen />;
           <Route path="crud/devices/edit/:id" element={<DeviceEdit />} />
           <Route path="user-activity" element={<UserActivity />} />
           <Route path="transactions" element={<TransactionsOverview />} />
+          <Route path="Production" element={<Production />} />
         </Route>
 
                 <Route

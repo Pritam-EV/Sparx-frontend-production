@@ -92,7 +92,7 @@ const dashStyles = `
   .acc-header-brand { display: flex; align-items: center; gap: 10px; }
   .acc-brand-logo {
     width: 34px; height: 34px; border-radius: 8px;
-    background: linear-gradient(135deg, #1a56db 0%, #0891b2 100%);
+    background: linear-gradient(135deg, #04bfbf 0%, #0891b2 100%);
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-weight: 800; font-size: 15px; flex-shrink: 0;
   }
@@ -583,7 +583,7 @@ const verifyOrder = async () => {
 
   useEffect(() => {
     fetchOverview();
-    liveTimer.current = setInterval(fetchOverview, 60000);
+    liveTimer.current = setInterval(fetchOverview, 6000000);
     return () => clearInterval(liveTimer.current);
 
   }, [fetchOverview]);
@@ -698,7 +698,7 @@ const verifyOrder = async () => {
       a.href    = url;
       const cd  = response.headers["content-disposition"] || "";
       const match = cd.match(/filename="?([^"]+)"?/);
-      a.download = match ? match[1] : `Sparx_CA_${period}_${Date.now()}.xlsx`;
+      a.download = match ? match[1] : `VIZ_CA_${period}_${Date.now()}.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -785,7 +785,7 @@ function ProjectFilter({ projects, value, onChange }) {
           <div className="acc-header-brand">
             <div className="acc-brand-logo">V</div>
             <div>
-              <div className="acc-brand-name">SPARX EV — VJRA Technologies</div>
+              <div className="acc-brand-name">Vjra Technologies LLP</div>
               <div className="acc-brand-sub">CA Portal — Accounts & GST Console</div>
             </div>
           </div>
@@ -816,14 +816,14 @@ function ProjectFilter({ projects, value, onChange }) {
         {/* ── Tab Bar ── */}
         <nav className="acc-tabs">
           {[
-            { key: "overview", label: "📊 Financial Overview" },
-            { key: "invoices", label: "🧾 Invoice Register" },
-            { key: "wallet",   label: "💳 Wallet Ledger" },
-            { key: "gst",      label: "📋 GST Filing" },
-            { key: "export",   label: "⬇ Export Reports" },
-            { key: "owners",  label: "🏠 Owner Settlement" },
-            { key: "refunds", label: "↩ Refunds" },
-            { key: "recon",   label: "🔗 Payment Recon" },
+            { key: "overview", label: "Financial Overview" },
+            { key: "invoices", label: "Invoice Register" },
+            { key: "wallet",   label: "Wallet Ledger" },
+            { key: "gst",      label: "GST Filing" },
+            { key: "export",   label: "Export Reports" },
+            { key: "owners",  label: "Owner Settlement" },
+            { key: "refunds", label: "Refunds" },
+            { key: "recon",   label: "Payment Recon" },
           ].map(t => (
             <button
               key={t.key}
@@ -847,7 +847,7 @@ function ProjectFilter({ projects, value, onChange }) {
                 <div>
                   <h1 className="acc-section-title">Financial Overview</h1>
                   <p className="acc-section-sub">
-                    All accounting metrics for the selected period. Live cards refresh every 60 seconds.
+                    All accounting metrics for the selected period. Live cards refresh every 60 minutes.
                   </p>
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -1696,7 +1696,6 @@ function ProjectFilter({ projects, value, onChange }) {
           {/* ══════════════════════════════════════════════════════════
               TAB 8: CASHFREE RECONCILIATION
           ══════════════════════════════════════════════════════════ */}
-══ TAB 6: PAYMENT RECON ══
 {activeTab === "recon" && (
    <PaymentRecon />
   // <>

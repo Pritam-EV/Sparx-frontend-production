@@ -247,7 +247,7 @@ function TxnDrawer({ txn, onClose }) {
               <Stack direction="row" spacing={1} alignItems="center">
                 <Box sx={{ color: rsc.color, display: "flex" }}>{rsc.icon}</Box>
                 <Typography fontSize={12} fontWeight={700} color={rsc.color}>
-                  {txn.subType === "Refund → Wallet" && "Refunded directly to user's Sparx wallet"}
+                  {txn.subType === "Refund → Wallet" && "Refunded directly to user's VIZ wallet"}
                   {txn.subType === "Refund → Bank"   && "Refunded to user's bank account via Cashfree"}
                   {txn.subType === "Admin Credit"    && "Manually credited by admin"}
                   {txn.subType === "Admin Debit"     && "Manually debited by admin"}

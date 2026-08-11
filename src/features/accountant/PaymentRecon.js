@@ -249,13 +249,13 @@ function SettlementDrillDown({ settlement, onClose }) {
             <div style={{ background: data.recon.isBalanced ? "#f0fdf4" : "#fef2f2", border: `1px solid ${data.recon.isBalanced ? "#bbf7d0" : "#fecaca"}`, borderRadius: T.radius, padding: "12px 18px", marginBottom: 18, fontSize: 13 }}>
               <strong>Recon for this batch:</strong>&nbsp;
               {data.recon.cfOrderCount} orders in Cashfree ·&nbsp;
-              {data.recon.localMatchCount} matched in Sparx DB ·&nbsp;
+              {data.recon.localMatchCount} matched in VIZ DB ·&nbsp;
               {data.recon.unmatchedCount > 0
                 ? <span style={{ color: T.error }}>{data.recon.unmatchedCount} unmatched</span>
                 : <span style={{ color: T.success }}>All matched</span>
               }
               &nbsp;· CF Total: <strong>{fmt(data.recon.cfTotalAmount)}</strong>
-              &nbsp;· Sparx Total: <strong>{fmt(data.recon.localTotalAmount)}</strong>
+              &nbsp;· VIZ Total: <strong>{fmt(data.recon.localTotalAmount)}</strong>
               {data.recon.diffAmount !== 0 && (
                 <span style={{ color: T.error }}>&nbsp;· Diff: {fmt(data.recon.diffAmount)}</span>
               )}
@@ -280,8 +280,8 @@ function SettlementDrillDown({ settlement, onClose }) {
                       <th>CF Payment ID</th>
                       <th>Order Date</th>
                       <th>CF Amount (₹)</th>
-                      <th>Sparx Invoice</th>
-                      <th>Sparx Amount (₹)</th>
+                      <th>VIZ Invoice</th>
+                      <th>VIZ Amount (₹)</th>
                       <th>Diff (₹)</th>
                       <th>Payment Mode</th>
                       <th>Entity Type</th>
@@ -419,7 +419,7 @@ export default function PaymentRecon() {
           <div>
             <h2 className="pr-section-title">Payment Recon — Cashfree Settlements</h2>
             <p className="pr-section-sub">
-              Reconcile Cashfree bank settlements against your Sparx invoice records. API version 2023-08-01.
+              Reconcile Cashfree bank settlements against your VIZ invoice records. API version 2023-08-01.
             </p>
           </div>
           <button className="pr-btn pr-btn-ghost" onClick={fetchSummary} disabled={sumLoad}>
@@ -475,13 +475,13 @@ export default function PaymentRecon() {
                 <div className="pr-kpi-sub">Total orders included in settled batches</div>
               </div>
               <div className="pr-kpi">
-                <div className="pr-kpi-cat" style={{ color: T.success }}>Sparx Records</div>
+                <div className="pr-kpi-cat" style={{ color: T.success }}>VIZ Records</div>
                 <div className="pr-kpi-label">Gross Billed (Cashfree invoices)</div>
                 <div className="pr-kpi-value" style={{ color: T.success }}>{fmt(summary.local.totalBilled)}</div>
                 <div className="pr-kpi-sub">{summary.local.cashfreeInvoices} cashfree invoices in period</div>
               </div>
               <div className="pr-kpi">
-                <div className="pr-kpi-cat" style={{ color: T.success }}>Sparx Records</div>
+                <div className="pr-kpi-cat" style={{ color: T.success }}>VIZ Records</div>
                 <div className="pr-kpi-label">Net Expected from Cashfree</div>
                 <div className="pr-kpi-value" style={{ color: T.success }}>{fmt(summary.local.netExpected)}</div>
                 <div className="pr-kpi-sub">Gross − PG charges − refunds</div>
@@ -512,7 +512,7 @@ export default function PaymentRecon() {
                   <tr>
                     <th>Item</th>
                     <th style={{ textAlign: "right" }}>Cashfree Side (₹)</th>
-                    <th style={{ textAlign: "right" }}>Sparx DB Side (₹)</th>
+                    <th style={{ textAlign: "right" }}>VIZ DB Side (₹)</th>
                     <th style={{ textAlign: "right" }}>Diff (₹)</th>
                     <th>Remarks</th>
                   </tr>

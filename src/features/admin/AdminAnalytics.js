@@ -525,7 +525,7 @@ const Analytics = () => {
                 </div>
 
                 <FRow label="Wallet Top-up (CF → Wallet)" value={fmt(f.walletTopupTotal)}
-                  tooltip="Users loaded money into Sparx wallet via Cashfree" />
+                  tooltip="Users loaded money into VIZ wallet via Cashfree" />
                 <FRow label="Direct Session Payments (CF)" value={fmt(f.directCashfreePaid)}
                   tooltip="Users paid directly via Cashfree at session start (no wallet)" />
 
@@ -570,7 +570,7 @@ const Analytics = () => {
                 <FRow label="Wallet Session Payments" value={fmt(f.walletSessionPaid)}
                   tooltip="Amount debited from wallets to pay for charging sessions" />
                 <FRow label="Wallet Refunds (Leftover → Wallet)" value={`− ${fmt(f.walletRefunds)}`}
-                  tooltip="Unused session balance credited back to user's Sparx wallet (internal — not a Cashfree refund)" indent color="#dc2626" />
+                  tooltip="Unused session balance credited back to user's VIZ wallet (internal — not a Cashfree refund)" indent color="#dc2626" />
 
                 <div className="an-divider an-divider-dashed" style={{ margin: "8px 0" }} />
 
