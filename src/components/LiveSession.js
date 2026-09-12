@@ -357,9 +357,9 @@ useEffect(() => {
 if (res.status === 404) {
   const sid = lastSessionIdRef.current;
 
-  console.log(
-    'No active session returned by backend; not sending automatic stop request.'
-  );
+  // console.log(
+  //   'No active session returned by backend; not sending automatic stop request.'
+  // );
 
   lastSessionIdRef.current = null;
   clearPauseEndTime();

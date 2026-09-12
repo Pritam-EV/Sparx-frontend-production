@@ -13,6 +13,7 @@ import ElectricBoltIcon from "@mui/icons-material/ElectricBolt";
 // Add this line alongside the other icon imports
 import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import PaymentsIcon from "@mui/icons-material/Payments";
+import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 
 const NavItem = ({ to, icon, label, onClick }) => (
   <NavLink
@@ -66,6 +67,7 @@ const AdminSidebar = ({ isOpen, onClose }) => (
       <NavItem to="devices" icon={<DevicesIcon />} label="Devices" onClick={onClose} />
       <NavItem to="/ca" icon={<PaymentsIcon />} label="Accounts" onClick={onClose} />
       <NavItem to="users" icon={<PersonIcon />} label="Users" onClick={onClose} />
+      <NavItem to="start-session" icon={<PlayCircleOutlineIcon />} label="Start Session" onClick={onClose}/>
       <NavItem to="LiveMonitoring" icon={<MonitorHeartIcon />} label="Live Monitoring" onClick={onClose} />
       <NavItem to="sessions" icon={<BarChartIcon />} label="Sessions" onClick={onClose} />
       <NavItem to="receipts" icon={<ReceiptIcon />} label="Receipts" onClick={onClose} />

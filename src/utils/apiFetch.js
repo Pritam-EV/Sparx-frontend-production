@@ -21,7 +21,20 @@ export const apiFetch = async (url, options = {}) => {
 
   // console.log("apiFetch ->", { BASE, url, finalUrl });
 
-  const res = await fetch(finalUrl, { ...options, headers });
+ const requestOptions = {
+  ...options,
+  headers,
+};
+
+if (
+  requestOptions.body &&
+  typeof requestOptions.body === "object" &&
+  !(requestOptions.body instanceof FormData)
+) {
+  requestOptions.body = JSON.stringify(requestOptions.body);
+}
+
+const res = await fetch(finalUrl, requestOptions);
   if (!res.ok) {
     const text = await res.text();
     throw new Error(text || res.statusText);

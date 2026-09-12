@@ -39,7 +39,7 @@ import ReceiptsOverview from "./features/admin/ReceiptsOverview.js";
 import UserActivity from './features/admin/UserActivity';
 import TransactionsOverview from "./features/admin/TransactionsOverview";
 import Production from "./features/admin/Production";
-
+import AdminStartSession from "./features/admin/AdminStartSession";
 import AccountantDashboard from "./features/accountant/AccountantDashboard";
 
 import OwnerDashboard from "./features/owner/OwnerDashboard";
@@ -189,6 +189,7 @@ if (showSplash) return <SplashScreen />;
           <Route path="user-activity" element={<UserActivity />} />
           <Route path="transactions" element={<TransactionsOverview />} />
           <Route path="Production" element={<Production />} />
+          <Route path="start-session" element={<AdminStartSession />} />
         </Route>
 
                 <Route
