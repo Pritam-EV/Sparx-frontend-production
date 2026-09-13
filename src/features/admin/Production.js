@@ -53,6 +53,10 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import SearchIcon from "@mui/icons-material/Search";
 import SettingsIcon from "@mui/icons-material/Settings";
 import TuneIcon from "@mui/icons-material/Tune";
+import AutoModeIcon from "@mui/icons-material/AutoMode";
+import ElectricMeterIcon from "@mui/icons-material/ElectricMeter";
+import FlashOnIcon from "@mui/icons-material/FlashOn";
+import CloseIcon from "@mui/icons-material/Close";
 
 import { api } from "../../api"; // Assumes API_BASE is handled inside api instance
 
@@ -160,6 +164,65 @@ function toNumber(value) {
   if (value === "" || value === null || value === undefined) return undefined;
   const number = Number(value);
   return Number.isFinite(number) ? number : undefined;
+}
+
+function getDeviceId(device) {
+  return normalize(
+    device?.deviceId ||
+      device?.device_id ||
+      device?.deviceid ||
+      device?.id
+  );
+}
+
+function getTelemetry(device) {
+  return (
+    device?.telemetry ||
+    device?.latestTelemetry ||
+    device?.lastTelemetry ||
+    device?.liveTelemetry ||
+    null
+  );
+}
+
+function getTelemetryValue(device, field) {
+  const telemetry = getTelemetry(device);
+  if (telemetry && telemetry[field] !== undefined) {
+    return telemetry[field];
+  }
+
+  if (device?.[field] !== undefined) {
+    return device[field];
+  }
+
+  return null;
+}
+
+function formatTelemetryValue(value, decimals = 2) {
+  if (value === null || value === undefined || value === "") {
+    return "—";
+  }
+
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return String(value);
+  }
+
+  return number.toFixed(decimals);
+}
+
+function getTelemetryTimestamp(device) {
+  const telemetry = getTelemetry(device);
+
+  return (
+    telemetry?.receivedAt ||
+    telemetry?.timestamp ||
+    telemetry?.lastSyncedAt ||
+    device?.receivedAt ||
+    device?.lastSyncedAt ||
+    device?.updatedAt ||
+    null
+  );
 }
 
 function statusColor(status) {
@@ -382,6 +445,144 @@ export default function Production() {
 
   const [busySerial, setBusySerial] = useState("");
 
+  const [autoCalibrateOpen, setAutoCalibrateOpen] = useState(false);
+const [autoCalibrateDeviceId, setAutoCalibrateDeviceId] = useState("");
+const [autoCalibrateDevice, setAutoCalibrateDevice] = useState(null);
+const [autoCalibrateLoading, setAutoCalibrateLoading] = useState(false);
+const [autoCalibrateError, setAutoCalibrateError] = useState("");
+const [autoCalibrateLastSynced, setAutoCalibrateLastSynced] = useState(null);
+const [autoCalibrateTelemetry, setAutoCalibrateTelemetry] =
+  useState(null);
+const selectedAutoCalibrateDevice = useMemo(() => {
+  if (!autoCalibrateDeviceId) {
+    return null;
+  }
+
+  return (
+    liveDevices.find(
+      (device) =>
+        getDeviceId(device) === autoCalibrateDeviceId
+    ) || null
+  );
+}, [autoCalibrateDeviceId, liveDevices]);
+
+const openAutoCalibrate = async () => {
+  setAutoCalibrateOpen(true);
+  setAutoCalibrateError("");
+  setAutoCalibrateLastSynced(null);
+
+  if (!liveDevices.length) {
+    await fetchLiveDevices();
+  }
+};
+
+const closeAutoCalibrate = () => {
+  setAutoCalibrateOpen(false);
+  setAutoCalibrateDeviceId("");
+  setAutoCalibrateDevice(null);
+  setAutoCalibrateTelemetry(null);
+  setAutoCalibrateError("");
+  setAutoCalibrateLastSynced(null);
+};
+
+const deviceForDisplay =
+  autoCalibrateDevice ||
+  selectedAutoCalibrateDevice ||
+  {};
+
+const refreshAutoCalibrateTelemetry = useCallback(
+  async () => {
+    if (
+      !autoCalibrateOpen ||
+      !autoCalibrateDeviceId
+    ) {
+      return;
+    }
+
+    const normalizedDeviceId = normalize(
+      autoCalibrateDeviceId
+    ).toUpperCase();
+
+    if (!normalizedDeviceId) {
+      return;
+    }
+
+    setAutoCalibrateLoading(true);
+
+    try {
+      const selectedDevice =
+        liveDevices.find(
+          (device) =>
+            getDeviceId(device) ===
+            normalizedDeviceId
+        ) || null;
+
+      setAutoCalibrateDevice(selectedDevice);
+
+      const response = await api.get(
+        `/api/devices/admin/telemetry/${encodeURIComponent(
+          normalizedDeviceId
+        )}`
+      );
+
+      const telemetry = response?.data || {};
+
+      setAutoCalibrateTelemetry({
+        voltage: telemetry.voltage ?? null,
+        current: telemetry.current ?? null,
+        timestamp: telemetry.timestamp ?? null,
+      });
+
+      setAutoCalibrateLastSynced(
+        new Date().toISOString()
+      );
+
+      setAutoCalibrateError("");
+    } catch (error) {
+      setAutoCalibrateTelemetry(null);
+
+      const status = error?.response?.status;
+
+      if (status === 404) {
+        setAutoCalibrateError(
+          "No telemetry has been received for this device yet."
+        );
+      } else {
+        setAutoCalibrateError(
+          getErrorMessage(error)
+        );
+      }
+    } finally {
+      setAutoCalibrateLoading(false);
+    }
+  },
+  [
+    autoCalibrateDeviceId,
+    autoCalibrateOpen,
+    liveDevices,
+  ]
+);
+
+useEffect(() => {
+  if (!autoCalibrateOpen || !autoCalibrateDeviceId) {
+    return undefined;
+  }
+
+  refreshAutoCalibrateTelemetry();
+
+  const interval = window.setInterval(() => {
+    refreshAutoCalibrateTelemetry();
+  }, 20 * 1000);
+
+  return () => {
+    window.clearInterval(interval);
+  };
+}, [
+  autoCalibrateOpen,
+  autoCalibrateDeviceId,
+  refreshAutoCalibrateTelemetry,
+]);
+
   const [toast, setToast] = useState({
     open: false,
     severity: "success",
@@ -486,6 +687,7 @@ export default function Production() {
       return haystack.includes(query);
     });
   }, [liveDevices, liveSearch, liveStatus]);
+
 
   const stats = useMemo(() => {
     const live = liveDevices.length;
@@ -864,6 +1066,14 @@ export default function Production() {
           </Box>
 
           <Stack direction="row" spacing={1.5}>
+            <Button
+              variant="outlined"
+              startIcon={<AutoModeIcon />}
+              onClick={openAutoCalibrate}
+              sx={buttonSecondarySx}
+            >
+              Auto Calibrate
+            </Button>
             <Button
               variant="outlined"
               startIcon={<RefreshIcon />}
@@ -1312,6 +1522,457 @@ export default function Production() {
           </Button>
         </DialogActions>
       </Dialog>
+
+<Dialog
+  open={autoCalibrateOpen}
+  onClose={closeAutoCalibrate}
+  fullWidth
+  maxWidth="md"
+  fullScreen={false}
+  PaperProps={{
+    sx: {
+      ...dialogPaperSx,
+      m: { xs: 0, sm: 2 },
+      width: { xs: "100%", sm: "calc(100% - 32px)" },
+      maxHeight: { xs: "100%", sm: "calc(100% - 32px)" },
+    },
+  }}
+>
+  <DialogTitle
+    sx={{
+      fontWeight: 800,
+      color: "#0f172a",
+      display: "flex",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: 2,
+    }}
+  >
+    <Box>
+      <Stack direction="row" spacing={1} alignItems="center">
+        <AutoModeIcon sx={{ color: "#2563eb" }} />
+        <Typography variant="h6" sx={{ fontWeight: 800 }}>
+          Auto Calibrate
+        </Typography>
+      </Stack>
+
+      <Typography
+        variant="body2"
+        sx={{ color: "#64748b", mt: 0.75 }}
+      >
+        Select a device and monitor its live electrical readings before calibration.
+      </Typography>
+    </Box>
+
+    <IconButton onClick={closeAutoCalibrate} size="small">
+      <CloseIcon />
+    </IconButton>
+  </DialogTitle>
+
+  <Divider />
+
+  <DialogContent sx={{ p: { xs: 2, sm: 3 } }}>
+    <Stack spacing={2.5}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: { xs: 1.5, sm: 2 },
+          border: "1px solid #e2e8f0",
+          borderRadius: 2.5,
+          bgcolor: "#f8fafc",
+        }}
+      >
+        <Typography
+          variant="subtitle2"
+          sx={{ color: "#2563eb", fontWeight: 800, mb: 1.5 }}
+        >
+          Select Device
+        </Typography>
+
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={1.5}
+        >
+          <TextField
+            select
+            fullWidth
+            size="small"
+            label="Device"
+            value={autoCalibrateDeviceId}
+onChange={(event) => {
+  setAutoCalibrateDeviceId(event.target.value);
+  setAutoCalibrateDevice(null);
+  setAutoCalibrateTelemetry(null);
+  setAutoCalibrateLastSynced(null);
+  setAutoCalibrateError("");
+}}
+            SelectProps={{ native: true }}
+            sx={fieldSx}
+          >
+            <option value="">Select a device</option>
+
+            {liveDevices.map((device) => {
+              const deviceId = getDeviceId(device);
+
+              return (
+                <option key={deviceId} value={deviceId}>
+                  {deviceId}
+                  {device.serialNumber
+                    ? ` — ${device.serialNumber}`
+                    : ""}
+                </option>
+              );
+            })}
+          </TextField>
+
+          <TextField
+            fullWidth
+            size="small"
+            label="Or enter Device ID"
+            value={autoCalibrateDeviceId}
+onChange={(event) => {
+  setAutoCalibrateDeviceId(
+    event.target.value.toUpperCase()
+  );
+  setAutoCalibrateDevice(null);
+  setAutoCalibrateTelemetry(null);
+  setAutoCalibrateLastSynced(null);
+  setAutoCalibrateError("");
+}}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                refreshAutoCalibrateTelemetry();
+              }
+            }}
+            sx={fieldSx}
+          />
+
+          <Button
+            variant="contained"
+            onClick={refreshAutoCalibrateTelemetry}
+            disabled={
+              autoCalibrateLoading ||
+              !normalize(autoCalibrateDeviceId)
+            }
+            sx={{
+              ...buttonPrimarySx,
+              minWidth: { xs: "100%", sm: 110 },
+            }}
+          >
+            {autoCalibrateLoading ? (
+              <CircularProgress size={20} sx={{ color: "#fff" }} />
+            ) : (
+              "Load"
+            )}
+          </Button>
+        </Stack>
+      </Paper>
+
+      {autoCalibrateError ? (
+        <Alert severity="error">
+          {autoCalibrateError}
+        </Alert>
+      ) : null}
+
+      {autoCalibrateDeviceId ? (
+        <>
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 1.5, sm: 2 },
+              border: "1px solid #e2e8f0",
+              borderRadius: 2.5,
+              bgcolor: "#fff",
+            }}
+          >
+            <Typography
+              variant="subtitle2"
+              sx={{ color: "#2563eb", fontWeight: 800, mb: 1.5 }}
+            >
+              Saved Device Configuration
+            </Typography>
+
+            <Grid container spacing={1.5}>
+              {[
+                ["Device ID", getDeviceId(deviceForDisplay)],
+                [
+                  "Serial Number",
+                 deviceForDisplay?.serialNumber,
+                ],
+                ["Location", deviceForDisplay?.location],
+                ["Latitude", deviceForDisplay?.lat],
+                ["Longitude", deviceForDisplay?.lng],
+                ["Rate", deviceForDisplay?.rate],
+                ["CF", deviceForDisplay?.cf],
+                ["VF", deviceForDisplay?.vf],
+                [
+                  "Current RF",
+                  deviceForDisplay?.currentRF,
+                ],
+                ["Area", deviceForDisplay?.area],
+                ["City", deviceForDisplay?.city],
+                ["State", deviceForDisplay?.state],
+                [
+                  "Charger Type",
+                  deviceForDisplay?.charger_type ||
+                    deviceForDisplay?.chargerType,
+                ],
+                [
+                  "Meter Type",
+                  deviceForDisplay?.meterType,
+                ],
+                [
+                  "Firmware",
+                  deviceForDisplay?.targetFirmwareVersion,
+                ],
+              ].map(([label, value]) => (
+                <Grid item xs={12} sm={6} md={4} key={label}>
+                  <Box
+                    sx={{
+                      p: 1.25,
+                      borderRadius: 1.5,
+                      bgcolor: "#f8fafc",
+                      border: "1px solid #f1f5f9",
+                    }}
+                  >
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: "block",
+                        color: "#64748b",
+                        fontWeight: 700,
+                      }}
+                    >
+                      {label}
+                    </Typography>
+
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        mt: 0.5,
+                        color: "#0f172a",
+                        fontWeight: 700,
+                        wordBreak: "break-word",
+                      }}
+                    >
+                      {normalize(value) || "—"}
+                    </Typography>
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+          </Paper>
+
+<Paper
+  elevation={0}
+  sx={{
+    p: { xs: 1.5, sm: 2 },
+    border: "1px solid #bfdbfe",
+    borderRadius: 2.5,
+    bgcolor: "#eff6ff",
+  }}
+>
+  <Stack
+    direction={{ xs: "column", sm: "row" }}
+    alignItems={{ xs: "flex-start", sm: "center" }}
+    justifyContent="space-between"
+    spacing={1}
+    sx={{ mb: 1.5 }}
+  >
+    <Stack direction="row" spacing={1} alignItems="center">
+      <ElectricMeterIcon sx={{ color: "#2563eb" }} />
+
+      <Typography
+        variant="subtitle2"
+        sx={{
+          color: "#1e3a8a",
+          fontWeight: 800,
+        }}
+      >
+        Live Device Telemetry
+      </Typography>
+    </Stack>
+
+    <Chip
+      size="small"
+      label={
+        autoCalibrateTelemetry
+          ? "Data received"
+          : "Waiting"
+      }
+      color={
+        autoCalibrateTelemetry
+          ? "success"
+          : "default"
+      }
+    />
+  </Stack>
+
+  <Grid container spacing={1.5}>
+    <Grid item xs={12} sm={6}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          textAlign: "center",
+          borderRadius: 2,
+          bgcolor: "#fff",
+        }}
+      >
+        <FlashOnIcon sx={{ color: "#f59e0b" }} />
+
+        <Typography
+          variant="caption"
+          sx={{
+            display: "block",
+            color: "#64748b",
+            fontWeight: 700,
+          }}
+        >
+          Voltage
+        </Typography>
+
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 800,
+            color: "#0f172a",
+          }}
+        >
+          {formatTelemetryValue(
+            autoCalibrateTelemetry?.voltage,
+            2
+          )}
+
+          <Typography
+            component="span"
+            variant="body2"
+            sx={{
+              ml: 0.5,
+              color: "#64748b",
+            }}
+          >
+            V
+          </Typography>
+        </Typography>
+      </Paper>
+    </Grid>
+
+    <Grid item xs={12} sm={6}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2,
+          textAlign: "center",
+          borderRadius: 2,
+          bgcolor: "#fff",
+        }}
+      >
+        <ElectricMeterIcon sx={{ color: "#10b981" }} />
+
+        <Typography
+          variant="caption"
+          sx={{
+            display: "block",
+            color: "#64748b",
+            fontWeight: 700,
+          }}
+        >
+          Current
+        </Typography>
+
+        <Typography
+          variant="h4"
+          sx={{
+            fontWeight: 800,
+            color: "#0f172a",
+          }}
+        >
+          {formatTelemetryValue(
+            autoCalibrateTelemetry?.current,
+            3
+          )}
+
+          <Typography
+            component="span"
+            variant="body2"
+            sx={{
+              ml: 0.5,
+              color: "#64748b",
+            }}
+          >
+            A
+          </Typography>
+        </Typography>
+      </Paper>
+    </Grid>
+  </Grid>
+
+  <Divider sx={{ my: 2 }} />
+
+  <Typography
+    variant="caption"
+    sx={{
+      display: "block",
+      color: "#64748b",
+    }}
+  >
+    Last frontend sync:{" "}
+    {formatDate(autoCalibrateLastSynced)}
+  </Typography>
+
+  <Typography
+    variant="caption"
+    sx={{
+      display: "block",
+      color: "#64748b",
+      mt: 0.5,
+    }}
+  >
+    Device telemetry timestamp:{" "}
+    {formatDate(autoCalibrateTelemetry?.timestamp)}
+  </Typography>
+  
+</Paper>
+        </>
+      ) : (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 4,
+            textAlign: "center",
+            border: "1px dashed #cbd5e1",
+            borderRadius: 2.5,
+            bgcolor: "#f8fafc",
+          }}
+        >
+          <Typography
+            variant="body1"
+            sx={{ color: "#475569", fontWeight: 600 }}
+          >
+            Select a device to load saved configuration and live readings.
+          </Typography>
+        </Paper>
+      )}
+    </Stack>
+  </DialogContent>
+
+  <Divider />
+
+  <DialogActions
+    sx={{
+      p: { xs: 1.5, sm: 2 },
+      bgcolor: "#f8fafc",
+    }}
+  >
+    <Button
+      onClick={closeAutoCalibrate}
+      sx={buttonSecondarySx}
+    >
+      Close
+    </Button>
+  </DialogActions>
+</Dialog>
 
       {/* Global Toast */}
       <Snackbar
