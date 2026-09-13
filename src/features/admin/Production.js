@@ -166,6 +166,46 @@ function toNumber(value) {
   return Number.isFinite(number) ? number : undefined;
 }
 
+function calculateCalibrationPreview({
+  currentCf,
+  currentVf,
+  liveVoltage,
+  liveCurrent,
+  referenceVoltage,
+  referenceCurrent,
+}) {
+  const cf = Number(currentCf);
+  const vf = Number(currentVf);
+  const deviceVoltage = Number(liveVoltage);
+  const deviceCurrent = Number(liveCurrent);
+  const actualVoltage = Number(referenceVoltage);
+  const actualCurrent = Number(referenceCurrent);
+
+  const values = [
+    cf,
+    vf,
+    deviceVoltage,
+    deviceCurrent,
+    actualVoltage,
+    actualCurrent,
+  ];
+
+  if (
+    values.some(
+      (value) =>
+        !Number.isFinite(value) ||
+        value <= 0
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    newCf: cf * (actualCurrent / deviceCurrent),
+    newVf: vf * (actualVoltage / deviceVoltage),
+  };
+}
+
 function getDeviceId(device) {
   return normalize(
     device?.deviceId ||
@@ -490,6 +530,167 @@ const deviceForDisplay =
   selectedAutoCalibrateDevice ||
   {};
 
+  const submitCalibration = async () => {
+  if (!autoCalibrateDeviceId) {
+    setAutoCalibrateError(
+      "Select a device before calibrating."
+    );
+    return;
+  }
+
+  const referenceVoltage = toNumber(
+    calibrationForm.referenceVoltage
+  );
+
+  const referenceCurrent = toNumber(
+    calibrationForm.referenceCurrent
+  );
+
+  const liveVoltage = toNumber(
+    autoCalibrateTelemetry?.voltage
+  );
+
+  const liveCurrent = toNumber(
+    autoCalibrateTelemetry?.current
+  );
+
+  const currentCf = toNumber(
+    deviceForDisplay?.cf
+  );
+
+  const currentVf = toNumber(
+    deviceForDisplay?.vf
+  );
+
+  const expectedNvsVersion = toNumber(
+    deviceForDisplay?.nvsVersion
+  );
+
+  if (
+    referenceVoltage === undefined ||
+    referenceVoltage <= 0
+  ) {
+    setAutoCalibrateError(
+      "Enter a valid reference voltage."
+    );
+    return;
+  }
+
+  if (
+    referenceCurrent === undefined ||
+    referenceCurrent <= 0
+  ) {
+    setAutoCalibrateError(
+      "Enter a valid reference current."
+    );
+    return;
+  }
+
+  if (
+    liveVoltage === undefined ||
+    liveVoltage <= 0 ||
+    liveCurrent === undefined ||
+    liveCurrent <= 0
+  ) {
+    setAutoCalibrateError(
+      "Valid live voltage and current are required."
+    );
+    return;
+  }
+
+  if (
+    currentCf === undefined ||
+    currentCf <= 0 ||
+    currentVf === undefined ||
+    currentVf <= 0
+  ) {
+    setAutoCalibrateError(
+      "Current CF and VF are missing from device configuration."
+    );
+    return;
+  }
+
+  if (expectedNvsVersion === undefined) {
+    setAutoCalibrateError(
+      "Device configuration version is missing. Reload the device."
+    );
+    return;
+  }
+
+  if (!calibrationPreview) {
+    setAutoCalibrateError(
+      "Calibration preview is not available."
+    );
+    return;
+  }
+
+  const confirmed = window.confirm(
+    [
+      `Calibrate device ${autoCalibrateDeviceId}?`,
+      "",
+      `Current CF: ${currentCf}`,
+      `New CF: ${calibrationPreview.newCf.toFixed(6)}`,
+      "",
+      `Current VF: ${currentVf}`,
+      `New VF: ${calibrationPreview.newVf.toFixed(6)}`,
+      "",
+      `NVS version: ${expectedNvsVersion} → ${
+        expectedNvsVersion + 1
+      }`,
+    ].join("\n")
+  );
+
+  if (!confirmed) {
+    return;
+  }
+
+  setCalibrationSubmitting(true);
+  setAutoCalibrateError("");
+  setCalibrationSuccess(null);
+
+  try {
+    const response = await api.post(
+      `/api/devices/admin/calibration/${encodeURIComponent(
+        autoCalibrateDeviceId
+      )}`,
+      {
+        referenceVoltage,
+        referenceCurrent,
+        liveVoltage,
+        liveCurrent,
+        expectedNvsVersion,
+      }
+    );
+
+    const result =
+      response?.data?.calibration ||
+      response?.data;
+
+    setCalibrationSuccess(result);
+
+    setCalibrationForm({
+      referenceVoltage: "",
+      referenceCurrent: "",
+    });
+
+    setCalibrationPreview(null);
+  } catch (error) {
+    const status = error?.response?.status;
+
+    if (status === 409) {
+      setAutoCalibrateError(
+        "Device configuration or telemetry changed. Reload the device and try again."
+      );
+    } else {
+      setAutoCalibrateError(
+        getErrorMessage(error)
+      );
+    }
+  } finally {
+    setCalibrationSubmitting(false);
+  }
+};
+
 const refreshAutoCalibrateTelemetry = useCallback(
   async () => {
     if (
@@ -562,6 +763,55 @@ const refreshAutoCalibrateTelemetry = useCallback(
     liveDevices,
   ]
 );
+
+const [calibrationForm, setCalibrationForm] = useState({
+  referenceVoltage: "",
+  referenceCurrent: "",
+});
+
+const [calibrationPreview, setCalibrationPreview] =
+  useState(null);
+
+const [calibrationSubmitting, setCalibrationSubmitting] =
+  useState(false);
+
+const [calibrationSuccess, setCalibrationSuccess] =
+  useState(null);
+
+  const updateCalibrationField = (field) => (event) => {
+  const value = event.target.value;
+
+  setCalibrationForm((previous) => ({
+    ...previous,
+    [field]: value,
+  }));
+};
+
+useEffect(() => {
+  if (!autoCalibrateTelemetry) {
+    setCalibrationPreview(null);
+    return;
+  }
+
+  const preview = calculateCalibrationPreview({
+    currentCf: deviceForDisplay?.cf,
+    currentVf: deviceForDisplay?.vf,
+    liveVoltage: autoCalibrateTelemetry.voltage,
+    liveCurrent: autoCalibrateTelemetry.current,
+    referenceVoltage:
+      calibrationForm.referenceVoltage,
+    referenceCurrent:
+      calibrationForm.referenceCurrent,
+  });
+
+  setCalibrationPreview(preview);
+}, [
+  autoCalibrateTelemetry,
+  calibrationForm.referenceVoltage,
+  calibrationForm.referenceCurrent,
+  deviceForDisplay?.cf,
+  deviceForDisplay?.vf,
+]);
 
 useEffect(() => {
   if (!autoCalibrateOpen || !autoCalibrateDeviceId) {
@@ -1905,6 +2155,238 @@ onChange={(event) => {
           </Typography>
         </Typography>
       </Paper>
+
+      <Paper
+  elevation={0}
+  sx={{
+    p: { xs: 1.5, sm: 2 },
+    border: "1px solid #e2e8f0",
+    borderRadius: 2.5,
+    bgcolor: "#fff",
+  }}
+>
+  <Typography
+    variant="subtitle2"
+    sx={{
+      color: "#2563eb",
+      fontWeight: 800,
+      mb: 1.5,
+    }}
+  >
+    Reference Meter Values
+  </Typography>
+
+  <Typography
+    variant="body2"
+    sx={{
+      color: "#64748b",
+      mb: 2,
+    }}
+  >
+    Enter the values measured using the calibrated reference meter.
+  </Typography>
+
+  <Grid container spacing={1.5}>
+    <Grid item xs={12} sm={6}>
+      <TextField
+        fullWidth
+        size="small"
+        type="number"
+        label="Reference Voltage"
+        value={calibrationForm.referenceVoltage}
+        onChange={updateCalibrationField(
+          "referenceVoltage"
+        )}
+        inputProps={{
+          min: 0,
+          step: "any",
+        }}
+        InputProps={{
+          endAdornment: (
+            <Typography
+              variant="body2"
+              sx={{ color: "#64748b" }}
+            >
+              V
+            </Typography>
+          ),
+        }}
+        sx={fieldSx}
+      />
+    </Grid>
+
+    <Grid item xs={12} sm={6}>
+      <TextField
+        fullWidth
+        size="small"
+        type="number"
+        label="Reference Current"
+        value={calibrationForm.referenceCurrent}
+        onChange={updateCalibrationField(
+          "referenceCurrent"
+        )}
+        inputProps={{
+          min: 0,
+          step: "any",
+        }}
+        InputProps={{
+          endAdornment: (
+            <Typography
+              variant="body2"
+              sx={{ color: "#64748b" }}
+            >
+              A
+            </Typography>
+          ),
+        }}
+        sx={fieldSx}
+      />
+    </Grid>
+  </Grid>
+</Paper>
+
+<Paper
+  elevation={0}
+  sx={{
+    p: { xs: 1.5, sm: 2 },
+    border: "1px solid #bbf7d0",
+    borderRadius: 2.5,
+    bgcolor: "#f0fdf4",
+  }}
+>
+  <Typography
+    variant="subtitle2"
+    sx={{
+      color: "#166534",
+      fontWeight: 800,
+      mb: 1.5,
+    }}
+  >
+    Calibration Preview
+  </Typography>
+
+  {calibrationPreview ? (
+    <Grid container spacing={1.5}>
+      <Grid item xs={12} sm={6}>
+        <Box
+          sx={{
+            p: 1.5,
+            bgcolor: "#fff",
+            borderRadius: 2,
+            border: "1px solid #dcfce7",
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              display: "block",
+              color: "#64748b",
+              fontWeight: 700,
+            }}
+          >
+            New CF
+          </Typography>
+
+          <Typography
+            variant="h5"
+            sx={{
+              color: "#166534",
+              fontWeight: 800,
+            }}
+          >
+            {calibrationPreview.newCf.toFixed(6)}
+          </Typography>
+
+          <Typography
+            variant="caption"
+            sx={{ color: "#64748b" }}
+          >
+            Current: {deviceForDisplay?.cf ?? "—"}
+          </Typography>
+        </Box>
+      </Grid>
+
+      <Grid item xs={12} sm={6}>
+        <Box
+          sx={{
+            p: 1.5,
+            bgcolor: "#fff",
+            borderRadius: 2,
+            border: "1px solid #dcfce7",
+          }}
+        >
+          <Typography
+            variant="caption"
+            sx={{
+              display: "block",
+              color: "#64748b",
+              fontWeight: 700,
+            }}
+          >
+            New VF
+          </Typography>
+
+          <Typography
+            variant="h5"
+            sx={{
+              color: "#166534",
+              fontWeight: 800,
+            }}
+          >
+            {calibrationPreview.newVf.toFixed(6)}
+          </Typography>
+
+          <Typography
+            variant="caption"
+            sx={{ color: "#64748b" }}
+          >
+            Current: {deviceForDisplay?.vf ?? "—"}
+          </Typography>
+        </Box>
+      </Grid>
+    </Grid>
+  ) : (
+    <Typography
+      variant="body2"
+      sx={{ color: "#64748b" }}
+    >
+      Enter reference voltage and current to calculate new CF and VF.
+    </Typography>
+  )}
+</Paper>
+
+<Button
+  variant="contained"
+  onClick={submitCalibration}
+  disabled={
+    calibrationSubmitting ||
+    !calibrationPreview ||
+    !autoCalibrateTelemetry ||
+    !deviceForDisplay
+  }
+  sx={{
+    ...buttonPrimarySx,
+    bgcolor: "#16a34a",
+    "&:hover": {
+      bgcolor: "#15803d",
+    },
+  }}
+>
+  {calibrationSubmitting
+    ? "Publishing..."
+    : "Calibrate"}
+</Button>
+
+{calibrationSuccess ? (
+  <Alert severity="success">
+    Calibration published successfully.
+
+    {calibrationSuccess.nvsVersion !== undefined
+      ? ` NVS version: ${calibrationSuccess.nvsVersion}.`
+      : ""}
+  </Alert>
+) : null}
+
     </Grid>
   </Grid>
 
