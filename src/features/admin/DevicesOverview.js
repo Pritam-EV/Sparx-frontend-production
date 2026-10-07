@@ -1,42 +1,50 @@
 // src/features/admin/DevicesOverview.js
 /**
- * Admin Devices Dashboard (full replacement)
+ * Admin Devices Dashboard - Tabular Format (Full Replacement)
  *
- * - Expects GET /api/devices/admin-dashboard to return { devices: [...], summary: {...} }
- * - Supports inline update of commercial fields via PUT /api/devices/:id
- * - Uses MUI (v5) components. Keep your existing apiFetch util.
- *
- * Paste/replace this file and restart your frontend.
+ * - Uses new endpoints: 
+ *   GET /api/admin/devices/summary
+ *   GET /api/admin/devices/table
+ *   GET /api/admin/devices/:id
+ *   GET /api/admin/devices/filters/options
+ * - Responsive table design for laptop, tablet, mobile
+ * - Slide-out detail panel
+ * - Material UI v5
  */
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   Box,
   Typography,
   Grid,
-  Card,
-  CardContent,
-  Stack,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TablePagination,
+  Chip,
   IconButton,
-  Tooltip,
-  Divider,
   TextField,
   Select,
   MenuItem,
   InputLabel,
   FormControl,
   Drawer,
+  Divider,
+  Button,
+  Stack,
+  Skeleton,
+  Alert,
+  Tooltip,
+  useTheme,
+  useMediaQuery,
+  Avatar,
   Tabs,
   Tab,
-  Avatar,
-  Button,
-  Chip,
-  LinearProgress,
-  useTheme,
-  Skeleton,
-  Paper,
-  Slider,
-  Dialog,
+    Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
@@ -48,87 +56,90 @@ import OfflineBoltIcon from "@mui/icons-material/OfflineBolt";
 import InfoIcon from "@mui/icons-material/Info";
 import RoomIcon from "@mui/icons-material/Room";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import EditIcon from "@mui/icons-material/Edit";
-import SaveIcon from "@mui/icons-material/Save";
 import CloseIcon from "@mui/icons-material/Close";
 import { apiFetch } from "../../utils/apiFetch";
 
 /* ---------------------------
-   Tiny UX helpers & constants
+   Constants & Helpers
    --------------------------- */
-const STALE_MS = 30_000; // threshold for "stale" - tune as you like
-const KPI_CARD_STYLE = {
-  borderRadius: 2,
-  px: 2,
-  py: 1.25,
-  minHeight: 88,
-  boxShadow: "0 6px 20px rgba(12, 18, 28, 0.06)",
-};
-
 const formatKwh = (n) => (typeof n === "number" ? `${n.toFixed(2)} kWh` : "-");
 const formatRate = (n) => (typeof n === "number" ? `₹ ${n.toFixed(2)}/kWh` : "-");
+const formatVoltage = (v) => (typeof v === "number" ? `${v.toFixed(1)} V` : "-");
+const formatCurrent = (c) => (typeof c === "number" ? `${c.toFixed(1)} A` : "-");
+const formatPower = (v, c) => {
+  if (typeof v === "number" && typeof c === "number") {
+    return `${((v * c) / 1000).toFixed(2)} kW`;
+  }
+  return "-";
+};
+
 const timeAgo = (v) => {
   const d = v ? new Date(v) : null;
   if (!d || isNaN(d.getTime())) return "-";
   const sec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
-  if (sec < 60) return `${sec}s`;
+  if (sec < 60) return `${sec}s ago`;
   const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m`;
+  if (min < 60) return `${min}m ago`;
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h`;
+  if (hr < 24) return `${hr}h ago`;
   const day = Math.floor(hr / 24);
-  return `${day}d`;
+  return `${day}d ago`;
 };
 
-/* ---------------------------
-   Small presentational components
-   --------------------------- */
-function StatusPill({ status }) {
+const getStatusColor = (status) => {
   const s = (status || "").toLowerCase();
   const map = {
-    online: { label: "ONLINE", color: "#16a34a" },
-    Available: { label: "AVAILABLE", color: "#06b6d4" },
-    Occupied: { label: "CHARGING", color: "#f59e0b" },
-    busy: { label: "CHARGING", color: "#f59e0b" },
-    offline: { label: "OFFLINE", color: "#6b7280" },
-    maintenance: { label: "MAINT", color: "#7c3aed" },
-    faulty: { label: "FAULT", color: "#dc2626" },
+    available: { bg: "#dcfce7", text: "#166534", label: "Available" },
+    online: { bg: "#dcfce7", text: "#166534", label: "Online" },
+    occupied: { bg: "#fef3c7", text: "#92400e", label: "Charging" },
+    busy: { bg: "#fef3c7", text: "#92400e", label: "Busy" },
+    offline: { bg: "#f3f4f6", text: "#374151", label: "Offline" },
+    faulty: { bg: "#fee2e2", text: "#991b1b", label: "Faulty" },
+    maintenance: { bg: "#ede9fe", text: "#5b21b6", label: "Maintenance" },
   };
-  const cfg = map[s] || { label: status || "UNKNOWN", color: "#374151" };
-  return (
-    <Chip
-      label={cfg.label}
-      size="small"
-      sx={{
-        bgcolor: cfg.color,
-        color: "#fff",
-        fontWeight: 800,
-        borderRadius: 1,
-        px: 1,
-      }}
-    />
-  );
-}
+  return map[s] || { bg: "#f3f4f6", text: "#374151", label: status || "Unknown" };
+};
 
-function KPI({ label, value, sub, icon, accent }) {
+const KPI_CARD_STYLE = {
+  borderRadius: 2,
+  px: 2,
+  py: 1.5,
+  minHeight: 90,
+  boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
+  transition: "transform 150ms ease, box-shadow 150ms ease",
+  "&:hover": {
+    transform: "translateY(-2px)",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+  },
+};
+
+
+/* ---------------------------
+   KPI Card Component
+   --------------------------- */
+function KPI({ label, value, sub, icon, accent, loading }) {
   return (
     <Paper sx={{ ...KPI_CARD_STYLE }}>
       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
         <Box>
-          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 800 }}>
+          <Typography variant="caption" sx={{ color: "text.secondary", fontWeight: 700, textTransform: "uppercase" }}>
             {label}
           </Typography>
-          <Typography variant="h5" sx={{ fontWeight: 900, mt: 0.5 }}>
-            {value}
-          </Typography>
+          {loading ? (
+            <Skeleton width={80} height={32} sx={{ mt: 0.5 }} />
+          ) : (
+            <Typography variant="h5" sx={{ fontWeight: 800, mt: 0.5 }}>
+              {value}
+            </Typography>
+          )}
           {sub && (
-            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.25 }}>
               {sub}
             </Typography>
           )}
         </Box>
         {icon ? (
-          <Avatar variant="rounded" sx={{ bgcolor: accent || "#0ea5b6", width: 56, height: 56 }}>
+          <Avatar variant="rounded" sx={{ bgcolor: accent || "#0ea5e9", width: 52, height: 52 }}>
             {icon}
           </Avatar>
         ) : null}
@@ -138,696 +149,1140 @@ function KPI({ label, value, sub, icon, accent }) {
 }
 
 /* ---------------------------
-   Device card — rich visual
+   Status Chip Component
    --------------------------- */
-function DeviceCard({ device, onOpen }) {
-  const status = (device.status || "").toLowerCase();
-
-const statusColors = {
-  available: "#ecfeff",
-  online: "#ecfeff",
-  occupied: "#fff7ed",
-  busy: "#fff7ed",
-  offline: "#f3f4f6",
-  faulty: "#fef2f2",
-  maintenance: "#f5f3ff",
-};
-
-const cardBg = statusColors[status] || "#ffffff";
-  const stale = device.isStale;
-  const relayWarning = device.relayOnWithoutSession;
-  const customPrice = !!device.commercial?.userRatePerKwh;
+function StatusChip({ status }) {
+  const cfg = getStatusColor(status);
   return (
-    <Card
-      elevation={3}
-sx={{
-  borderRadius: 2.5,
-  overflow: "hidden",
-  height: "100%",
-  display: "flex",
-  flexDirection: "column",
-  backgroundColor: cardBg, // 🔥 NEW
-  transition: "transform 180ms ease, box-shadow 180ms ease",
-  "&:hover": {
-    transform: "translateY(-6px)",
-    boxShadow: "0 12px 36px rgba(16,24,40,0.12)"
-  },
-}}
-    >
-<Box sx={{ p: 2 }}>
-  <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-    
-    <Box>
-      <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
-        {device.device_id || device._id}
-      </Typography>
-
-      <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 0.5 }}>
-        {device.location || [device.area, device.city].filter(Boolean).join(", ")}
-      </Typography>
-
-      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-        <StatusPill status={device.status} />
-
-        {device.project && (
-          <Chip
-            size="small"
-            label={device.project}
-            sx={{ bgcolor: "#0ea5e9", color: "#fff", fontWeight: 700 }}
-          />
-        )}
-      </Stack>
-    </Box>
-
-    <Stack alignItems="flex-end">
-      <Typography variant="caption" sx={{ color: "text.secondary" }}>
-        Last seen
-      </Typography>
-      <Typography variant="body2" sx={{ fontWeight: 800 }}>
-        {timeAgo(device.lastSeen)}
-      </Typography>
-    </Stack>
-
-  </Stack>
-</Box>
-
-      <Divider />
-<CardContent sx={{ pt: 1 }}>
-  <Grid container spacing={1}>
-
-    <Grid item xs={6}>
-      <Typography variant="caption" sx={{ color: "text.secondary" }}>
-        Rate
-      </Typography>
-      <Typography sx={{ fontWeight: 800 }}>
-        {formatRate(device.commercial?.userRatePerKwh ?? device.rate)}
-      </Typography>
-    </Grid>
-
-    <Grid item xs={6}>
-      <Typography variant="caption" sx={{ color: "text.secondary" }}>
-        Energy
-      </Typography>
-      <Typography sx={{ fontWeight: 800 }}>
-        {formatKwh(device.totalenergy ?? 0)}
-      </Typography>
-    </Grid>
-
-  </Grid>
-</CardContent>
-
-<Box sx={{ p: 1.5 }}>
-  <Button
-    fullWidth
-    variant="contained"
-    size="small"
-    onClick={() => onOpen(device)}
-  >
-    Inspect
-  </Button>
-</Box>
-    </Card>
+    <Chip
+      label={cfg.label}
+      size="small"
+      sx={{
+        bgcolor: cfg.bg,
+        color: cfg.text,
+        fontWeight: 700,
+        borderRadius: 1,
+      }}
+    />
   );
 }
 
 /* ---------------------------
-   Main component
+   Detail Panel Component
+   --------------------------- */
+function DeviceDetailPanel({ device, onClose, onRefreshDevice  }) {
+  const [tabIndex, setTabIndex] = useState(0);
+  const [liveTelemetry, setLiveTelemetry] = useState(null); // 🔥 NEW
+  const [telemetryLoading, setTelemetryLoading] = useState(false); // 🔥 NEW
+const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
+const [sessionAction, setSessionAction] = useState(null);
+const [sessionMessage, setSessionMessage] = useState("");
+const [sessionError, setSessionError] = useState("");
+const [pendingSessionId, setPendingSessionId] = useState(null);
+
+const hasActiveSession = Boolean(device?.current_session_id);
+const isStarting = sessionAction === "starting";
+const isStopping = sessionAction === "stopping";
+
+    // 🔥 Fetch live telemetry when device changes
+useEffect(() => {
+  if (!device?.device_id) return;
+
+  fetchLiveTelemetry(device.device_id);
+  setTabIndex(0);
+  setSessionMessage("");
+  setSessionError("");
+  setPendingSessionId(null);
+}, [device]);
+
+  const fetchLiveTelemetry = async (deviceId) => {
+    try {
+      setTelemetryLoading(true);
+      const res = await apiFetch(`/api/devices/admin/telemetry/${deviceId}`);
+      setLiveTelemetry(res);
+    } catch (err) {
+      console.error("Failed to fetch live telemetry:", err);
+      setLiveTelemetry(null);
+    } finally {
+      setTelemetryLoading(false);
+    }
+  };
+
+  if (!device) return null;
+
+  const statusCfg = getStatusColor(device.status);
+
+const handleStartSession = async () => {
+  try {
+    setSessionAction("starting");
+    setSessionMessage("");
+    setSessionError("");
+
+    const res = await apiFetch(
+      `/api/devices/admin/start-session/${device.device_id}`,
+      {
+        method: "POST",
+        body: {
+          amountPaid: 100,
+          selectedEnergy: 100,
+        },
+      }
+    );
+
+    if (!res.success) {
+      throw new Error(res.message || "Failed to start session");
+    }
+
+    const newSessionId = res.data?.sessionId || null;
+
+    setPendingSessionId(newSessionId);
+    setSessionDialogOpen(false);
+    setSessionMessage(
+      `Start command sent. Session ID: ${newSessionId || "generated"}`
+    );
+
+if (onRefreshDevice) {
+  await onRefreshDevice(device.device_id);
+}
+    // Do not set current_session_id locally.
+    // The backend must update it after device acknowledgement.
+  } catch (error) {
+    console.error("Start session error:", error);
+    setSessionError(error.message || "Failed to start session");
+  } finally {
+    setSessionAction(null);
+  }
+};
+
+
+const handleStopSession = async () => {
+  try {
+    setSessionAction("stopping");
+    setSessionMessage("");
+    setSessionError("");
+
+    const sessionId =
+      device.current_session_id || pendingSessionId;
+
+    if (!sessionId) {
+      throw new Error("No active session found");
+    }
+
+    const res = await apiFetch(
+      `/api/devices/admin/stop-session/${device.device_id}`,
+      {
+        method: "POST",
+        body: {
+          sessionId,
+        },
+      }
+    );
+
+    if (!res.success) {
+      throw new Error(res.message || "Failed to stop session");
+    }
+if (onRefreshDevice) {
+  await onRefreshDevice(device.device_id);
+}
+    setSessionMessage("Stop command sent to device.");
+  } catch (error) {
+    console.error("Stop session error:", error);
+    setSessionError(error.message || "Failed to stop session");
+  } finally {
+    setSessionAction(null);
+  }
+};
+
+
+  return (
+    <Box sx={{ p: 3 }}>
+<Paper
+  sx={{
+    p: 2,
+    mb: 2,
+    bgcolor: hasActiveSession ? "#fff7ed" : "#ecfdf5",
+    border: "1px solid",
+    borderColor: hasActiveSession ? "#fed7aa" : "#a7f3d0",
+    borderRadius: 2,
+  }}
+>
+  <Stack spacing={1.5}>
+    <Box>
+      <Typography
+        variant="subtitle1"
+        sx={{
+          fontWeight: 800,
+          color: hasActiveSession ? "#9a3412" : "#047857",
+        }}
+      >
+        {hasActiveSession
+          ? "Active Session"
+          : "Admin Session Control"}
+      </Typography>
+
+      <Typography variant="caption" color="text.secondary">
+        {hasActiveSession
+          ? `Session: ${device.current_session_id}`
+          : "Amount: ₹100 • Energy: 100 kWh"}
+      </Typography>
+    </Box>
+
+    {!hasActiveSession ? (
+      <Button
+        fullWidth
+        variant="contained"
+        startIcon={<BoltIcon />}
+        onClick={() => setSessionDialogOpen(true)}
+        disabled={
+          isStarting ||
+          String(device.status || "").toLowerCase() === "offline"
+        }
+        sx={{
+          bgcolor: "#059669",
+          "&:hover": { bgcolor: "#047857" },
+        }}
+      >
+        {isStarting ? "Sending command..." : "Start Session"}
+      </Button>
+    ) : (
+      <Button
+        fullWidth
+        variant="contained"
+        color="error"
+        onClick={handleStopSession}
+        disabled={isStopping}
+      >
+        {isStopping ? "Sending stop command..." : "Stop Session"}
+      </Button>
+    )}
+
+    {sessionMessage && (
+      <Alert severity="info">
+        {sessionMessage}
+      </Alert>
+    )}
+
+    {sessionError && (
+      <Alert severity="error">
+        {sessionError}
+      </Alert>
+    )}
+  </Stack>
+</Paper>
+
+    {/* 🔥 SESSION CONFIRMATION DIALOG */}
+    <Dialog
+      open={sessionDialogOpen}
+      onClose={() => setSessionDialogOpen(false)}
+      maxWidth="sm"
+      fullWidth
+    >
+      <DialogTitle>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <BoltIcon sx={{ color: '#10b981' }} />
+          <Typography>Start Admin Session</Typography>
+        </Stack>
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" sx={{ mb: 2 }}>
+          This will send a command to the device to start a session with:
+        </Typography>
+        
+        <Paper sx={{ p: 2, bgcolor: '#f0fdf4', mb: 2 }}>
+          <Stack spacing={1}>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography variant="caption" color="text.secondary">Device:</Typography>
+              <Typography variant="body2" fontWeight={600}>{device.device_id}</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography variant="caption" color="text.secondary">Amount:</Typography>
+              <Typography variant="body2" fontWeight={600}>₹100</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography variant="caption" color="text.secondary">Energy:</Typography>
+              <Typography variant="body2" fontWeight={600}>100 kWh</Typography>
+            </Stack>
+            <Stack direction="row" justifyContent="space-between">
+              <Typography variant="caption" color="text.secondary">User:</Typography>
+              <Typography variant="body2" fontWeight={600}>ADMIN</Typography>
+            </Stack>
+          </Stack>
+        </Paper>
+
+        <Alert severity="info" icon={<InfoIcon />}>
+          <Typography variant="caption">
+            Command will be sent via MQTT. Device must be online and connected.
+          </Typography>
+        </Alert>
+      </DialogContent>
+      <DialogActions>
+        <Button
+  onClick={() => setSessionDialogOpen(false)}
+  disabled={isStarting}
+>
+          Cancel
+        </Button>
+        <Button
+          onClick={handleStartSession}
+          variant="contained"
+          disabled={isStarting}
+          startIcon={isStarting ? null : <BoltIcon />}
+          sx={{
+            bgcolor: '#10b981',
+            '&:hover': { bgcolor: '#059669' }
+          }}
+        >
+          {isStarting ? "Sending command..." : "Start Session"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+
+      {/* Header */}
+      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+        <Box>
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>
+            {device.device_id}
+          </Typography>
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            {device.serialNumber}
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <Chip label={statusCfg.label} size="small" sx={{ bgcolor: statusCfg.bg, color: statusCfg.text }} />
+          <IconButton onClick={onClose} size="small">
+            <CloseIcon />
+          </IconButton>
+        </Stack>
+      </Stack>
+
+      <Divider sx={{ mb: 2 }} />
+
+      {/* Tabs */}
+      <Tabs value={tabIndex} onChange={(e, v) => setTabIndex(v)} sx={{ mb: 2 }}>
+        <Tab label="Overview" />
+        <Tab label="Live Data" />
+        <Tab label="Location" />
+        <Tab label="Network" />
+        <Tab label="Commercial" />
+      </Tabs>
+
+      {/* Overview Tab */}
+      {tabIndex === 0 && (
+        <Stack spacing={2}>
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Project
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{device.project || "-"}</Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Charger Type
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{device.charger_type || "-"}</Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Hardware Rev
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{device.hardwareRevision || "-"}</Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Firmware
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{device.lastKnownFirmwareVersion || "-"}</Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Onboarding
+              </Typography>
+              <Chip label={device.onboardingStatus || "pending"} size="small" />
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Rate
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{formatRate(device.rate)}</Typography>
+            </Grid>
+          </Grid>
+        </Stack>
+      )}
+
+
+{/* Live Data Tab */}
+{tabIndex === 1 && (
+  <Stack spacing={2}>
+    <Grid container spacing={2}>
+      <Grid item xs={6}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Relay
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{device.relayOn ? "ON ✅" : "OFF ❌"}</Typography>
+      </Grid>
+      <Grid item xs={6}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Last Seen
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{timeAgo(device.lastSeen)}</Typography>
+      </Grid>
+      
+      {/* 🔥 LIVE VOLTAGE & CURRENT */}
+      <Grid item xs={6}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Live Voltage
+        </Typography>
+        {telemetryLoading ? (
+          <Skeleton width={80} />
+        ) : liveTelemetry?.voltage !== null ? (
+          <Typography sx={{ fontWeight: 700, color: "#16a34a" }}>
+            {liveTelemetry.voltage.toFixed(1)} V
+          </Typography>
+        ) : (
+          <Typography sx={{ fontWeight: 700, color: "text.secondary" }}>-</Typography>
+        )}
+      </Grid>
+      
+      <Grid item xs={6}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Live Current
+        </Typography>
+        {telemetryLoading ? (
+          <Skeleton width={80} />
+        ) : liveTelemetry?.current !== null ? (
+          <Typography sx={{ fontWeight: 700, color: "#16a34a" }}>
+            {liveTelemetry.current.toFixed(1)} A
+          </Typography>
+        ) : (
+          <Typography sx={{ fontWeight: 700, color: "text.secondary" }}>-</Typography>
+        )}
+      </Grid>
+      
+      {/* Live Power */}
+      <Grid item xs={6}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Live Power
+        </Typography>
+        {telemetryLoading ? (
+          <Skeleton width={80} />
+        ) : (liveTelemetry?.voltage !== null && liveTelemetry?.current !== null) ? (
+          <Typography sx={{ fontWeight: 700, color: "#f59e0b" }}>
+            {((liveTelemetry.voltage * liveTelemetry.current) / 1000).toFixed(2)} kW
+          </Typography>
+        ) : (
+          <Typography sx={{ fontWeight: 700, color: "text.secondary" }}>-</Typography>
+        )}
+      </Grid>
+      
+      <Grid item xs={6}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Telemetry Timestamp
+        </Typography>
+        {telemetryLoading ? (
+          <Skeleton width={120} />
+        ) : liveTelemetry?.timestamp ? (
+          <Typography sx={{ fontWeight: 700, fontSize: 12 }}>
+            {timeAgo(liveTelemetry.timestamp)}
+          </Typography>
+        ) : (
+          <Typography sx={{ fontWeight: 700, color: "text.secondary" }}>No telemetry</Typography>
+        )}
+      </Grid>
+      
+      <Grid item xs={6}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Total Energy
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{formatKwh(device.totalenergy || 0)}</Typography>
+      </Grid>
+      <Grid item xs={6}>
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          Active Session
+        </Typography>
+        <Typography sx={{ fontWeight: 700 }}>{device.current_session_id ? "Yes" : "No"}</Typography>
+      </Grid>
+    </Grid>
+    
+    {/* Refresh Telemetry Button */}
+    <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+      <Button 
+        size="small" 
+        variant="outlined" 
+        startIcon={<RefreshIcon />}
+        onClick={() => fetchLiveTelemetry(device.device_id)}
+        disabled={telemetryLoading}
+      >
+        {telemetryLoading ? "Loading..." : "Refresh Live Data"}
+      </Button>
+    </Stack>
+    
+    <Alert severity="info" sx={{ mt: 2 }}>
+      <Typography variant="caption">
+        Live telemetry data from DeviceTelemetry collection (last 24 hours)
+      </Typography>
+    </Alert>
+  </Stack>
+)}
+
+      {/* Location Tab */}
+      {tabIndex === 2 && (
+        <Stack spacing={2}>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Location Name
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{device.location || "-"}</Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Area
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{device.area || "-"}</Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                City
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{device.city || "-"}</Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                State
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{device.state || "-"}</Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Coordinates
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <RoomIcon sx={{ color: "text.secondary", fontSize: 18 }} />
+                <Typography sx={{ fontWeight: 700 }}>
+                  {device.lat && device.lng ? `${device.lat.toFixed(5)}, ${device.lng.toFixed(5)}` : "-"}
+                </Typography>
+              </Stack>
+            </Grid>
+          </Grid>
+        </Stack>
+      )}
+
+      {/* Network Tab */}
+      {tabIndex === 3 && (
+        <Stack spacing={2}>
+          <Grid container spacing={2}>
+            <Grid item xs={12}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                WiFi SSID
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{device.wifiSSID || "-"}</Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Config Status
+              </Typography>
+              <Chip
+                label={device.configAck?.status || "unknown"}
+                size="small"
+                color={device.configAck?.status === "ok" ? "success" : "warning"}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Config Acked At
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>
+                {device.configAck?.ackedAt ? new Date(device.configAck.ackedAt).toLocaleString() : "-"}
+              </Typography>
+            </Grid>
+          </Grid>
+        </Stack>
+      )}
+
+      {/* Commercial Tab */}
+      {tabIndex === 4 && (
+        <Stack spacing={2}>
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Rate (₹/kWh)
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{formatRate(device.rate)}</Typography>
+            </Grid>
+            <Grid item xs={6}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Electricity Bearer
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>{device.commercial?.electricityBearer || "OWNER"}</Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                VJRA Margin
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>
+                {device.commercial?.vjraMarginPerKwh ? `₹${device.commercial.vjraMarginPerKwh}/kWh` : "-"}
+              </Typography>
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Owner Share
+              </Typography>
+              <Typography sx={{ fontWeight: 700 }}>
+                {device.commercial?.ownerSharePerKwh ? `₹${device.commercial.ownerSharePerKwh}/kWh` : "-"}
+              </Typography>
+            </Grid>
+          </Grid>
+        </Stack>
+      )}
+
+      {/* Raw JSON */}
+      <Divider sx={{ my: 2 }} />
+      <Typography variant="caption" sx={{ color: "text.secondary" }}>
+        Raw Data
+      </Typography>
+      <Box
+        sx={{
+          mt: 1,
+          background: "rgba(15,23,42,0.03)",
+          p: 1.5,
+          borderRadius: 1,
+          maxHeight: 300,
+          overflow: "auto",
+        }}
+      >
+        <pre style={{ margin: 0, fontSize: 11, whiteSpace: "pre-wrap", fontFamily: "monospace" }}>
+          {JSON.stringify(device, null, 2)}
+        </pre>
+      </Box>
+    </Box>
+  );
+}
+
+/* ---------------------------
+   Main Component
    --------------------------- */
 export default function DevicesOverview() {
   const theme = useTheme();
-  const [devices, setDevices] = useState([]);
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.between("sm", "md"));
+
+  // State
   const [summary, setSummary] = useState(null);
+  const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastFetchedAt, setLastFetchedAt] = useState(null);
-  const [filter, setFilter] = useState({ state: "", city: "", status: "", project: "" });
-  const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState(null);
-  const [tabIndex, setTabIndex] = useState(0);
-  const [editCommercial, setEditCommercial] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [confirmResetOpen, setConfirmResetOpen] = useState(false);
-const [allProjects, setAllProjects] = useState([]);
-  // fetch
-const load = useCallback(async (q = {}, silent = false) => {
+  const [selectedDevice, setSelectedDevice] = useState(null);
+
+  // Filters
+  const [filters, setFilters] = useState({
+    project: "",
+    status: "",
+    state: "",
+    city: "",
+    search: "",
+  });
+
+  // Filter options
+  const [filterOptions, setFilterOptions] = useState({
+    projects: [],
+    cities: [],
+    states: [],
+    statuses: [],
+  });
+
+  // Pagination
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [totalDevices, setTotalDevices] = useState(0);
+
+  // Fetch filter options
+  const loadFilterOptions = useCallback(async () => {
+    try {
+      const res = await apiFetch("/api/devices/admin/devices/filters/options");
+      if (res.success) {
+        setFilterOptions(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load filter options:", err);
+    }
+  }, []);
+
+  // Fetch summary
+  const loadSummary = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (filters.project) params.append("project", filters.project);
+      if (filters.state) params.append("state", filters.state);
+      if (filters.city) params.append("city", filters.city);
+
+      const res = await apiFetch(`/api/devices/admin/devices/summary?${params.toString()}`);
+      if (res.success) {
+        setSummary(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load summary:", err);
+    }
+  }, [filters]);
+
+  // Fetch devices table
+const loadDevices = useCallback(async () => {
   try {
-    if (!silent) setLoading(true); // 🔥 only for manual load
+    setLoading(true);
+    setError("");
 
-    const params = new URLSearchParams();
-    if (q.state) params.append("state", q.state);
-    if (q.city) params.append("city", q.city);
-    if (q.status) params.append("status", q.status);
-    if (q.project) params.append("project", q.project);
-
-    const res = await apiFetch(`/api/devices/admin-dashboard?${params.toString()}`);
-
-    const list = Array.isArray(res.devices) ? res.devices : [];
-
-    // 🔥 IMPORTANT: update WITHOUT resetting UI
-setDevices(list);
-
-    setSummary(res.summary || null);
-    setLastFetchedAt(new Date());
-
-  } catch (e) {
-    console.error(e);
-  } finally {
-    if (!silent) setLoading(false);
-  }
-}, []);
-
-useEffect(() => {
-  // initial load
-  load(filter);
-
-  // auto refresh (silent)
-  const t = setInterval(() => {
-    load(filter, true); // 🔥 silent refresh
-  }, 10000);
-
-  return () => clearInterval(t);
-}, [filter, load]);
-
-useEffect(() => {
-  // fetch all projects once (unfiltered)
-  const fetchProjects = async () => {
-    try {
-      const res = await apiFetch("/api/devices/admin-dashboard");
-      const list = Array.isArray(res.devices) ? res.devices : [];
-      const unique = Array.from(new Set(list.map(d => d.project).filter(Boolean))).sort();
-      setAllProjects(unique);
-    } catch (e) {
-      console.error("Failed to load projects");
-    }
-  };
-
-  fetchProjects();
-}, []);
-
-  // derived lists
-  const states = useMemo(() => Array.from(new Set(devices.map((d) => d.state).filter(Boolean))).sort(), [devices]);
-  const cities = useMemo(() => Array.from(new Set(devices.map((d) => d.city).filter(Boolean))).sort(), [devices]);
-
-  // filtered devices by search
-const filtered = useMemo(() => {
-  let list = devices;
-
-  // 🔍 search filter (frontend)
-  if (search) {
-    const s = search.toLowerCase();
-    list = list.filter((d) =>
-      (d.device_id || "").toLowerCase().includes(s) ||
-      (d.location || "").toLowerCase().includes(s) ||
-      (d.city || "").toLowerCase().includes(s) ||
-      (d._id || "").toString().toLowerCase().includes(s)
-    );
-  }
-
-  return list;
-}, [devices, search]);
-
-  // actions: open detail
-  const openDetail = (dev) => {
-    setSelected(dev);
-    setTabIndex(0);
-    setEditCommercial(null);
-  };
-
-  // inline commercial edit
-  const startEditCommercial = () => {
-    if (!selected) return;
-    setEditCommercial({
-      userRatePerKwh: selected.commercial?.userRatePerKwh ?? selected.rate ?? null,
-      vjraMarginPerKwh: selected.commercial?.vjraMarginPerKwh ?? selected.commercial?.vjraMarginPerKwh ?? null,
-      ownerSharePerKwh: selected.commercial?.ownerSharePerKwh ?? null,
-      electricityBearer: selected.commercial?.electricityBearer ?? "OWNER",
-      pgPercent: selected.commercial?.pgPercent ?? null,
+    const params = new URLSearchParams({
+      page: page + 1,
+      limit: rowsPerPage,
+      sortBy: "updatedAt",
+      sortOrder: "desc",
     });
-  };
 
-  const saveCommercial = async () => {
-    if (!selected || !editCommercial) return;
-    try {
-      setSaving(true);
-      // optimistic update on frontend
-      const payload = { commercial: { ...editCommercial } };
-      const resp = await apiFetch(`/api/devices/${selected._id}`, {
-        method: "PUT",
-        body: payload,
-      });
-      // reflect returned device if any (or refetch full list)
-      // simple approach: refetch dashboard
-      await load(filter);
-      // close edit & refresh selected
-      const updated = (await apiFetch(`/api/devices/${selected._id}`)) || selected;
-      setSelected(updated);
-      setEditCommercial(null);
-    } catch (err) {
-      console.error("Save commercial failed:", err);
-      alert("Failed to save commercial: " + (err.message || String(err)));
-    } finally {
-      setSaving(false);
+    if (filters.project) params.append("project", filters.project);
+    if (filters.status) params.append("status", filters.status);
+    if (filters.state) params.append("state", filters.state);
+    if (filters.city) params.append("city", filters.city);
+    if (filters.search) params.append("search", filters.search);
+
+    // 🔥 Use new endpoint with telemetry
+   const res = await apiFetch(
+  `/api/devices/admin/devices-table-telemetry?${params.toString()}`
+);
+
+    if (res.success) {
+      setDevices(res.data);
+      setTotalDevices(res.pagination.total);
+      setLastFetchedAt(new Date());
+    } else {
+      setError(res.message || "Failed to load devices");
     }
-  };
+  } catch (err) {
+    console.error("Failed to load devices:", err);
+    setError(err.message || "Network error");
+  } finally {
+    setLoading(false);
+  }
+}, [page, rowsPerPage, filters]);
 
-  const resetCommercialToLegacy = async () => {
-    // reset commercial block to empty to fallback to legacy rate
-    if (!selected) return;
-    setConfirmResetOpen(false);
+  // Fetch device details
+  const loadDeviceDetails = useCallback(async (deviceId) => {
     try {
-      setSaving(true);
-      await apiFetch(`/api/devices/${selected._id}`, { method: "PUT", body: { commercial: {} } });
-      await load(filter);
-      const updated = (await apiFetch(`/api/devices/${selected._id}`)) || selected;
-      setSelected(updated);
+      const res = await apiFetch(`/api/devices/admin/devices/${deviceId}`);
+      if (res.success) {
+        setSelectedDevice(res.data);
+      }
     } catch (err) {
-      console.error(err);
-      alert("Reset failed");
-    } finally {
-      setSaving(false);
+      console.error("Failed to load device details:", err);
+      alert("Failed to load device details");
     }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadFilterOptions();
+  }, []);
+
+  useEffect(() => {
+    loadSummary();
+    loadDevices();
+  }, [loadSummary, loadDevices]);
+
+  // Auto-refresh every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadSummary();
+      loadDevices();
+    }, 300000);
+
+    return () => clearInterval(interval);
+  }, [loadSummary, loadDevices]);
+
+  // Handlers
+  const handleRefresh = () => {
+    loadSummary();
+    loadDevices();
   };
 
+  const handleFilterChange = (key, value) => {
+    setFilters((prev) => ({ ...prev, [key]: value }));
+    setPage(0); // Reset to first page on filter change
+  };
 
+  const handleResetFilters = () => {
+    setFilters({
+      project: "",
+      status: "",
+      state: "",
+      city: "",
+      search: "",
+    });
+    setPage(0);
+  };
 
-  // small UI helpers
-  const isEmpty = (obj) => !obj || Object.keys(obj).length === 0;
+const handleRowClick = (deviceId) => {
+  if (!deviceId) return;
+  loadDeviceDetails(deviceId);
+};
+
+  const handleCloseDetail = () => {
+    setSelectedDevice(null);
+  };
+
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // Derived values
+  const hasActiveFilters = Object.values(filters).some((v) => v !== "");
 
   return (
-    <Box sx={{ maxWidth: 1280, mx: "auto", py: 3, px: { xs: 1, sm: 2 } }}>
-      {/* header */}
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+    <Box sx={{ maxWidth: 1400, mx: "auto", py: 3, px: { xs: 1, sm: 2, md: 3 } }}>
+      {/* Header */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        spacing={2}
+        sx={{ mb: 3 }}
+      >
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 900 }}>Internal Admin • Devices</Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary" }}>A single view to monitor, troubleshoot and manage devices.</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>
+            Devices Dashboard
+          </Typography>
+          <Typography variant="body2" sx={{ color: "text.secondary", mt: 0.5 }}>
+            Monitor and manage all connected devices
+          </Typography>
         </Box>
-
         <Stack direction="row" spacing={2} alignItems="center">
-          <Typography variant="caption" sx={{ color: "text.secondary" }}>Last fetch: {lastFetchedAt ? lastFetchedAt.toLocaleTimeString() : "—"}</Typography>
-          <IconButton onClick={() => load(filter)} size="small"><RefreshIcon /></IconButton>
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            Last synced: {lastFetchedAt ? lastFetchedAt.toLocaleString() : "—"}
+          </Typography>
+          <Tooltip title="Refresh">
+            <IconButton onClick={handleRefresh} size="medium" color="primary">
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
         </Stack>
       </Stack>
-<Typography sx={{ mb: 1, fontWeight: 800 }}>
-  Filter Devices
-</Typography>
-      {/* Filters + search */}
-      <Card sx={{ mb: 2 }}>
-        <CardContent>
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
-            <TextField placeholder="Search device id or location" size="small" value={search} onChange={(e) => setSearch(e.target.value)} sx={{ flex: 1 }} />
-              <FormControl size="small" sx={{ minWidth: 140 }}>
-              <InputLabel>Project</InputLabel>
-              <Select
-                value={filter.project}
-                label="Project"
-                onChange={(e) => setFilter(s => ({ ...s, project: e.target.value }))}
-              >
-                <MenuItem value="">All</MenuItem>
-                {allProjects.map(p => (
-                  <MenuItem key={p} value={p}>{p}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 140 }}>
-              <InputLabel>State</InputLabel>
-              <Select value={filter.state} label="State" onChange={(e) => setFilter(s => ({ ...s, state: e.target.value }))}>
-                <MenuItem value="">All</MenuItem>
-                {states.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 140 }}>
-              <InputLabel>City</InputLabel>
-              <Select value={filter.city} label="City" onChange={(e) => setFilter(s => ({ ...s, city: e.target.value }))}>
-                <MenuItem value="">All</MenuItem>
-                {cities.map(c => <MenuItem key={c} value={c}>{c}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <FormControl size="small" sx={{ minWidth: 140 }}>
-              <InputLabel>Status</InputLabel>
-              <Select value={filter.status} label="Status" onChange={(e) => setFilter(s => ({ ...s, status: e.target.value }))}>
-                <MenuItem value="">All</MenuItem>
-                <MenuItem value="online">Online</MenuItem>
-                <MenuItem value="occupied">Occupied</MenuItem>
-                <MenuItem value="available">Available</MenuItem>
-                <MenuItem value="offline">Offline</MenuItem>
-                <MenuItem value="maintenance">Maintenance</MenuItem>
-              </Select>
-            </FormControl>
-           <Button
-            variant="outlined"
-            onClick={() => {
-              setFilter({ state: "", city: "", status: "", project: "" });
-              setSearch("");
-            }}
-          >Reset</Button>
-          </Stack>
-        </CardContent>
-      </Card>
 
-      <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-  {filter.project && <Chip label={`Project: ${filter.project}`} />}
-  {filter.state && <Chip label={`State: ${filter.state}`} />}
-  {filter.city && <Chip label={`City: ${filter.city}`} />}
-  {filter.status && <Chip label={`Status: ${filter.status}`} />}
-</Stack>
-
-      {/* KPIs grid */}
-      <Grid container spacing={2} sx={{ mb: 2 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <KPI label="Total Devices" value={summary?.total ?? <Skeleton width={60} />} sub="All registered devices" />
+      {/* KPI Summary Cards */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} sm={6} md={4} lg={2}>
+          <KPI
+            label="Total Devices"
+            value={summary?.total || 0}
+            sub="All registered"
+            icon={<BoltIcon />}
+            accent="#3B82F6"
+            loading={!summary}
+          />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KPI label="Available" value={summary?.online ?? <Skeleton width={60} />} sub="Reporting devices" icon={<BoltIcon />} accent="#04bfbf" />
+        <Grid item xs={12} sm={6} md={4} lg={2}>
+          <KPI
+            label="Available"
+            value={summary?.available || 0}
+            sub="Ready to charge"
+            icon={<BoltIcon />}
+            accent="#10B981"
+            loading={!summary}
+          />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KPI label="Occupied" value={summary?.chargingNow ?? <Skeleton width={60} />} sub="Active sessions" icon={<BoltIcon />} accent="#17a504" />
+        <Grid item xs={12} sm={6} md={4} lg={2}>
+          <KPI
+            label="Occupied"
+            value={summary?.occupied || 0}
+            sub="Active sessions"
+            icon={<BoltIcon />}
+            accent="#F59E0B"
+            loading={!summary}
+          />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KPI label="Offline" value={summary?.offline ?? <Skeleton width={60} />} sub="Devices not reporting" icon={<OfflineBoltIcon />} accent="#6b7280" />
+        <Grid item xs={12} sm={6} md={4} lg={2}>
+          <KPI
+            label="Offline"
+            value={summary?.offline || 0}
+            sub="Not reporting"
+            icon={<OfflineBoltIcon />}
+            accent="#6B7280"
+            loading={!summary}
+          />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KPI label="Faulty" value={summary?.faulty ?? <Skeleton width={40} />} sub="Flagged devices" icon={<OfflineBoltIcon />} accent="#ac0000" />
+        <Grid item xs={12} sm={6} md={4} lg={2}>
+          <KPI
+            label="Faulty"
+            value={summary?.faulty || 0}
+            sub="Needs attention"
+            icon={<WarningAmberIcon />}
+            accent="#EF4444"
+            loading={!summary}
+          />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KPI label="Stale (>30s)" value={summary?.stale ?? <Skeleton width={40} />} sub="Potential comm. problems" icon={<WarningAmberIcon />} accent="#f97316" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KPI label="Relay w/o session" value={summary?.relayWithoutSession ?? <Skeleton width={40} />} sub="Possible stuck relays" icon={<WarningAmberIcon />} accent="#ff0000" />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KPI label="Pending Onboard" value={summary?.pendingOnboard ?? <Skeleton width={40} />} sub="Waiting approval" icon={<InfoIcon />} accent="#7c3aed" />
+        <Grid item xs={12} sm={6} md={4} lg={2}>
+          <KPI
+            label="Relay On"
+            value={summary?.relayOn || 0}
+            sub="Relays active"
+            icon={<InfoIcon />}
+            accent="#8B5CF6"
+            loading={!summary}
+          />
         </Grid>
       </Grid>
 
+      {/* Filters */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={2} alignItems="center">
+          <TextField
+            placeholder="Search device ID, serial, project..."
+            size="small"
+            value={filters.search}
+            onChange={(e) => handleFilterChange("search", e.target.value)}
+            sx={{ flex: 1, minWidth: 200 }}
+            InputProps={{
+              startAdornment: <SearchIcon sx={{ color: "text.secondary", mr: 1 }} />,
+            }}
+          />
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Project</InputLabel>
+            <Select
+              value={filters.project}
+              label="Project"
+              onChange={(e) => handleFilterChange("project", e.target.value)}
+            >
+              <MenuItem value="">All</MenuItem>
+              {filterOptions.projects.map((p) => (
+                <MenuItem key={p} value={p}>
+                  {p}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={filters.status}
+              label="Status"
+              onChange={(e) => handleFilterChange("status", e.target.value)}
+            >
+              <MenuItem value="">All</MenuItem>
+              <MenuItem value="Available">Available</MenuItem>
+              <MenuItem value="Occupied">Occupied</MenuItem>
+              <MenuItem value="Offline">Offline</MenuItem>
+              <MenuItem value="Faulty">Faulty</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>State</InputLabel>
+            <Select
+              value={filters.state}
+              label="State"
+              onChange={(e) => handleFilterChange("state", e.target.value)}
+            >
+              <MenuItem value="">All</MenuItem>
+              {filterOptions.states.map((s) => (
+                <MenuItem key={s} value={s}>
+                  {s}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 140 }}>
+            <InputLabel>City</InputLabel>
+            <Select
+              value={filters.city}
+              label="City"
+              onChange={(e) => handleFilterChange("city", e.target.value)}
+            >
+              <MenuItem value="">All</MenuItem>
+              {filterOptions.cities.map((c) => (
+                <MenuItem key={c} value={c}>
+                  {c}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {hasActiveFilters && (
+            <Button variant="outlined" size="small" onClick={handleResetFilters}>
+              Reset
+            </Button>
+          )}
+        </Stack>
+      </Paper>
 
-
-      {/* alerts strip */}
-      {summary && (summary.stale > 0 || summary.relayWithoutSession > 0 || summary.pendingOnboard > 0) && (
-        <Paper sx={{ p: 1.25, mb: 2, borderLeft: "4px solid #fb923c" }}>
-          <Stack direction="row" alignItems="center" spacing={1}>
-            <WarningAmberIcon sx={{ color: "#fb923c" }} />
-            <Typography sx={{ fontWeight: 800 }}>
-              {summary.stale} stale • {summary.relayWithoutSession} relay w/o session • {summary.pendingOnboard} onboarding
-            </Typography>
-            <Typography variant="caption" sx={{ color: "text.secondary" }}>Click a device card to inspect and manage.</Typography>
-          </Stack>
-        </Paper>
+      {/* Active Filters Display */}
+      {hasActiveFilters && (
+        <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
+          {filters.project && <Chip label={`Project: ${filters.project}`} onDelete={() => handleFilterChange("project", "")} />}
+          {filters.status && <Chip label={`Status: ${filters.status}`} onDelete={() => handleFilterChange("status", "")} />}
+          {filters.state && <Chip label={`State: ${filters.state}`} onDelete={() => handleFilterChange("state", "")} />}
+          {filters.city && <Chip label={`City: ${filters.city}`} onDelete={() => handleFilterChange("city", "")} />}
+        </Stack>
       )}
 
-      {/* device grid */}
-      {loading ? (
-        <Grid container spacing={2}>
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Grid item xs={12} sm={6} md={4} key={i}><Skeleton variant="rectangular" height={200} sx={{ borderRadius: 2 }} /></Grid>
-          ))}
-        </Grid>
-      ) : (
-        <Grid container spacing={2}>
-          {filtered.map((d) => (
-            <Grid item xs={12} sm={6} md={4} key={d._id || d.device_id}>
-              <DeviceCard device={d} onOpen={openDetail} />
-            </Grid>
-          ))}
-        </Grid>
+      {/* Error Alert */}
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
       )}
 
-      {/* detail drawer */}
-      <Drawer anchor="right" open={!!selected} onClose={() => setSelected(null)} PaperProps={{ sx: { width: { xs: "100%", sm: 680 } } }}>
-        {selected && (
-          <Box sx={{ p: 3 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 900 }}>{selected.device_id}</Typography>
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>{selected.location}</Typography>
-              </Box>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <StatusPill status={selected.status} />
-                <Chip label={selected.onboardingStatus || "onboarded"} size="small" />
-                <IconButton onClick={() => { setSelected(null); }} size="small"><CloseIcon /></IconButton>
-              </Stack>
-            </Stack>
-
-            <Tabs value={tabIndex} onChange={(e, v) => setTabIndex(v)} sx={{ mb: 2 }}>
-              <Tab label="Overview" />
-              <Tab label="Commercial" />
-              <Tab label="Telemetry" />
-              <Tab label="Owner" />
-            </Tabs>
-
-            {/* Overview tab */}
-            {tabIndex === 0 && (
-              <Box>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Charger Type</Typography>
-                    <Typography sx={{ fontWeight: 900 }}>{selected.charger_type}</Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Rate (legacy)</Typography>
-                    <Typography sx={{ fontWeight: 900 }}>{formatRate(selected.rate)}</Typography>
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Current Session</Typography>
-                    <Typography sx={{ fontWeight: 900 }}>{selected.current_session_id ? String(selected.current_session_id) : "-"}</Typography>
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Total Energy</Typography>
-                    <Typography sx={{ fontWeight: 900 }}>{formatKwh(selected.totalenergy ?? 0)}</Typography>
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Location (lat, lng)</Typography>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <RoomIcon sx={{ color: "text.secondary" }} />
-                      <Typography sx={{ fontWeight: 800 }}>{selected.lat ? `${selected.lat.toFixed(5)}, ${selected.lng.toFixed(5)}` : "-"}</Typography>
-                    </Stack>
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <Divider sx={{ my: 1 }} />
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Identifiers</Typography>
-                    <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                      <Chip label={`_id: ${String(selected._id).slice(-8)}`} size="small" />
-                      {selected.serialNumber && <Chip label={`S: ${selected.serialNumber}`} size="small" />}
-                      {selected.meterType && <Chip label={selected.meterType} size="small" />}
-                    </Stack>
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-
-            {/* Commercial tab */}
-            {tabIndex === 1 && (
-              <Box>
-                <Grid container spacing={2} sx={{ mb: 2 }}>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Electricity Bearer</Typography>
-                    <Typography sx={{ fontWeight: 900 }}>{selected.commercial?.electricityBearer || "OWNER"}</Typography>
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Applied Rate</Typography>
-                    <Typography sx={{ fontWeight: 900 }}>{formatRate(selected.commercial?.userRatePerKwh ?? selected.rate)}</Typography>
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>VJRA Margin /kWh</Typography>
-                    <Typography sx={{ fontWeight: 900 }}>{selected.commercial?.vjraMarginPerKwh ?? "-"}</Typography>
-                  </Grid>
-
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Owner Share /kWh</Typography>
-                    <Typography sx={{ fontWeight: 900 }}>{selected.commercial?.ownerSharePerKwh ?? "-"}</Typography>
-                  </Grid>
-                </Grid>
-
-                <Divider sx={{ mb: 2 }} />
-
-                {/* Edit controls */}
-                {!editCommercial ? (
-                  <Stack direction="row" spacing={1}>
-                    <Button variant="outlined" startIcon={<EditIcon />} onClick={startEditCommercial}>Edit commercial</Button>
-                    {!isEmpty(selected.commercial) && <Button color="error" variant="outlined" onClick={() => setConfirmResetOpen(true)}>Reset commercial</Button>}
-                  </Stack>
-                ) : (
-                  <Box>
-                    <Grid container spacing={2} sx={{ mb: 1 }}>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          type="number"
-                          label="User rate (₹/kWh)"
-                          size="small"
-                          fullWidth
-                          value={editCommercial.userRatePerKwh ?? ""}
-                          onChange={(e) => setEditCommercial((c) => ({ ...c, userRatePerKwh: e.target.value ? Number(e.target.value) : null }))}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          type="number"
-                          label="VJRA margin (₹/kWh)"
-                          size="small"
-                          fullWidth
-                          value={editCommercial.vjraMarginPerKwh ?? ""}
-                          onChange={(e) => setEditCommercial((c) => ({ ...c, vjraMarginPerKwh: e.target.value ? Number(e.target.value) : null }))}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          type="number"
-                          label="Owner share (₹/kWh)"
-                          size="small"
-                          fullWidth
-                          value={editCommercial.ownerSharePerKwh ?? ""}
-                          onChange={(e) => setEditCommercial((c) => ({ ...c, ownerSharePerKwh: e.target.value ? Number(e.target.value) : null }))}
-                        />
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <FormControl fullWidth size="small">
-                          <InputLabel>Electricity bearer</InputLabel>
-                          <Select
-                            label="Electricity bearer"
-                            value={editCommercial.electricityBearer}
-                            onChange={(e) => setEditCommercial((c) => ({ ...c, electricityBearer: e.target.value }))}
-                          >
-                            <MenuItem value="OWNER">OWNER</MenuItem>
-                            <MenuItem value="VJRA">VJRA</MenuItem>
-                          </Select>
-                        </FormControl>
-                      </Grid>
-                      <Grid item xs={12} sm={6}>
-                        <TextField
-                          type="number"
-                          label="PG percent"
-                          size="small"
-                          fullWidth
-                          value={editCommercial.pgPercent ?? ""}
-                          onChange={(e) => setEditCommercial((c) => ({ ...c, pgPercent: e.target.value ? Number(e.target.value) : null }))}
-                        />
-                      </Grid>
-                    </Grid>
-
-                    <Stack direction="row" spacing={1} justifyContent="flex-end">
-                      <Button variant="outlined" onClick={() => setEditCommercial(null)}>Cancel</Button>
-                      <Button startIcon={<SaveIcon />} variant="contained" onClick={saveCommercial} disabled={saving}>{saving ? "Saving..." : "Save"}</Button>
-                    </Stack>
-                  </Box>
+      {/* Data Table */}
+      <Paper sx={{ overflow: "hidden" }}>
+        <TableContainer>
+          <Table>
+            <TableHead>
+              <TableRow sx={{ bgcolor: "grey.50" }}>
+                <TableCell sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: 12 }}>Device ID</TableCell>
+                <TableCell sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: 12 }} align="center">
+                  State
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: 12 }}>Project</TableCell>
+                <TableCell sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: 12 }} align="center">
+                  Relay
+                </TableCell>
+                {!isMobile && (
+                  <>
+                    <TableCell sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: 12 }} align="right">
+                      Voltage
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: 12 }} align="right">
+                      Current
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: 12 }} align="right">
+                      Power
+                    </TableCell>
+                  </>
                 )}
-              </Box>
-            )}
+                <TableCell sx={{ fontWeight: 700, textTransform: "uppercase", fontSize: 12 }}>Updated</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell><Skeleton width={120} /></TableCell>
+                    <TableCell align="center"><Skeleton width={80} /></TableCell>
+                    <TableCell><Skeleton width={100} /></TableCell>
+                    <TableCell align="center"><Skeleton width={40} /></TableCell>
+                    {!isMobile && (
+                      <>
+                        <TableCell align="right"><Skeleton width={60} /></TableCell>
+                        <TableCell align="right"><Skeleton width={60} /></TableCell>
+                        <TableCell align="right"><Skeleton width={60} /></TableCell>
+                      </>
+                    )}
+                    <TableCell><Skeleton width={80} /></TableCell>
+                  </TableRow>
+                ))
+              ) : devices.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={isMobile ? 5 : 8} align="center" sx={{ py: 6 }}>
+                    <Typography sx={{ color: "text.secondary" }}>No devices found</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                devices.map((device) => (
+                  <TableRow
+                    key={device.deviceId}
+                    onClick={() => handleRowClick(device.deviceId)}
+                    hover
+                    sx={{
+                      cursor: "pointer",
+                      "&:hover": { bgcolor: "action.hover" },
+                    }}
+                  >
+                    <TableCell>
+                      <Typography sx={{ fontWeight: 600, fontFamily: "monospace", fontSize: 13 }}>
+                        {device.deviceId}
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <StatusChip status={device.status} />
+                    </TableCell>
+                    <TableCell>
+                      <Typography sx={{ fontWeight: 500 }}>{device.project}</Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      {device.relayOn ? (
+                        <Chip label="ON" size="small" color="success" />
+                      ) : (
+                        <Chip label="OFF" size="small" color="default" />
+                      )}
+                    </TableCell>
+                    {!isMobile && (
+                      <>
+                        <TableCell align="right">
+                          <Typography sx={{ fontWeight: 600 }}>{formatVoltage(device.voltage)}</Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography sx={{ fontWeight: 600 }}>{formatCurrent(device.current)}</Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                          <Typography sx={{ fontWeight: 600 }}>{formatPower(device.voltage, device.current)}</Typography>
+                        </TableCell>
+                      </>
+                    )}
+                    <TableCell>
+                      <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                        {timeAgo(device.updatedAt)}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          rowsPerPageOptions={[25, 50, 100]}
+          component="div"
+          count={totalDevices}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          labelRowsPerPage="Devices per page"
+        />
+      </Paper>
 
-            {/* Telemetry tab */}
-            {tabIndex === 2 && (
-              <Box>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Relay</Typography>
-                    <Typography sx={{ fontWeight: 900 }}>{selected.relayOn ? "On" : "Off"}</Typography>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Last seen</Typography>
-                    <Typography sx={{ fontWeight: 900 }}>{selected.lastSeen ? new Date(selected.lastSeen).toLocaleString() : "-"}</Typography>
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Total energy</Typography>
-                    <Typography sx={{ fontWeight: 900 }}>{formatKwh(selected.totalenergy ?? 0)}</Typography>
-                  </Grid>
-
-                  <Grid item xs={12}>
-                    <Divider sx={{ my: 1 }} />
-                    <Typography variant="caption" sx={{ color: "text.secondary" }}>Raw telemetry</Typography>
-                    <Box sx={{ mt: 1, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", background: "rgba(15,23,42,0.03)", p: 1, borderRadius: 1 }}>
-                      <pre style={{ margin: 0, fontSize: 12, whiteSpace: "pre-wrap" }}>
-                        {JSON.stringify({
-                          lat: selected.lat,
-                          lng: selected.lng,
-                          relayOn: selected.relayOn,
-                          totalenergy: selected.totalenergy,
-                          lastSeen: selected.lastSeen,
-                          status: selected.status,
-                        }, null, 2)}
-                      </pre>
-                    </Box>
-                  </Grid>
-                </Grid>
-              </Box>
-            )}
-
-            {/* Owner tab */}
-            {tabIndex === 3 && (
-              <Box>
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>Owner IDs</Typography>
-                <Stack spacing={1} sx={{ mt: 1 }}>
-{Array.isArray(selected.ownerId) && selected.ownerId.length ? (
-  selected.ownerId.map((owner) => (
-    <Box
-      key={owner._id}
-      sx={{
-        p: 1.5,
-        borderRadius: 2,
-        background: "rgba(15,23,42,0.03)",
-      }}
-    >
-      <Typography sx={{ fontWeight: 800 }}>
-        {owner.name || "No Name"}
-      </Typography>
-
-      <Typography variant="caption" sx={{ color: "text.secondary" }}>
-        {owner.email}
-      </Typography>
-
-      <Typography variant="caption" sx={{ display: "block", color: "text.secondary" }}>
-        {owner.phone}
-      </Typography>
-
-      <Chip
-        size="small"
-        label={owner.role}
-        sx={{ mt: 1 }}
-      />
-    </Box>
-  ))
-) : (
-  <Typography sx={{ fontWeight: 700 }}>—</Typography>
-)}
-
-                </Stack>
-
-                <Divider sx={{ my: 2 }} />
-
-                <Typography variant="caption" sx={{ color: "text.secondary" }}>Onboarded at</Typography>
-                <Typography sx={{ fontWeight: 900 }}>{selected.onboardedAt ? new Date(selected.onboardedAt).toLocaleString() : "-"}</Typography>
-
-                <Typography variant="caption" sx={{ color: "text.secondary", mt: 1 }}>Onboarded by</Typography>
-                <Typography sx={{ fontWeight: 900 }}>{selected.onboardedBy ? String(selected.onboardedBy) : "-"}</Typography>
-              </Box>
-            )}
-
-            {/* drawer actions */}
-            <Divider sx={{ my: 2 }} />
-            <Stack direction="row" spacing={1} justifyContent="flex-end">
-              <Button variant="outlined" onClick={() => { /* open external detail */ }}>Open in full page</Button>
-              <Button color="error" variant="outlined" onClick={() => { /* maybe schedule maintenance */ }}>Flag</Button>
-              <Button variant="contained" onClick={() => setSelected(null)}>Close</Button>
-            </Stack>
-          </Box>
+      {/* Detail Drawer */}
+      <Drawer
+        anchor="right"
+        open={!!selectedDevice}
+        onClose={handleCloseDetail}
+        PaperProps={{
+          sx: { width: { xs: "100%", sm: 500, md: 560 } },
+        }}
+      >
+        {selectedDevice && (
+          <>
+            <Box
+              sx={{
+                p: 2,
+                borderBottom: 1,
+                borderColor: "divider",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                Device Details
+              </Typography>
+              <IconButton onClick={handleCloseDetail} size="small">
+                <CloseIcon />
+              </IconButton>
+            </Box>
+            <DeviceDetailPanel device={selectedDevice} onClose={handleCloseDetail} onRefreshDevice={loadDeviceDetails}/>
+          </>
         )}
       </Drawer>
-
-      {/* Reset confirmation dialog */}
-      <Dialog open={confirmResetOpen} onClose={() => setConfirmResetOpen(false)}>
-        <DialogTitle>Reset commercial</DialogTitle>
-        <DialogContent>
-          <Typography>Resetting commercial config will remove device-level overrides and revert to legacy rate. Continue?</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setConfirmResetOpen(false)}>Cancel</Button>
-          <Button color="error" onClick={resetCommercialToLegacy}>Reset</Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }

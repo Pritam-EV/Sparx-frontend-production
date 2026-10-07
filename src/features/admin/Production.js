@@ -73,8 +73,8 @@ const DEFAULT_GROUP_A = {
 
 const DEFAULT_GROUP_B = {
   deviceId: "",
-  wifiSSID: "Airtel_Vjra",
-  wifiPassword: "VIZ@Vjra3",
+  wifiSSID: "VIZ_Vjra",
+  wifiPassword: "VIZ@Vjra",
   cf: "0.231",
   vf: "1.880",
   currentRF: "0.001",
@@ -85,7 +85,7 @@ const DEFAULT_GROUP_B = {
   area: "TEST",
   city: "TEST",
   state: "Maharashtra",
-  charger_type: "AC_3.3KW",
+  charger_type: "Universal 16A Socket",
   meterType: "Commercial",
   meterConsumerNumber: "",
   electricityBearer: "OWNER",
