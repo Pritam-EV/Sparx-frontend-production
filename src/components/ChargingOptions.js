@@ -74,7 +74,7 @@ const [walletPayLoading, setWalletPayLoading] = useState(false);
 
 // LIMITS
 const minAmount = 20;
-const maxAmount = 500;
+const maxAmount = 1000;
 const amountStep = 10;
 
 const minEnergy = 1;

@@ -433,3 +433,72 @@ html, body, #root {
   background: #F2A007;
 }
 
+/* Light footer variant for the new landing-home page.
+   Existing pages retain the original dark footer. */
+
+.bottom-bar--light {
+  height: calc(66px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-sizing: border-box;
+
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid #dce7eb;
+  box-shadow: 0 -5px 22px rgba(20, 57, 67, 0.06);
+
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.bottom-bar--light button {
+  color: #72868d;
+}
+
+.bottom-bar--light button span {
+  color: #72868d;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.bottom-bar--light button svg {
+  color: #72868d;
+  stroke: #72868d;
+}
+
+.bottom-bar--light button.active span,
+.bottom-bar--light button.active svg {
+  color: #087f73;
+  stroke: #087f73;
+}
+
+.bottom-bar--light button:hover {
+  background: rgba(8, 127, 115, 0.055);
+}
+
+/* Center QR action */
+.bottom-bar--light .qr-footer-center-button::before {
+  background-color: #087f73;
+  box-shadow: 0 4px 15px rgba(8, 127, 115, 0.24);
+  animation: qr-footer-pulse-light 2.4s ease-in-out infinite;
+}
+
+.bottom-bar--light .qr-footer-icon {
+  color: #ffffff;
+  filter: none;
+}
+
+@keyframes qr-footer-pulse-light {
+  0% {
+    box-shadow: 0 0 0 0 rgba(8, 127, 115, 0.32);
+    transform: translate(-50%, -50%) scale(1);
+  }
+
+  50% {
+    box-shadow: 0 0 0 12px rgba(8, 127, 115, 0);
+    transform: translate(-50%, -50%) scale(1.03);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(8, 127, 115, 0);
+    transform: translate(-50%, -50%) scale(1);
+  }
+}

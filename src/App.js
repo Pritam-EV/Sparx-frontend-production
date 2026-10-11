@@ -8,6 +8,8 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import LandingHome from "./components/LandingHome";
+
 import SplashScreen from "./components/SplashScreen";
 import WelcomeScreen from "./components/WelcomeScreen";
 import Login from "./components/Login";
@@ -245,6 +247,14 @@ if (showSplash) return <SplashScreen />;
             </PrivateRoute>
           }
         />
+        <Route
+        path="/landing-home"
+        element={
+          <PrivateRoute>
+            <LandingHome />
+          </PrivateRoute>
+        }
+      />
         <Route path="/transactions" element={ <PrivateRoute> <TransactionHistory /> </PrivateRoute> } />
         <Route path="/qr-scanner" element={<QRScanner />} />
         
