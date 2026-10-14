@@ -136,10 +136,17 @@ const getTransactionAmount = (transaction) => {
   return transaction?.amountPaid ?? transaction?.amount ?? 0;
 };
 
+const getUserPhone = () => {
+  const { user } = getAuthState();
+  return user?.phone || user?.phoneNumber || user?.mobile || "";
+};
+  
+
 const LandingHome = () => {
   const navigate = useNavigate();
 
   const firstName = getFirstName();
+  const userPhone = getUserPhone();
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -857,6 +864,9 @@ const LandingHome = () => {
               <div>
                 <span>Signed in as</span>
                 <strong>{firstName}</strong>
+                {userPhone && (
+                  <span className="lh-drawer-user-phone">{userPhone}</span>
+                )}
               </div>
             </div>
 

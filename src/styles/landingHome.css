@@ -1,25 +1,33 @@
 /* src/styles/landingHome.css
-   VIZ Customer Dashboard — fresh teal redesign
-   Palette inspired by #04bfbf, with soft mint surfaces and dark teal text.
+   VIZ Customer Dashboard — Fresh, Vibrant & Cool Redesign
+   Palette: Luminous Electric Aqua (#00D2B4), Cyber-Mint (#00E5BE), and Crisp Ice-Cyan surfaces.
 */
 
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
 .lh-page {
-  --lh-bg: #f4fbfb;
+  /* Fresh & Cool Palette Tokens */
+  --lh-bg: #f3fbfc;
   --lh-surface: #ffffff;
-  --lh-surface-soft: #eefafa;
-  --lh-text: #173c43;
-  --lh-muted: #6c858a;
-  --lh-border: #dceeee;
-  --lh-border-strong: #c8e6e6;
-  --lh-teal: #04bfbf;
-  --lh-teal-hover: #009fa2;
-  --lh-teal-deep: #087e83;
-  --lh-teal-ink: #056d72;
-  --lh-teal-pale: #dff8f6;
-  --lh-teal-wash: #f0fcfb;
-  --lh-violet: #7863bd;
-  --lh-shadow-sm: 0 4px 14px rgba(23, 75, 80, 0.045);
-  --lh-shadow-md: 0 12px 32px rgba(23, 75, 80, 0.075);
+  --lh-surface-soft: #eaf8f7;
+  --lh-text: #0e2e33;
+  --lh-muted: #53757a;
+  --lh-border: #d4f0ec;
+  --lh-border-strong: #b7e8e2;
+  
+  /* Bright Electric Mint & Aqua */
+  --lh-teal: #00d2b4;
+  --lh-teal-hover: #00bc9f;
+  --lh-teal-deep: #008f7f;
+  --lh-teal-ink: #00776b;
+  --lh-teal-pale: #d6faf4;
+  --lh-teal-wash: #edfcf9;
+  
+  /* Electric Accents */
+  --lh-cyan-bright: #00cbf2;
+  --lh-violet: #6366f1;
+  --lh-shadow-sm: 0 4px 16px rgba(0, 160, 145, 0.06), 0 2px 6px rgba(14, 46, 51, 0.03);
+  --lh-shadow-md: 0 14px 34px rgba(0, 160, 145, 0.11), 0 4px 12px rgba(14, 46, 51, 0.04);
 
   width: 100%;
   min-height: 100vh;
@@ -30,18 +38,18 @@
   padding: max(8px, env(safe-area-inset-top, 0px)) 22px
     calc(104px + env(safe-area-inset-bottom, 0px));
   background:
-    radial-gradient(circle at 100% 0%, rgba(4, 191, 191, 0.055), transparent 26rem),
+    radial-gradient(circle at 100% 0%, rgba(0, 229, 190, 0.12), transparent 28rem),
+    radial-gradient(circle at 0% 45%, rgba(0, 203, 242, 0.07), transparent 26rem),
     var(--lh-bg);
   color: var(--lh-text);
-  font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont,
-    "Helvetica Neue", Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Some app shells constrain route height. Let this dashboard own its scroll. */
+/* App shell constraints override */
 html:has(.lh-page),
 body:has(.lh-page),
 #root:has(.lh-page),
@@ -64,7 +72,7 @@ body:has(.lh-page),
 }
 
 .lh-page button:focus-visible {
-  outline: 3px solid rgba(4, 191, 191, 0.32);
+  outline: 3px solid rgba(0, 210, 180, 0.4);
   outline-offset: 3px;
 }
 
@@ -74,7 +82,9 @@ body:has(.lh-page),
   margin: 0 auto;
 }
 
-/* Header */
+/* ---------------------------------
+   HEADER
+--------------------------------- */
 .lh-header {
   position: sticky;
   top: 0;
@@ -85,11 +95,12 @@ body:has(.lh-page),
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
   gap: 12px;
-  margin-bottom: 10px;
-  background: rgba(4, 49, 56, 0.98);
-  border-bottom: 1px solid rgba(4, 191, 191, 0.22);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  margin-bottom: 12px;
+  background: rgba(3, 16, 19, 0.98);
+  border-bottom: 1px solid rgba(0, 210, 180, 0.16);
+  box-shadow: 0 4px 20px rgba(4, 46, 54, 0.12);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
 }
 
 .lh-icon-button,
@@ -100,14 +111,13 @@ body:has(.lh-page),
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #d9ffff;
-  background: #0a4149;
-  border: 1px solid rgba(4, 191, 191, 0.28);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  border-radius: 15px;
+  color: #b3faf0;
+  background: rgba(0, 210, 180, 0.12);
+  border: 1px solid rgba(0, 229, 190, 0.32);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
+  border-radius: 14px;
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease,
-    transform 160ms ease, box-shadow 160ms ease;
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .lh-icon-button svg,
@@ -117,14 +127,16 @@ body:has(.lh-page),
 
 .lh-icon-button:hover,
 .lh-profile-button:hover {
-background: #10545b;
-border-color: rgba(4, 191, 191, 0.55);
-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
+  background: rgba(0, 210, 180, 0.24);
+  color: #ffffff;
+  border-color: rgba(0, 229, 190, 0.65);
+  box-shadow: 0 0 16px rgba(0, 210, 180, 0.35);
+  transform: translateY(-1px);
 }
 
 .lh-icon-button:active,
 .lh-profile-button:active {
-  transform: scale(0.96);
+  transform: scale(0.95);
 }
 
 .lh-brand {
@@ -151,7 +163,9 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   justify-self: end;
 }
 
-/* Main layout and welcome */
+/* ---------------------------------
+   MAIN LAYOUT & GREETING
+--------------------------------- */
 .lh-main {
   display: flex;
   flex-direction: column;
@@ -173,47 +187,52 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 
 .lh-eyebrow {
   margin: 0 0 7px;
-  color: var(--lh-teal-deep);
+  color: #e06014;
   font-size: 11px;
-  font-weight: 750;
+  font-weight: 800;
   line-height: 1.45;
-  letter-spacing: 1.15px;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
 }
 
 .lh-greeting h1 {
   margin: 0;
   color: var(--lh-text);
-  font-size: clamp(29px, 3.4vw, 38px);
-  font-weight: 760;
-  line-height: 1.12;
-  letter-spacing: -1.15px;
+  font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+  font-size: clamp(30px, 3.5vw, 40px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.8px;
   overflow-wrap: anywhere;
 }
 
-.lh-greeting h1 span {
-  font-size: 0.8em;
-}
-
 .lh-subtitle {
-  margin: 10px 0 0;
+  margin: 9px 0 0;
   color: var(--lh-muted);
   font-size: 14px;
   line-height: 1.6;
 }
 
-/* Wallet summary */
+/* ---------------------------------
+   WALLET SUMMARY
+--------------------------------- */
 .lh-wallet-card {
   min-width: 0;
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 13px;
-  padding: 17px 18px;
-  background: linear-gradient(135deg, #ffffff 5%, #f5fdfc 100%);
+  gap: 14px;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, #ffffff 40%, #eefbf9 100%);
   border: 1px solid var(--lh-border);
-  border-radius: 21px;
+  border-radius: 22px;
   box-shadow: var(--lh-shadow-sm);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.lh-wallet-card:hover {
+  box-shadow: var(--lh-shadow-md);
+  border-color: var(--lh-border-strong);
 }
 
 .lh-wallet-icon {
@@ -223,14 +242,14 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--lh-teal-ink);
-  background: linear-gradient(145deg, #e2fbf8, #d1f5f1);
-  border: 1px solid #d0f0ed;
+  color: #e06014;
+  background: linear-gradient(135deg, #fff3e6 0%, #ffe3c4 100%);
+  border: 1px solid #ffd4a8;
   border-radius: 16px;
 }
 
 .lh-wallet-icon svg {
-  font-size: 23px;
+  font-size: 24px;
 }
 
 .lh-wallet-copy {
@@ -238,21 +257,22 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-small-label {
-  margin: 0 0 5px;
+  margin: 0 0 4px;
   color: var(--lh-muted);
   font-size: 10px;
-  font-weight: 750;
+  font-weight: 800;
   line-height: 1.4;
-  letter-spacing: 0.85px;
+  letter-spacing: 0.9px;
   text-transform: uppercase;
 }
 
 .lh-wallet-amount {
   color: var(--lh-text);
-  font-size: clamp(19px, 2.1vw, 24px);
-  font-weight: 760;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(20px, 2.2vw, 25px);
+  font-weight: 700;
   line-height: 1.2;
-  letter-spacing: -0.55px;
+  letter-spacing: -0.4px;
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
@@ -266,22 +286,23 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 
 .lh-wallet-add {
   min-height: 40px;
-  padding: 0 13px;
+  padding: 0 14px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 5px;
   color: #ffffff;
-  background: var(--lh-teal-ink);
-  border: 1px solid var(--lh-teal-ink);
-  border-radius: 12px;
+  background: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 4px 14px rgba(255, 82, 26, 0.35);
+  border-radius: 13px;
   font-size: 12px !important;
   font-weight: 700 !important;
   line-height: 1.2;
   white-space: nowrap;
   cursor: pointer;
-  box-shadow: 0 4px 10px rgba(5, 109, 114, 0.13);
-  transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  box-shadow: 0 4px 14px rgba(0, 190, 165, 0.32);
+  transition: all 180ms ease;
 }
 
 .lh-wallet-add svg {
@@ -289,20 +310,23 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-wallet-add:hover {
-  background: var(--lh-teal-deep);
-  box-shadow: 0 7px 16px rgba(5, 109, 114, 0.18);
+  background: linear-gradient(135deg, #ff924e 0%, #ff622e 100%);
+  box-shadow: 0 6px 18px rgba(255, 82, 26, 0.45);
+  transform: translateY(-1px);
 }
 
 .lh-wallet-add:active {
   transform: translateY(1px);
 }
 
-/* Primary action / active session */
+/* ---------------------------------
+   PRIMARY ACTION / ACTIVE SESSION
+--------------------------------- */
 .lh-primary-card {
   position: relative;
   min-width: 0;
   overflow: hidden;
-  padding: clamp(23px, 3.2vw, 34px);
+  padding: clamp(24px, 3.4vw, 36px);
   border-radius: 26px;
   border: 1px solid transparent;
 }
@@ -310,10 +334,11 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 .lh-primary-card h2 {
   max-width: 100%;
   margin: 8px 0 10px;
-  font-size: clamp(26px, 3vw, 34px);
-  font-weight: 760;
-  line-height: 1.12;
-  letter-spacing: -0.95px;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(26px, 3vw, 35px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.6px;
   overflow-wrap: anywhere;
 }
 
@@ -327,9 +352,9 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 
 .lh-primary-kicker {
   margin: 0;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 800;
-  letter-spacing: 1.25px;
+  letter-spacing: 1.3px;
   line-height: 1.5;
 }
 
@@ -347,6 +372,7 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   font-size: 25px;
 }
 
+/* Luminous Ready-to-Charge Card */
 .lh-start-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(250px, 0.65fr);
@@ -358,22 +384,22 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   row-gap: 18px;
   color: #ffffff;
   background:
-    radial-gradient(circle at 88% 8%, rgba(255, 255, 255, 0.2), transparent 15rem),
-    radial-gradient(circle at 95% 110%, rgba(0, 72, 84, 0.18), transparent 22rem),
-    linear-gradient(120deg, #05bfc0 0%, #079fa5 54%, #078b94 100%);
-  box-shadow: 0 16px 36px rgba(4, 158, 164, 0.17);
+    radial-gradient(circle at 88% 8%, rgba(255, 255, 255, 0.28), transparent 16rem),
+    radial-gradient(circle at 95% 110%, rgba(0, 95, 110, 0.25), transparent 22rem),
+    linear-gradient(125deg, #00d9b8 0%, #00b9c4 48%, #009cb2 100%);
+  box-shadow: 0 18px 42px rgba(0, 190, 185, 0.26);
 }
 
 .lh-start-card::after {
   position: absolute;
-  width: 250px;
-  height: 250px;
-  right: -112px;
-  bottom: -158px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  width: 260px;
+  height: 260px;
+  right: -110px;
+  bottom: -150px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 50%;
-  box-shadow: 0 0 0 28px rgba(255, 255, 255, 0.035),
-    0 0 0 58px rgba(255, 255, 255, 0.025);
+  box-shadow: 0 0 0 30px rgba(255, 255, 255, 0.04),
+    0 0 0 60px rgba(255, 255, 255, 0.03);
   content: "";
   pointer-events: none;
 }
@@ -388,24 +414,25 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 
 .lh-start-card .lh-primary-icon {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .lh-ready-badge {
   min-height: 31px;
-  padding: 6px 11px;
+  padding: 6px 12px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #efffff;
-  background: rgba(255, 255, 255, 0.13);
-  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
   white-space: nowrap;
+  backdrop-filter: blur(8px);
 }
 
 .lh-ready-dot {
@@ -413,8 +440,8 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   height: 7px;
   flex: 0 0 7px;
   border-radius: 50%;
-  background: #d3fff3;
-  box-shadow: 0 0 0 4px rgba(209, 255, 243, 0.14);
+  background: #affff2;
+  box-shadow: 0 0 0 4px rgba(175, 255, 242, 0.25);
 }
 
 .lh-start-copy {
@@ -425,17 +452,17 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-start-card .lh-primary-kicker {
-  color: rgba(236, 255, 255, 0.84);
+  color: rgba(240, 255, 253, 0.9);
 }
 
 .lh-start-card h2 {
   max-width: 570px;
-  font-size: clamp(29px, 3.5vw, 39px);
+  font-size: clamp(30px, 3.6vw, 40px);
 }
 
 .lh-start-card .lh-start-copy > p:not(.lh-primary-kicker) {
   max-width: 490px;
-  color: rgba(244, 255, 255, 0.9);
+  color: rgba(248, 255, 255, 0.94);
 }
 
 .lh-start-actions {
@@ -446,30 +473,30 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-end;
-  gap: 9px;
+  gap: 10px;
   min-width: 0;
 }
 
 .lh-primary-button {
   width: 100%;
-  min-height: 49px;
+  min-height: 50px;
   margin-top: 22px;
-  padding: 12px 16px;
+  padding: 12px 18px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 9px;
-  color: #057b80;
+  color: #00766a;
   background: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  border-radius: 14px;
-  font-size: 13px !important;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 15px;
+  font-size: 13.5px !important;
   font-weight: 750 !important;
   line-height: 1.35;
   text-align: center;
   cursor: pointer;
-  box-shadow: 0 6px 16px rgba(5, 75, 80, 0.09);
-  transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+  box-shadow: 0 8px 24px rgba(0, 80, 85, 0.16);
+  transition: all 180ms ease;
 }
 
 .lh-primary-button svg {
@@ -478,8 +505,9 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-primary-button:hover {
-  background: #edffff;
-  box-shadow: 0 8px 20px rgba(5, 75, 80, 0.15);
+  background: #f3ffff;
+  box-shadow: 0 10px 28px rgba(0, 80, 85, 0.22);
+  transform: translateY(-1px);
 }
 
 .lh-primary-button:active {
@@ -492,21 +520,22 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 
 .lh-map-button {
   width: 100%;
-  min-height: 43px;
-  padding: 10px 12px;
+  min-height: 44px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  color: #f0ffff;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 13px;
-  font-size: 12px !important;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  border-radius: 14px;
+  font-size: 12.5px !important;
   font-weight: 700 !important;
   line-height: 1.4;
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
+  backdrop-filter: blur(8px);
+  transition: all 180ms ease;
 }
 
 .lh-map-button svg {
@@ -515,13 +544,15 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-map-button:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
-/* Active session variant */
+/* ---------------------------------
+   ACTIVE CHARGING SESSION CARD
+--------------------------------- */
 .lh-active-card {
-  background: linear-gradient(135deg, #ffffff 0%, #f7fdfd 100%);
+  background: linear-gradient(135deg, #ffffff 0%, #f3fcfb 100%);
   border-color: var(--lh-border);
   box-shadow: var(--lh-shadow-md);
 }
@@ -529,15 +560,15 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 .lh-active-card::before {
   position: absolute;
   inset: 0 0 auto;
-  height: 4px;
-  background: linear-gradient(90deg, var(--lh-teal), #78ded5);
+  height: 5px;
+  background: linear-gradient(90deg, #00e5be 0%, #00cbf2 100%);
   content: "";
 }
 
 .lh-active-card .lh-primary-icon {
   color: var(--lh-teal-ink);
   background: var(--lh-teal-pale);
-  border: 1px solid #d1f0ec;
+  border: 1px solid #b7ede4;
 }
 
 .lh-active-card .lh-primary-kicker {
@@ -560,10 +591,10 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 11px;
-  color: #087d68;
-  background: #e8faf4;
-  border: 1px solid #d1f2e6;
+  padding: 7px 12px;
+  color: #008764;
+  background: #dbfaf0;
+  border: 1px solid #b5f2dd;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 750;
@@ -575,8 +606,8 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   height: 7px;
   flex: 0 0 7px;
   border-radius: 50%;
-  background: #0aab83;
-  box-shadow: 0 0 0 4px rgba(10, 171, 131, 0.12);
+  background: #00c98d;
+  box-shadow: 0 0 0 4px rgba(0, 201, 141, 0.2);
   animation: lh-pulse 1.8s ease-in-out infinite;
 }
 
@@ -592,21 +623,21 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 .lh-session-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 13px;
+  gap: 14px;
   margin-top: 20px;
 }
 
 .lh-session-stat {
   min-width: 0;
-  padding: 15px;
-  background: #f2fbfa;
-  border: 1px solid #e0f1ef;
+  padding: 16px;
+  background: #f1fbf9;
+  border: 1px solid #d8f2ee;
   border-radius: 16px;
 }
 
 .lh-session-stat span {
   display: block;
-  margin-bottom: 7px;
+  margin-bottom: 6px;
   color: var(--lh-muted);
   font-size: 11px;
   line-height: 1.45;
@@ -615,8 +646,9 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 .lh-session-stat strong {
   display: block;
   color: var(--lh-text);
-  font-size: clamp(15px, 2vw, 20px);
-  font-weight: 760;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(16px, 2.1vw, 21px);
+  font-weight: 700;
   line-height: 1.3;
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
@@ -625,14 +657,15 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 .lh-active-card .lh-primary-button,
 .lh-error-card .lh-primary-button {
   color: #ffffff;
-  background: linear-gradient(135deg, var(--lh-teal-deep), var(--lh-teal-ink));
+  background: linear-gradient(135deg, #00b99f 0%, #00827b 100%);
   border-color: transparent;
-  box-shadow: 0 7px 18px rgba(5, 109, 114, 0.14);
+  box-shadow: 0 8px 22px rgba(0, 160, 145, 0.26);
 }
 
 .lh-active-card .lh-primary-button:hover,
 .lh-error-card .lh-primary-button:hover {
-  background: linear-gradient(135deg, #079196, #056c71);
+  background: linear-gradient(135deg, #00caae 0%, #00938b 100%);
+  box-shadow: 0 10px 26px rgba(0, 160, 145, 0.35);
 }
 
 .lh-primary-secondary {
@@ -647,6 +680,7 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   font-size: 12px !important;
   font-weight: 700 !important;
   cursor: pointer;
+  transition: all 160ms ease;
 }
 
 .lh-primary-secondary:hover {
@@ -654,7 +688,9 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   border-color: var(--lh-border);
 }
 
-/* Error/loading states */
+/* ---------------------------------
+   ERROR & SKELETON STATES
+--------------------------------- */
 .lh-error-card,
 .lh-primary-loading {
   color: var(--lh-text);
@@ -664,8 +700,9 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-error-card .lh-primary-icon {
-  color: #9a671b;
-  background: #fff5e3;
+  color: #c27d14;
+  background: #fff6e5;
+  border: 1px solid #fde7be;
 }
 
 .lh-error-card .lh-primary-kicker {
@@ -678,7 +715,7 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-skeleton {
-  background: linear-gradient(90deg, #e7f1f1 25%, #f5fbfb 50%, #e7f1f1 75%);
+  background: linear-gradient(90deg, #e4f4f3 25%, #f4fbfb 50%, #e4f4f3 75%);
   background-size: 200% 100%;
   border-radius: 9px;
   animation: lh-shimmer 1.5s ease-in-out infinite;
@@ -708,7 +745,9 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   margin-top: 20px;
 }
 
-/* Recent activity */
+/* ---------------------------------
+   RECENT ACTIVITY SECTION
+--------------------------------- */
 .lh-activity-section {
   display: flex;
   flex-direction: column;
@@ -730,14 +769,15 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 .lh-section-heading h2 {
   margin: 0;
   color: var(--lh-text);
-  font-size: clamp(22px, 2.5vw, 27px);
-  font-weight: 760;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(23px, 2.6vw, 28px);
+  font-weight: 700;
   line-height: 1.2;
-  letter-spacing: -0.7px;
+  letter-spacing: -0.5px;
 }
 
 .lh-section-description {
-  margin: 7px 0 0;
+  margin: 6px 0 0;
   color: var(--lh-muted);
   font-size: 13px;
   line-height: 1.55;
@@ -747,24 +787,25 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
-  gap: 18px;
+  gap: 20px;
 }
 
 .lh-activity-panel {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 21px;
+  padding: 22px;
   background: var(--lh-surface);
   border: 1px solid var(--lh-border);
-  border-radius: 22px;
+  border-radius: 24px;
   box-shadow: var(--lh-shadow-sm);
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .lh-activity-panel:hover {
   border-color: var(--lh-border-strong);
-  box-shadow: 0 9px 25px rgba(23, 75, 80, 0.065);
+  box-shadow: var(--lh-shadow-md);
+  transform: translateY(-2px);
 }
 
 .lh-panel-heading {
@@ -772,7 +813,7 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   align-items: center;
   gap: 12px;
   padding-bottom: 17px;
-  border-bottom: 1px solid #edf4f4;
+  border-bottom: 1px solid #eef6f5;
 }
 
 .lh-panel-icon {
@@ -786,19 +827,19 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-panel-icon svg {
-  font-size: 21px;
+  font-size: 22px;
 }
 
 .lh-panel-icon-teal {
-  color: var(--lh-teal-ink);
-  background: #e4f9f7;
-  border: 1px solid #d4f0ed;
+  color: #008779;
+  background: linear-gradient(135deg, #dcfaf5 0%, #c1f5ed 100%);
+  border: 1px solid #b7ede4;
 }
 
 .lh-panel-icon-violet {
-  color: #7261b4;
-  background: #f0edff;
-  border: 1px solid #e6e1ff;
+  color: var(--lh-violet);
+  background: linear-gradient(135deg, #f0efff 0%, #e3e0ff 100%);
+  border: 1px solid #dad5ff;
 }
 
 .lh-panel-title {
@@ -809,10 +850,10 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 .lh-panel-title h3 {
   margin: 0;
   color: var(--lh-text);
-  font-size: 15px;
+  font-size: 15.5px;
   font-weight: 750;
   line-height: 1.35;
-  letter-spacing: -0.15px;
+  letter-spacing: -0.2px;
 }
 
 .lh-panel-title p {
@@ -824,21 +865,21 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 
 .lh-text-link {
   flex: 0 0 auto;
-  padding: 8px 9px;
+  padding: 7px 11px;
   color: var(--lh-teal-ink);
-  background: #f0fbfa;
-  border: 1px solid #e0f2f0;
+  background: #edfbf8;
+  border: 1px solid #d3f2ec;
   border-radius: 10px;
   font-size: 11px !important;
   font-weight: 750 !important;
   line-height: 1;
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: all 160ms ease;
 }
 
 .lh-text-link:hover {
-  background: #e1f8f5;
-  border-color: #cdeee9;
+  background: #dbf7f2;
+  border-color: #beece3;
 }
 
 .lh-activity-content {
@@ -875,24 +916,24 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  padding: 5px 9px;
-  color: #087d68;
-  background: #e9faf3;
-  border: 1px solid #d5f3e7;
+  padding: 5px 10px;
+  color: #008764;
+  background: #dbfaf0;
+  border: 1px solid #b8f2dd;
   border-radius: 999px;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 750;
   line-height: 1.3;
 }
 
 .lh-activity-detail {
   min-width: 0;
-  margin-top: 15px;
+  margin-top: 14px;
   display: flex;
   align-items: flex-start;
   gap: 8px;
   color: var(--lh-muted);
-  font-size: 11px;
+  font-size: 11.5px;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -900,38 +941,39 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 .lh-activity-detail svg {
   flex: 0 0 auto;
   margin-top: 1px;
-  color: #7b9a9e;
+  color: #6ea0a6;
   font-size: 16px;
 }
 
 .lh-activity-metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 11px;
   margin-top: 19px;
 }
 
 .lh-activity-metrics > div {
   min-width: 0;
-  padding: 12px;
-  background: #f6fbfb;
-  border: 1px solid #e8f3f2;
-  border-radius: 13px;
+  padding: 12px 14px;
+  background: #f4fbfb;
+  border: 1px solid #dfefee;
+  border-radius: 14px;
 }
 
 .lh-activity-metrics span {
   display: block;
-  margin-bottom: 5px;
+  margin-bottom: 4px;
   color: var(--lh-muted);
-  font-size: 10px;
+  font-size: 10.5px;
   line-height: 1.4;
 }
 
 .lh-activity-metrics strong {
   display: block;
   color: var(--lh-text);
-  font-size: 13px;
-  font-weight: 750;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
   line-height: 1.35;
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
@@ -940,21 +982,21 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 .lh-panel-action {
   width: 100%;
   min-height: 42px;
-  margin-top: 17px;
-  padding: 10px 12px;
+  margin-top: 18px;
+  padding: 10px 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 9px;
   color: var(--lh-teal-ink);
-  background: #f0fbfa;
-  border: 1px solid #e0f2f0;
-  border-radius: 12px;
+  background: #edfbf8;
+  border: 1px solid #d3f2ec;
+  border-radius: 13px;
   font-size: 12px !important;
   font-weight: 750 !important;
   text-align: left;
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: all 160ms ease;
 }
 
 .lh-panel-action svg {
@@ -963,8 +1005,8 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-panel-action:hover {
-  background: #e3f8f5;
-  border-color: #cdeee9;
+  background: #dbf7f1;
+  border-color: #beece2;
 }
 
 .lh-transaction-content {
@@ -984,23 +1026,24 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 
 .lh-transaction-amount {
   max-width: 50%;
-  color: var(--lh-teal-ink);
-  font-size: 18px;
-  font-weight: 780;
+  color: #d85400;
+  font-family: 'Outfit', sans-serif;
+  font-size: 19px;
+  font-weight: 750;
   line-height: 1.3;
-  letter-spacing: -0.4px;
+  letter-spacing: -0.3px;
   text-align: right;
   overflow-wrap: anywhere;
   font-variant-numeric: tabular-nums;
 }
 
 .lh-payment-status {
-  margin-top: 15px;
+  margin-top: 14px;
   display: flex;
   align-items: flex-start;
   gap: 7px;
-  color: #087d68;
-  font-size: 11px;
+  color: #008764;
+  font-size: 11.5px;
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -1030,7 +1073,7 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-transaction-content:hover .lh-transaction-footer svg {
-  transform: translateX(3px);
+  transform: translateX(4px);
 }
 
 .lh-activity-loading {
@@ -1049,26 +1092,26 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-empty-icon {
-  width: 46px;
-  height: 46px;
+  width: 48px;
+  height: 48px;
   margin-bottom: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--lh-teal-ink);
   background: var(--lh-teal-pale);
-  border: 1px solid #d3f0ed;
+  border: 1px solid #b7ede4;
   border-radius: 16px;
 }
 
 .lh-empty-icon svg {
-  font-size: 23px;
+  font-size: 24px;
 }
 
 .lh-empty-state p {
   margin: 0;
   color: var(--lh-text);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 750;
   line-height: 1.45;
 }
@@ -1083,48 +1126,52 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 
 .lh-empty-state button {
   min-height: 36px;
-  margin-top: 12px;
-  padding: 7px 11px;
+  margin-top: 14px;
+  padding: 7px 13px;
   color: var(--lh-teal-ink);
-  background: #f0fbfa;
-  border: 1px solid #dcefed;
-  border-radius: 10px;
-  font-size: 11px !important;
+  background: #edfbf8;
+  border: 1px solid #d3f2ec;
+  border-radius: 11px;
+  font-size: 11.5px !important;
   font-weight: 750 !important;
   cursor: pointer;
+  transition: all 160ms ease;
 }
 
 .lh-empty-state button:hover {
-  background: #e2f8f5;
+  background: #dbf7f1;
 }
 
-/* Navigation drawer */
+/* ---------------------------------
+   NAVIGATION DRAWER
+--------------------------------- */
 .lh-drawer-backdrop {
   position: fixed;
   inset: 0;
   z-index: 1000;
   display: flex;
   justify-content: flex-start;
-  background: rgba(15, 47, 53, 0.36);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  animation: lh-fade-in 160ms ease both;
+  background: rgba(6, 38, 43, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: lh-fade-in 180ms ease both;
 }
 
 .lh-drawer {
   width: min(390px, calc(100vw - 38px));
   height: 100%;
   max-height: 100dvh;
+  z-index: 1001;
   padding: max(18px, env(safe-area-inset-top, 0px)) 18px
-    max(18px, env(safe-area-inset-bottom, 0px));
+    calc(88px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   overflow-y: auto;
   color: var(--lh-text);
-  background: #fbffff;
+  background: #fcffff;
   border-right: 1px solid var(--lh-border);
-  box-shadow: 16px 0 45px rgba(9, 66, 72, 0.15);
-  animation: lh-drawer-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  box-shadow: 18px 0 48px rgba(4, 52, 58, 0.16);
+  animation: lh-drawer-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .lh-drawer-header {
@@ -1133,7 +1180,7 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   justify-content: space-between;
   gap: 12px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #e8f3f2;
+  border-bottom: 1px solid #ebf6f5;
 }
 
 .lh-drawer-brand {
@@ -1156,20 +1203,15 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   flex-direction: column;
 }
 
-.lh-drawer-brand strong,
-.lh-drawer-brand span {
-  display: block;
-}
-
 .lh-drawer-brand strong {
   color: var(--lh-text);
-  font-size: 14px;
-  font-weight: 760;
+  font-size: 14.5px;
+  font-weight: 750;
   line-height: 1.35;
 }
 
 .lh-drawer-brand span {
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--lh-muted);
   font-size: 11px;
   line-height: 1.4;
@@ -1177,17 +1219,56 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 
 .lh-drawer-header .lh-icon-button {
   flex: 0 0 42px;
+  background: #edfbf8;
+  color: var(--lh-teal-ink);
+  border-color: #c8ede6;
 }
 
 .lh-drawer-user {
-  margin: 21px 0 23px;
+  margin: 18px 0 20px;
   padding: 14px;
   display: flex;
   align-items: center;
   gap: 12px;
-  background: linear-gradient(135deg, #ecfbf9, #f6fdfc);
-  border: 1px solid #dff1ef;
-  border-radius: 17px;
+  background: linear-gradient(135deg, #e3fcf7, #f4fdfc);
+  border: 1px solid #c8f2eb;
+  border-radius: 18px;
+}
+
+.lh-drawer-user-info {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.lh-drawer-user-label {
+  display: block;
+  color: var(--lh-muted);
+  font-size: 11px;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.lh-drawer-user-name {
+  display: block;
+  color: var(--lh-text);
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.3;
+  word-break: break-word;
+  margin: 0;
+}
+
+.lh-drawer-user-phone {
+  display: block;
+  color: var(--lh-muted);
+  font-size: 11px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
 }
 
 .lh-drawer-avatar {
@@ -1199,17 +1280,13 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   justify-content: center;
   color: var(--lh-teal-ink);
   background: #ffffff;
-  border: 1px solid #dbeeed;
+  border: 1px solid #c9ede7;
   border-radius: 15px;
+  box-shadow: 0 4px 10px rgba(0, 160, 140, 0.08);
 }
 
 .lh-drawer-avatar svg {
   font-size: 23px;
-}
-
-.lh-drawer-user span,
-.lh-drawer-user strong {
-  display: block;
 }
 
 .lh-drawer-user span {
@@ -1222,33 +1299,34 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   margin-top: 3px;
   color: var(--lh-text);
   font-size: 15px;
-  font-weight: 760;
+  font-weight: 750;
   line-height: 1.4;
 }
 
 .lh-drawer-nav > .lh-small-label {
-  margin: 0 0 9px 3px;
+  margin: 0 0 9px 4px;
 }
 
 .lh-drawer-item {
   width: 100%;
-  min-height: 69px;
-  padding: 10px 9px;
+  min-height: 68px;
+  padding: 10px 10px;
   display: flex;
   align-items: center;
   gap: 12px;
   color: var(--lh-text);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 14px;
+  border-radius: 15px;
   text-align: left;
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: all 160ms ease;
 }
 
 .lh-drawer-item:hover {
-  background: #edfaf9;
-  border-color: #dff1ef;
+  background: #effbf9;
+  border-color: #d7f4ee;
+  transform: translateX(2px);
 }
 
 .lh-drawer-item-icon {
@@ -1259,8 +1337,8 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   align-items: center;
   justify-content: center;
   color: var(--lh-teal-ink);
-  background: #e4f8f6;
-  border: 1px solid #d8f0ed;
+  background: #e4f9f6;
+  border: 1px solid #c9ede7;
   border-radius: 13px;
 }
 
@@ -1275,41 +1353,38 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   flex-direction: column;
 }
 
-.lh-drawer-item-copy strong,
-.lh-drawer-item-copy small {
-  display: block;
-}
-
 .lh-drawer-item-copy strong {
   color: var(--lh-text);
-  font-size: 13px;
-  font-weight: 740;
+  font-size: 13.5px;
+  font-weight: 750;
   line-height: 1.4;
 }
 
 .lh-drawer-item-copy small {
   margin-top: 3px;
   color: var(--lh-muted);
-  font-size: 10px;
+  font-size: 10.5px;
   line-height: 1.4;
 }
 
 .lh-drawer-arrow {
   flex: 0 0 auto;
-  color: #8aa9ad;
+  color: #79a6ac;
   font-size: 17px !important;
 }
 
 .lh-drawer-support {
+  flex-shrink: 0;
+margin-bottom: 8px;
   margin-top: auto;
-  padding: 15px 12px;
+  padding: 15px 14px;
   display: flex;
   align-items: center;
-  gap: 11px;
+  gap: 12px;
   color: var(--lh-text);
-  background: #f1fbfa;
-  border: 1px solid #e0f1ef;
-  border-radius: 16px;
+  background: linear-gradient(135deg, #eefbf9, #f7fdfc);
+  border: 1px solid #d4f2ec;
+  border-radius: 17px;
 }
 
 .lh-drawer-support > svg {
@@ -1325,56 +1400,55 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   flex-direction: column;
 }
 
-.lh-drawer-support strong,
-.lh-drawer-support span {
-  display: block;
-}
-
 .lh-drawer-support strong {
   color: var(--lh-text);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 750;
   line-height: 1.4;
 }
 
 .lh-drawer-support span {
-  margin-top: 3px;
+  margin-top: 2px;
   color: var(--lh-muted);
-  font-size: 10px;
+  font-size: 10.5px;
   line-height: 1.4;
 }
 
 .lh-drawer-support button {
-  width: 34px;
-  height: 34px;
-  flex: 0 0 34px;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  background: var(--lh-teal-ink);
+  background: linear-gradient(135deg, #ff8236, #ff521a);
+  box-shadow: 0 4px 12px rgba(255, 82, 26, 0.35);
   border: 0;
-  border-radius: 11px;
+  border-radius: 12px;
   cursor: pointer;
+  transition: all 160ms ease;
 }
 
-.lh-drawer-support button svg {
-  font-size: 18px;
+.lh-drawer-support button:hover {
+  transform: translateY(-1px);
 }
 
-/* Bottom navigation: class comes from the existing FooterNav component. */
+/* ---------------------------------
+   BOTTOM BAR & FLOATING QR
+--------------------------------- */
 .lh-page .bottom-bar--light {
   color: var(--lh-text);
   background: rgba(255, 255, 255, 0.96);
-  border-top: 1px solid #dceeee;
-  box-shadow: 0 -8px 28px rgba(21, 79, 83, 0.065);
+  border-top: 1px solid var(--lh-border);
+  box-shadow: 0 -8px 28px rgba(14, 60, 66, 0.065);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
 
 .lh-page .bottom-bar--light button span,
 .lh-page .bottom-bar--light button svg {
-  color: #6f8b90;
+  color: #5d7e83;
   transition: color 160ms ease, transform 160ms ease;
 }
 
@@ -1384,405 +1458,9 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 }
 
 .lh-page .bottom-bar--light button:hover {
-  background: #f0fbfa;
+  background: #edfbf8;
 }
 
-.lh-page .bottom-bar--light .qr-footer-center-button::before {
-  background: linear-gradient(140deg, #12d1cc, #04aeb3);
-  border: 4px solid #ffffff;
-  box-shadow: 0 5px 16px rgba(4, 174, 179, 0.24);
-}
-
-.lh-page .bottom-bar--light .qr-footer-icon {
-  color: #ffffff;
-}
-
-/* Motion */
-@keyframes lh-shimmer {
-  0% { background-position: 100% 0; }
-  100% { background-position: -100% 0; }
-}
-
-@keyframes lh-pulse {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(10, 171, 131, 0.12); }
-  50% { box-shadow: 0 0 0 7px rgba(10, 171, 131, 0.045); }
-}
-
-@keyframes lh-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes lh-drawer-in {
-  from { transform: translateX(-16px); opacity: 0.9; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-/* Tablet / compact laptop */
-@media (max-width: 850px) {
-  .lh-page {
-    padding-right: 18px;
-    padding-left: 18px;
-  }
-
-  .lh-welcome-row {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.9fr);
-    gap: 20px;
-  }
-
-  .lh-wallet-card {
-    grid-template-columns: 44px minmax(0, 1fr);
-    gap: 11px;
-    padding: 15px;
-  }
-
-  .lh-wallet-icon {
-    width: 44px;
-    height: 44px;
-    flex-basis: 44px;
-  }
-
-  .lh-wallet-add {
-    grid-column: 2;
-    justify-self: start;
-    min-height: 35px;
-    margin-top: 2px;
-  }
-
-  .lh-start-card {
-    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.7fr);
-    column-gap: 24px;
-  }
-
-  .lh-activity-panel {
-    padding: 18px;
-  }
-}
-
-/* Mobile */
-@media (max-width: 640px) {
-  .lh-page {
-    padding: max(5px, env(safe-area-inset-top, 0px)) 14px
-      calc(104px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .lh-header {
-    min-height: 59px;
-    grid-template-columns: 40px minmax(0, 1fr) 40px;
-    gap: 8px;
-    margin-bottom: 5px;
-  }
-
-  .lh-icon-button,
-  .lh-profile-button {
-    width: 39px;
-    height: 39px;
-    border-radius: 13px;
-  }
-
-  .lh-icon-button svg,
-  .lh-profile-button svg {
-    font-size: 21px;
-  }
-
-  .lh-brand {
-    height: 45px;
-    padding: 2px 5px;
-  }
-
-  .lh-logo {
-    max-width: 180px;
-    max-height: 65px;
-  }
-
-  .lh-main {
-    gap: 22px;
-  }
-
-  .lh-welcome-row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 15px;
-    padding-top: 9px;
-  }
-
-  .lh-greeting {
-    padding: 3px 1px 0;
-  }
-
-  .lh-eyebrow {
-    margin-bottom: 6px;
-    font-size: 10px;
-    letter-spacing: 1px;
-  }
-
-  .lh-greeting h1 {
-    font-size: clamp(28px, 8vw, 34px);
-    letter-spacing: -0.85px;
-  }
-
-  .lh-subtitle {
-    margin-top: 7px;
-    font-size: 13px;
-  }
-
-  .lh-wallet-card {
-    grid-template-columns: 43px minmax(0, 1fr) auto;
-    align-items: center;
-    gap: 11px;
-    padding: 13px;
-    border-radius: 18px;
-  }
-
-  .lh-wallet-icon {
-    width: 43px;
-    height: 43px;
-    flex-basis: 43px;
-    border-radius: 14px;
-  }
-
-  .lh-wallet-copy .lh-small-label {
-    font-size: 9px;
-    letter-spacing: 0.65px;
-  }
-
-  .lh-wallet-amount {
-    font-size: clamp(17px, 5vw, 21px);
-  }
-
-  .lh-wallet-add {
-    grid-column: auto;
-    min-height: 37px;
-    justify-self: end;
-    margin-top: 0;
-    padding: 0 10px;
-    font-size: 11px !important;
-  }
-
-  .lh-primary-card {
-    padding: 22px 19px;
-    border-radius: 23px;
-  }
-
-  .lh-start-card {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      "top"
-      "copy"
-      "actions";
-    gap: 18px;
-  }
-
-  .lh-primary-card h2 {
-    margin: 7px 0 9px;
-    font-size: clamp(26px, 7.2vw, 32px);
-  }
-
-  .lh-start-card h2 {
-    font-size: clamp(28px, 8vw, 35px);
-  }
-
-  .lh-primary-card > p:not(.lh-primary-kicker),
-  .lh-start-copy > p:not(.lh-primary-kicker) {
-    font-size: 13px;
-    line-height: 1.65;
-  }
-
-  .lh-start-top .lh-primary-icon {
-    width: 45px;
-    height: 45px;
-    flex-basis: 45px;
-  }
-
-  .lh-ready-badge {
-    font-size: 10px;
-    padding: 6px 9px;
-  }
-
-  .lh-start-actions {
-    gap: 8px;
-  }
-
-  .lh-start-actions .lh-primary-button {
-    min-height: 47px;
-  }
-
-  .lh-map-button {
-    min-height: 41px;
-  }
-
-  .lh-active-card .lh-primary-kicker,
-  .lh-error-card .lh-primary-kicker {
-    margin-top: 16px;
-  }
-
-  .lh-session-stats {
-    gap: 9px;
-    margin-top: 16px;
-  }
-
-  .lh-session-stat {
-    padding: 12px 11px;
-    border-radius: 13px;
-  }
-
-  .lh-activity-section {
-    gap: 13px;
-  }
-
-  .lh-section-heading h2 {
-    font-size: 23px;
-  }
-
-  .lh-section-description {
-    max-width: 330px;
-    font-size: 12px;
-  }
-
-  .lh-activity-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 13px;
-  }
-
-  .lh-activity-panel {
-    padding: 17px;
-    border-radius: 19px;
-  }
-
-  .lh-panel-heading {
-    gap: 10px;
-    padding-bottom: 14px;
-  }
-
-  .lh-panel-icon {
-    width: 41px;
-    height: 41px;
-    flex-basis: 41px;
-    border-radius: 13px;
-  }
-
-  .lh-panel-title h3 {
-    font-size: 14px;
-  }
-
-  .lh-panel-title p {
-    font-size: 10px;
-  }
-
-  .lh-activity-content,
-  .lh-transaction-content {
-    padding-top: 15px;
-  }
-
-  .lh-activity-metrics {
-    margin-top: 16px;
-  }
-
-  .lh-activity-metrics > div {
-    padding: 11px;
-  }
-
-  .lh-activity-metrics strong {
-    font-size: 13px;
-  }
-
-  .lh-empty-state {
-    min-height: 170px;
-    padding-top: 20px;
-  }
-
-  .lh-page .bottom-bar--light {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-  }
-}
-
-@media (max-width: 385px) {
-  .lh-page {
-    padding-right: 11px;
-    padding-left: 11px;
-  }
-
-  .lh-wallet-card {
-    grid-template-columns: 39px minmax(0, 1fr) auto;
-    gap: 8px;
-    padding: 11px;
-  }
-
-  .lh-wallet-icon {
-    width: 39px;
-    height: 39px;
-    flex-basis: 39px;
-    border-radius: 12px;
-  }
-
-  .lh-wallet-icon svg {
-    font-size: 20px;
-  }
-
-  .lh-wallet-amount {
-    font-size: 16px;
-    letter-spacing: -0.2px;
-  }
-
-  .lh-wallet-add {
-    min-height: 34px;
-    padding: 0 8px;
-    gap: 2px;
-    font-size: 10px !important;
-  }
-
-  .lh-wallet-add svg {
-    font-size: 16px;
-  }
-
-  .lh-primary-card {
-    padding: 19px 16px;
-  }
-
-  .lh-panel-heading {
-    gap: 8px;
-  }
-
-  .lh-panel-title p {
-    display: none;
-  }
-
-  .lh-text-link {
-    padding: 7px 8px;
-  }
-
-  .lh-activity-panel {
-    padding: 15px;
-  }
-}
-
-@media (min-width: 641px) and (max-width: 980px) {
-  .lh-activity-grid {
-    gap: 14px;
-  }
-
-  .lh-activity-panel {
-    padding: 16px;
-  }
-
-  .lh-panel-title p {
-    display: none;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .lh-page *,
-  .lh-page *::before,
-  .lh-page *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-
-/* QR BUTTON ALIGNMENT FIX — landing dashboard */
-/* Treat the CTA icon and label as one centered unit so the icon cannot drift. */
 .lh-page .lh-start-actions .lh-primary-button {
   display: flex;
   align-items: center;
@@ -1814,10 +1492,6 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   stroke: none;
 }
 
-/*
- * The footer QR circle is the button itself (not a decorative pseudo-element).
- * This keeps the icon centered inside the hit target instead of appearing below it.
- */
 .lh-page .bottom-bar {
   display: grid !important;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1863,20 +1537,20 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   place-items: center !important;
   flex-direction: row !important;
   box-sizing: border-box !important;
-  width: 46px !important;
-  min-width: 46px !important;
-  max-width: 46px !important;
-  height: 46px !important;
-  min-height: 46px !important;
-  max-height: 46px !important;
+  width: 48px !important;
+  min-width: 48px !important;
+  max-width: 48px !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  max-height: 48px !important;
   margin: 0 !important;
   padding: 0 !important;
   transform: translateY(-35px) !important;
-  border: 4px solid #f4fbfb !important;
+  border: 4px solid #f3fbfc !important;
   border-radius: 50% !important;
-  background: linear-gradient(145deg, #19d4cf 0%, #04aeb4 100%) !important;
+  background: linear-gradient(145deg, #00f0d2 0%, #00b4c5 100%) !important;
   color: #ffffff !important;
-  box-shadow: 0 5px 16px rgba(4, 174, 179, 0.24) !important;
+  box-shadow: 0 6px 20px rgba(0, 210, 200, 0.45) !important;
   line-height: 1 !important;
   text-align: center;
   z-index: 5;
@@ -1884,7 +1558,6 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Disable the former decorative circle; the real button now draws the circle. */
 .lh-page .bottom-bar .qr-footer-center-button::before,
 .lh-page .bottom-bar .qr-footer-center-button::after {
   content: none !important;
@@ -1894,28 +1567,395 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
 .lh-page .bottom-bar .qr-footer-center-button .qr-footer-icon {
   position: static !important;
   display: block !important;
-  width: 22px !important;
-  min-width: 22px !important;
-  height: 22px !important;
-  min-height: 22px !important;
+  width: 23px !important;
+  min-width: 23px !important;
+  height: 23px !important;
+  min-height: 23px !important;
   margin: 0 !important;
   padding: 0 !important;
   color: #ffffff !important;
   fill: currentColor !important;
   stroke: none !important;
-  font-size: 22px !important;
+  font-size: 23px !important;
   line-height: 1 !important;
-  flex: 0 0 22px !important;
+  flex: 0 0 23px !important;
   z-index: 1;
 }
 
 .lh-page .bottom-bar .qr-footer-center-button:focus-visible {
-  outline: 3px solid rgba(4, 191, 191, 0.35) !important;
+  outline: 3px solid rgba(0, 229, 190, 0.45) !important;
   outline-offset: 3px;
 }
 
 .lh-page .bottom-bar .qr-footer-center-button:active {
   transform: translateY(-35px) scale(0.96) !important;
+}
+
+/* ---------------------------------
+   HEADER EDGE EXTENSIONS & BREAKPOINTS
+--------------------------------- */
+.lh-header .lh-logo {
+  object-fit: contain;
+  filter: none;
+}
+
+.lh-page .lh-header {
+  width: calc(100% + 44px);
+  margin-left: -22px;
+  margin-top: calc(-1 * max(8px, env(safe-area-inset-top, 0px)));
+}
+
+/* Tablet */
+@media (max-width: 850px) {
+  .lh-page {
+    padding-right: 18px;
+    padding-left: 18px;
+  }
+
+  .lh-page .lh-header {
+    width: calc(100% + 36px);
+    margin-left: -18px;
+  }
+
+  .lh-welcome-row {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.9fr);
+    gap: 20px;
+  }
+
+  .lh-wallet-card {
+    grid-template-columns: 44px minmax(0, 1fr);
+    gap: 11px;
+    padding: 15px;
+  }
+
+  .lh-wallet-icon {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+  }
+
+  .lh-wallet-add {
+    grid-column: 2;
+    justify-self: start;
+    min-height: 35px;
+    margin-top: 2px;
+  }
+
+  .lh-start-card {
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 0.7fr);
+    column-gap: 24px;
+  }
+
+  .lh-activity-panel {
+    padding: 18px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 640px) {
+  .lh-page {
+    padding: max(5px, env(safe-area-inset-top, 0px)) 14px
+      calc(104px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .lh-page .lh-header {
+    width: calc(100% + 28px);
+    margin-left: -14px;
+    margin-top: calc(-1 * max(5px, env(safe-area-inset-top, 0px)));
+  }
+
+  .lh-header {
+    min-height: 59px;
+    grid-template-columns: 40px minmax(0, 1fr) 40px;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .lh-icon-button,
+  .lh-profile-button {
+    width: 39px;
+    height: 39px;
+    border-radius: 13px;
+  }
+
+  .lh-icon-button svg,
+  .lh-profile-button svg {
+    font-size: 21px;
+  }
+
+  .lh-brand {
+    height: 45px;
+    padding: 2px 5px;
+  }
+
+  .lh-logo {
+    max-width: 180px;
+    max-height: 65px;
+  }
+
+  .lh-main {
+    gap: 22px;
+  }
+
+  .lh-welcome-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 15px;
+    padding-top: 9px;
+  }
+
+  .lh-greeting {
+    padding: 3px 1px 0;
+  }
+
+  .lh-eyebrow {
+    margin-bottom: 6px;
+    font-size: 10px;
+    letter-spacing: 1.1px;
+  }
+
+  .lh-greeting h1 {
+    font-size: clamp(28px, 8vw, 34px);
+    letter-spacing: -0.6px;
+  }
+
+  .lh-subtitle {
+    margin-top: 7px;
+    font-size: 13px;
+  }
+
+  .lh-wallet-card {
+    grid-template-columns: 43px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 11px;
+    padding: 14px;
+    border-radius: 19px;
+  }
+
+  .lh-wallet-icon {
+    width: 43px;
+    height: 43px;
+    flex-basis: 43px;
+    border-radius: 14px;
+  }
+
+  .lh-wallet-copy .lh-small-label {
+    font-size: 9px;
+    letter-spacing: 0.7px;
+  }
+
+  .lh-wallet-amount {
+    font-size: clamp(18px, 5vw, 22px);
+  }
+
+  .lh-wallet-add {
+    grid-column: auto;
+    min-height: 37px;
+    justify-self: end;
+    margin-top: 0;
+    padding: 0 11px;
+    font-size: 11px !important;
+  }
+
+  .lh-primary-card {
+    padding: 22px 19px;
+    border-radius: 23px;
+  }
+
+  .lh-start-card {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "top"
+      "copy"
+      "actions";
+    gap: 18px;
+  }
+
+  .lh-primary-card h2 {
+    margin: 7px 0 9px;
+    font-size: clamp(26px, 7.2vw, 32px);
+  }
+
+  .lh-start-card h2 {
+    font-size: clamp(28px, 8vw, 35px);
+  }
+
+  .lh-primary-card > p:not(.lh-primary-kicker),
+  .lh-start-copy > p:not(.lh-primary-kicker) {
+    font-size: 13px;
+    line-height: 1.65;
+  }
+
+  .lh-start-top .lh-primary-icon {
+    width: 45px;
+    height: 45px;
+    flex-basis: 45px;
+  }
+
+  .lh-ready-badge {
+    font-size: 10px;
+    padding: 6px 10px;
+  }
+
+  .lh-start-actions {
+    gap: 8px;
+  }
+
+  .lh-start-actions .lh-primary-button {
+    min-height: 47px;
+  }
+
+  .lh-map-button {
+    min-height: 41px;
+  }
+
+  .lh-active-card .lh-primary-kicker,
+  .lh-error-card .lh-primary-kicker {
+    margin-top: 16px;
+  }
+
+  .lh-session-stats {
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .lh-session-stat {
+    padding: 13px 12px;
+    border-radius: 14px;
+  }
+
+  .lh-activity-section {
+    gap: 13px;
+  }
+
+  .lh-section-heading h2 {
+    font-size: 23px;
+  }
+
+  .lh-section-description {
+    max-width: 330px;
+    font-size: 12px;
+  }
+
+  .lh-activity-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .lh-activity-panel {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .lh-panel-heading {
+    gap: 10px;
+    padding-bottom: 14px;
+  }
+
+  .lh-panel-icon {
+    width: 41px;
+    height: 41px;
+    flex-basis: 41px;
+    border-radius: 13px;
+  }
+
+  .lh-panel-title h3 {
+    font-size: 14.5px;
+  }
+
+  .lh-panel-title p {
+    font-size: 10.5px;
+  }
+
+  .lh-activity-content,
+  .lh-transaction-content {
+    padding-top: 15px;
+  }
+
+  .lh-activity-metrics {
+    margin-top: 16px;
+  }
+
+  .lh-activity-metrics > div {
+    padding: 11px;
+  }
+
+  .lh-activity-metrics strong {
+    font-size: 13px;
+  }
+
+  .lh-empty-state {
+    min-height: 170px;
+    padding-top: 20px;
+  }
+
+  .lh-page .bottom-bar--light {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/* Narrow mobile screens */
+@media (max-width: 385px) {
+  .lh-page {
+    padding-right: 11px;
+    padding-left: 11px;
+  }
+
+  .lh-page .lh-header {
+    width: calc(100% + 22px);
+    margin-left: -11px;
+  }
+
+  .lh-wallet-card {
+    grid-template-columns: 39px minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .lh-wallet-icon {
+    width: 39px;
+    height: 39px;
+    flex-basis: 39px;
+    border-radius: 12px;
+  }
+
+  .lh-wallet-icon svg {
+    font-size: 20px;
+  }
+
+  .lh-wallet-amount {
+    font-size: 17px;
+  }
+
+  .lh-wallet-add {
+    min-height: 34px;
+    padding: 0 8px;
+    gap: 2px;
+    font-size: 10px !important;
+  }
+
+  .lh-wallet-add svg {
+    font-size: 16px;
+  }
+
+  .lh-primary-card {
+    padding: 19px 16px;
+  }
+
+  .lh-panel-heading {
+    gap: 8px;
+  }
+
+  .lh-panel-title p {
+    display: none;
+  }
+
+  .lh-text-link {
+    padding: 7px 8px;
+  }
+
+  .lh-activity-panel {
+    padding: 15px;
+  }
 }
 
 @media (max-width: 360px) {
@@ -1942,39 +1982,49 @@ box-shadow: 0 4px 12px rgba(0, 0, 0, 0.16);
     font-size: 21px !important;
   }
 }
-.lh-header .lh-logo {
-  object-fit: contain;
-  filter: none;
-}
 
-/* FIX: Extend the header to the page edges */
-.lh-page .lh-header {
-  width: calc(100% + 44px);
-  margin-left: -22px;
-  margin-top: calc(-1 * max(8px, env(safe-area-inset-top, 0px)));
-}
+@media (min-width: 641px) and (max-width: 980px) {
+  .lh-activity-grid {
+    gap: 14px;
+  }
 
-/* Tablet */
-@media (max-width: 850px) {
-  .lh-page .lh-header {
-    width: calc(100% + 36px);
-    margin-left: -18px;
+  .lh-activity-panel {
+    padding: 16px;
+  }
+
+  .lh-panel-title p {
+    display: none;
   }
 }
 
-/* Mobile */
-@media (max-width: 640px) {
-  .lh-page .lh-header {
-    width: calc(100% + 28px);
-    margin-left: -14px;
-    margin-top: calc(-1 * max(5px, env(safe-area-inset-top, 0px)));
-  }
+/* Motion & Accessibility */
+@keyframes lh-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
 }
 
-/* Narrow mobile screens */
-@media (max-width: 385px) {
-  .lh-page .lh-header {
-    width: calc(100% + 22px);
-    margin-left: -11px;
+@keyframes lh-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(0, 201, 141, 0.2); }
+  50% { box-shadow: 0 0 0 8px rgba(0, 201, 141, 0.05); }
+}
+
+@keyframes lh-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes lh-drawer-in {
+  from { transform: translateX(-16px); opacity: 0.92; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lh-page *,
+  .lh-page *::before,
+  .lh-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
   }
 }
