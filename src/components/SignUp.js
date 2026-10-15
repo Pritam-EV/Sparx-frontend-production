@@ -213,33 +213,48 @@ export default function SignUp() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-        .su-page {
-          min-height: 100dvh;
-          width: 100vw;
-          background:
-            radial-gradient(circle at 100% 0%, rgba(0, 229, 190, 0.12), transparent 28rem),
-            radial-gradient(circle at 0% 100%, rgba(255, 130, 54, 0.08), transparent 26rem),
-            #f3fbfc;
-          font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-          color: #0e2e33;
-          display: flex;
-          justify-content: center;
-          align-items: flex-start;
-          overflow-y: auto;
-          overflow-x: hidden;
-          -webkit-overflow-scrolling: touch;
-          box-sizing: border-box;
-        }
+.su-page {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(0, 229, 190, 0.12),
+      transparent 28rem
+    ),
+    radial-gradient(
+      circle at 0% 100%,
+      rgba(255, 130, 54, 0.08),
+      transparent 26rem
+    ),
+    #f3fbfc;
+font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  color: #0e2e33;
+display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+box-sizing: border-box;
+}
 
-        .su-shell {
-          width: 100%;
-          max-width: 460px;
-          min-height: 100dvh;
-          display: flex;
-          flex-direction: column;
-          padding-bottom: max(28px, env(safe-area-inset-bottom, 20px));
-          box-sizing: border-box;
-        }
+.su-shell {
+  width: 100%;
+  max-width: 460px;
+  min-height: 100%;
+  height: auto;
+display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+margin: 0 auto;
+  padding-bottom: max(28px, env(safe-area-inset-bottom, 20px));
+box-sizing: border-box;
+}
 
         /* ── CURVED TOP HERO HEADER ── */
         .su-hero {
@@ -946,6 +961,44 @@ export default function SignUp() {
           text-underline-offset: 3px;
           padding: 0 4px;
         }
+
+        /* Signup page: compact layout on shorter screens */
+@media screen and (max-height: 700px) {
+  .su-hero {
+    padding-top: max(16px, env(safe-area-inset-top, 12px));
+    padding-bottom: 26px;
+  }
+
+  .su-logo {
+    height: 40px;
+  }
+
+  .su-body {
+    gap: 12px;
+  }
+
+  .su-card {
+    gap: 14px;
+    padding: 18px 16px;
+  }
+}
+
+/* Small-height mobile screens */
+@media screen and (max-height: 560px) {
+  .su-hero {
+    padding-top: 12px;
+    padding-bottom: 24px;
+  }
+
+  .su-hero-title {
+    font-size: 21px;
+  }
+
+  .su-stepper-card {
+    padding: 12px 16px;
+  }
+}
+
       `}</style>
 
       <div className="su-shell">

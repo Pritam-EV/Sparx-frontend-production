@@ -200,32 +200,61 @@ export default function Login() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-        .viz-login-page {
-          min-height: 100dvh;
-          width: 100vw;
-          background: #041014;
-          display: flex;
-          justify-content: center;
-          align-items: stretch;
-          font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-          color: #ffffff;
-          overflow-x: hidden;
-          box-sizing: border-box;
-        }
+.viz-login-page {
+  width: 100%;
+
+  /* Dedicated scroll viewport — same approach as Signup */
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+
+  background: #041014;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  color: #ffffff;
+
+  box-sizing: border-box;
+}
 
         /* Mobile-first shell (centered on desktop, full-bleed on phones) */
-        .viz-login-shell {
-          width: 100%;
-          max-width: 440px;
-          min-height: 100dvh;
-          background: linear-gradient(180deg, #07191e 0%, #040f13 100%);
-          display: flex;
-          flex-direction: column;
-          justify-content: space-between;
-          position: relative;
-          box-shadow: 0 0 60px rgba(0, 0, 0, 0.65);
-          overflow: hidden;
-        }
+.viz-login-shell {
+  width: 100%;
+  max-width: 440px;
+
+  /* Allow the login content to grow beyond the viewport */
+  min-height: 100%;
+  height: auto;
+
+  background: linear-gradient(
+    180deg,
+    #07191e 0%,
+    #040f13 100%
+  );
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+
+  position: relative;
+  margin: 0 auto;
+
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.65);
+
+  overflow: visible;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
 
         /* ── TOP CURVED IMAGE HALF (ZOMATO STYLE) ── */
         .viz-hero-banner {
@@ -335,12 +364,13 @@ export default function Login() {
 
         /* ── LOWER DARKISH CONTENT HALF ── */
         .viz-lower-section {
-          flex: 1;
+          flex: 1 0 auto;
           display: flex;
           flex-direction: column;
-          justify-content: space-between;
+          justify-content: flex-start;
           padding: 24px 22px max(20px, env(safe-area-inset-bottom, 18px));
           box-sizing: border-box;
+          min-height: 0;
         }
 
         .viz-form-core {
@@ -663,6 +693,37 @@ export default function Login() {
         .viz-terms-links a:hover {
           color: #00d2b4;
         }
+          /* Short screens: preserve access to the complete login form */
+@media screen and (max-height: 700px) {
+  .viz-hero-banner {
+    height: 230px;
+    flex-shrink: 0;
+  }
+
+  .viz-lower-section {
+    padding-top: 20px;
+  }
+
+  .viz-main-title {
+    margin-bottom: 14px;
+  }
+
+  .viz-bottom-footer {
+    margin-top: 22px;
+  }
+}
+
+/* Very small phones */
+@media screen and (max-height: 560px) {
+  .viz-hero-banner {
+    height: 190px;
+  }
+
+  .viz-lower-section {
+    padding-top: 16px;
+  }
+}
+
       `}</style>
 
       <div className="viz-login-shell">
