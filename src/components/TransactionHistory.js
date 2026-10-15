@@ -1,22 +1,30 @@
+// src/pages/TransactionHistory.js (or src/components/TransactionHistory.js)
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
 import FooterNav from "../components/FooterNav";
+import AppHeader from "../components/AppHeader";
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-const fmt = d =>
-  d ? new Date(d).toLocaleString("en-IN", {
-        day: "2-digit", month: "short", year: "numeric",
-        hour: "2-digit", minute: "2-digit", hour12: true,
+// ─── Formatters & Helpers ─────────────────────────────────────────────────────
+const fmtDate = (d) =>
+  d
+    ? new Date(d).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
       })
-    : null;
-const fmtGroup = g =>
-  g ? g.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : null;
+    : "—";
 
-// ─── Categoriser ──────────────────────────────────────────────────────────────
+const fmtMethod = (g) =>
+  g ? g.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : null;
+
+// ─── Categorization Engine ───────────────────────────────────────────────────
 function categorise(t) {
   if (t.isWalletEntry) {
-    if (t.walletTxnType === "topup")  return "TOPUP";
+    if (t.walletTxnType === "topup") return "TOPUP";
     if (t.walletTxnType === "refund") return "WALLET_REFUND";
     return "WALLET_REFUND";
   }
@@ -26,48 +34,80 @@ function categorise(t) {
     return null;
   }
   const isWalletPay = t.gateway === "wallet" || t.txnSource === "wallet_pay";
-  if (isWalletPay)            return "WALLET_DEBIT";
+  if (isWalletPay) return "WALLET_DEBIT";
   if (t.status === "SUCCESS") return "SUCCESS";
-  if (t.status === "FAILED")  return "FAILED";
+  if (t.status === "FAILED") return "FAILED";
   return null;
 }
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-const CAT = {
-  ALL:           { label: "All",           color: "#04BFBF", accent: "#04BFBF", bg: "rgba(4,191,191,0.10)",  border: "rgba(4,191,191,0.18)",   icon: "◎", sign: ""  },
-  SUCCESS:       { label: "Success",       color: "#0a8c50", accent: "#0a8c50", bg: "rgba(10,140,80,0.10)",  border: "rgba(10,140,80,0.18)",   icon: "✓", sign: "-" },
-  TOPUP:         { label: "Topup",         color: "#c47d00", accent: "#F2A007", bg: "rgba(242,160,7,0.10)",  border: "rgba(242,160,7,0.18)",   icon: "↑", sign: "+" },
-  WALLET_DEBIT:  { label: "Wallet Debit",  color: "#7c3aed", accent: "#7c3aed", bg: "rgba(124,58,237,0.10)", border: "rgba(124,58,237,0.18)",  icon: "↓", sign: "-" },
-  WALLET_REFUND: { label: "Wallet Refund", color: "#04BFBF", accent: "#04BFBF", bg: "rgba(4,191,191,0.10)",  border: "rgba(4,191,191,0.18)",   icon: "↩", sign: "+" },
-  REFUND_BANK:   { label: "Bank Refund",   color: "#3a7bd5", accent: "#3a7bd5", bg: "rgba(58,123,213,0.10)", border: "rgba(58,123,213,0.18)",  icon: "🏦", sign: "+" },
-  FAILED:        { label: "Failed",        color: "#d93025", accent: "#d93025", bg: "rgba(217,48,37,0.10)",  border: "rgba(217,48,37,0.18)",   icon: "✕", sign: ""  },
+// ─── Filter Category Definitions ──────────────────────────────────────────────
+const TABS = [
+  { id: "ALL", label: "All" },
+  { id: "OUT", label: "Spent" },
+  { id: "TOPUP", label: "Top-ups" },
+  { id: "REFUND", label: "Refunds" },
+  { id: "FAILED", label: "Failed" },
+];
+
+const CAT_CONFIG = {
+  SUCCESS: {
+    label: "Charging Payment",
+    sign: "−",
+    isDebit: true,
+    badgeBg: "#f1fcf9",
+    badgeBorder: "#d2f0eb",
+    iconColor: "#00776b",
+  },
+  WALLET_DEBIT: {
+    label: "Wallet Payment",
+    sign: "−",
+    isDebit: true,
+    badgeBg: "#f4f7fb",
+    badgeBorder: "#dce6f2",
+    iconColor: "#506f96",
+  },
+  TOPUP: {
+    label: "Wallet Top-up",
+    sign: "+",
+    isDebit: false,
+    badgeBg: "#dbfaf0",
+    badgeBorder: "#b8f2dd",
+    iconColor: "#008764",
+  },
+  WALLET_REFUND: {
+    label: "Wallet Refund",
+    sign: "+",
+    isDebit: false,
+    badgeBg: "#e4faf6",
+    badgeBorder: "#c2f0e8",
+    iconColor: "#008f7f",
+  },
+  REFUND_BANK: {
+    label: "Bank Refund",
+    sign: "+",
+    isDebit: false,
+    badgeBg: "#eef7ff",
+    badgeBorder: "#d2e5f8",
+    iconColor: "#2272c7",
+  },
+  FAILED: {
+    label: "Payment Failed",
+    sign: "",
+    isDebit: false,
+    badgeBg: "#fff2f0",
+    badgeBorder: "#ffd4ce",
+    iconColor: "#d93b3b",
+  },
 };
 
-const FILTER_ORDER = ["ALL","SUCCESS","WALLET_DEBIT","TOPUP","WALLET_REFUND","REFUND_BANK","FAILED"];
-
-const labelMap = {
-  SUCCESS:       "Charging Payment",
-  TOPUP:         "Wallet Topup",
-  WALLET_DEBIT:  "Wallet Payment",
-  WALLET_REFUND: "Wallet Refund",
-  REFUND_BANK:   "Bank Refund",
-  FAILED:        "Payment Failed",
-};
-
-// ─── Animated Expand Panel ────────────────────────────────────────────────────
-// Uses a ref to measure real height so CSS transition works without max-height hacks
+// ─── Smooth Height Expansion Panel ───────────────────────────────────────────
 const ExpandPanel = ({ open, children }) => {
-  const ref  = useRef(null);
+  const ref = useRef(null);
   const [height, setHeight] = useState(0);
 
   useEffect(() => {
     if (!ref.current) return;
-    if (open) {
-      // measure then set
-      setHeight(ref.current.scrollHeight);
-    } else {
-      setHeight(0);
-    }
+    setHeight(open ? ref.current.scrollHeight : 0);
   }, [open, children]);
 
   return (
@@ -75,12 +115,10 @@ const ExpandPanel = ({ open, children }) => {
       style={{
         overflow: "hidden",
         height: height,
-        transition: "height 0.26s cubic-bezier(0.4,0,0.2,1)",
+        transition: "height 0.24s cubic-bezier(0.16, 1, 0.3, 1)",
       }}
     >
-      <div ref={ref}>
-        {children}
-      </div>
+      <div ref={ref}>{children}</div>
     </div>
   );
 };
@@ -88,13 +126,14 @@ const ExpandPanel = ({ open, children }) => {
 // ─── Main Component ───────────────────────────────────────────────────────────
 const TransactionHistory = () => {
   const navigate = useNavigate();
-  const [raw, setRaw]                     = useState([]);
+  const [raw, setRaw] = useState([]);
   const [walletBalance, setWalletBalance] = useState(null);
-  const [loading, setLoading]             = useState(true);
-  const [filter, setFilter]               = useState("ALL");
-  const [expandedId, setExpandedId]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("ALL");
+  const [expandedId, setExpandedId] = useState(null);
+  const [toastMessage, setToastMessage] = useState(null);
 
-  const fetchAll = async () => {
+  const fetchTransactions = async () => {
     setLoading(true);
     try {
       const [txnRes, balRes] = await Promise.all([
@@ -104,581 +143,846 @@ const TransactionHistory = () => {
       setRaw(txnRes.data.transactions || []);
       if (typeof balRes.data.balance === "number") setWalletBalance(balRes.data.balance);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to load transactions:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchAll(); }, []);
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
 
-  const tagged = useMemo(() =>
-    raw.map(t => ({ ...t, _cat: categorise(t) })).filter(t => t._cat !== null),
-    [raw]
-  );
+  // Tag every transaction with its resolved category
+  const tagged = useMemo(() => {
+    return raw
+      .map((t) => ({ ...t, _cat: categorise(t) }))
+      .filter((t) => t._cat !== null)
+      .sort((a, b) => {
+        const dateA = new Date(a.paidAt || a.createdAt || 0).getTime();
+        const dateB = new Date(b.paidAt || b.createdAt || 0).getTime();
+        return dateB - dateA;
+      });
+  }, [raw]);
 
-  const filtered = useMemo(() =>
-    filter === "ALL" ? tagged : tagged.filter(t => t._cat === filter),
-    [tagged, filter]
-  );
+  // Tab Filtering Logic
+  const filtered = useMemo(() => {
+    if (activeTab === "ALL") return tagged;
+    if (activeTab === "OUT") {
+      return tagged.filter((t) => t._cat === "SUCCESS" || t._cat === "WALLET_DEBIT");
+    }
+    if (activeTab === "TOPUP") {
+      return tagged.filter((t) => t._cat === "TOPUP");
+    }
+    if (activeTab === "REFUND") {
+      return tagged.filter((t) => t._cat === "WALLET_REFUND" || t._cat === "REFUND_BANK");
+    }
+    if (activeTab === "FAILED") {
+      return tagged.filter((t) => t._cat === "FAILED");
+    }
+    return tagged;
+  }, [tagged, activeTab]);
 
-  const stats = useMemo(() => ({
-    charged:      tagged.filter(t => t._cat === "SUCCESS").reduce((s,t) => s + Number(t.amountPaid||0), 0),
-    chargedCount: tagged.filter(t => t._cat === "SUCCESS").length,
-    debited:      tagged.filter(t => t._cat === "WALLET_DEBIT").reduce((s,t) => s + Number(t.amountPaid||0), 0),
-    debitCount:   tagged.filter(t => t._cat === "WALLET_DEBIT").length,
-    refunded:     tagged.filter(t => t._cat === "REFUND_BANK" || t._cat === "WALLET_REFUND").reduce((s,t) => s + Number(t.amountPaid||0), 0),
-    refundCount:  tagged.filter(t => t._cat === "REFUND_BANK" || t._cat === "WALLET_REFUND").length,
-  }), [tagged]);
+  // Financial Summary Stats
+  const stats = useMemo(() => {
+    const totalSpent = tagged
+      .filter((t) => t._cat === "SUCCESS" || t._cat === "WALLET_DEBIT")
+      .reduce((sum, t) => sum + Number(t.amountPaid || 0), 0);
 
-  const counts = useMemo(() => {
-    const c = {};
-    FILTER_ORDER.forEach(k => {
-      c[k] = k === "ALL" ? tagged.length : tagged.filter(t => t._cat === k).length;
-    });
-    return c;
+    const totalCredited = tagged
+      .filter((t) => t._cat === "TOPUP" || t._cat === "WALLET_REFUND" || t._cat === "REFUND_BANK")
+      .reduce((sum, t) => sum + Number(t.amountPaid || 0), 0);
+
+    return { totalSpent, totalCredited };
   }, [tagged]);
 
-  const toggleExpand = id =>
-    setExpandedId(prev => (prev === id ? null : id));
+  // Category counts for tab badges
+  const counts = useMemo(() => ({
+    ALL: tagged.length,
+    OUT: tagged.filter((t) => t._cat === "SUCCESS" || t._cat === "WALLET_DEBIT").length,
+    TOPUP: tagged.filter((t) => t._cat === "TOPUP").length,
+    REFUND: tagged.filter((t) => t._cat === "WALLET_REFUND" || t._cat === "REFUND_BANK").length,
+    FAILED: tagged.filter((t) => t._cat === "FAILED").length,
+  }), [tagged]);
+
+  const toggleExpand = (id) => {
+    setExpandedId((prev) => (prev === id ? null : id));
+  };
+
+  const copyToClipboard = (text, label) => {
+    if (!navigator.clipboard) return;
+    navigator.clipboard.writeText(text);
+    setToastMessage(`${label} copied to clipboard`);
+    setTimeout(() => setToastMessage(null), 2000);
+  };
 
   return (
     <>
+      <AppHeader />
+
       <style>{`
-        @keyframes shimmer { 0%{background-position:-200% 0} 100%{background-position:200% 0} }
-        @keyframes spin    { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        .txn-skel {
-          background: linear-gradient(90deg,#e4e8ea 25%,#eef1f2 50%,#e4e8ea 75%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s ease-in-out infinite;
-          border-radius: 13px;
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+        .tx-viewport {
+          width: 100%;
+          min-height: calc(100dvh - 68px);
+          height: calc(100dvh - 68px);
+          overflow-y: auto;
+          overflow-x: hidden;
+          background:
+            radial-gradient(circle at 100% 0%, rgba(0, 229, 190, 0.08), transparent 26rem),
+            radial-gradient(circle at 0% 45%, rgba(255, 130, 54, 0.05), transparent 24rem),
+            #f3fbfc;
+          color: #0e2e33;
+          font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, sans-serif;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          -webkit-overflow-scrolling: touch;
+          box-sizing: border-box;
         }
-        .pill-scroll::-webkit-scrollbar { display: none; }
-        .pill-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-        .f-pill   { transition: all 0.15s ease; cursor: pointer; }
-        .f-pill:active { transform: scale(0.92); }
-        .wbanner  { cursor: pointer; user-select: none; }
-        .wbanner:active { opacity: 0.88; }
-        .add-btn  { transition: all 0.15s ease; }
-        .add-btn:active { transform: scale(0.91); }
-        .txn-card { transition: box-shadow 0.18s ease; cursor: pointer; }
-        .txn-card:active { opacity: 0.92; }
-        .txn-card.expanded {
-          box-shadow: 0 4px 18px rgba(0,0,0,0.10) !important;
+
+        .tx-shell {
+          width: 100%;
+          max-width: 480px;
+          margin: 0 auto;
+          padding: 16px 16px calc(110px + env(safe-area-inset-bottom, 0px));
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          box-sizing: border-box;
         }
-        .chevron-icon {
-          transition: transform 0.26s cubic-bezier(0.4,0,0.2,1);
-          color: #a0b8b8;
+
+        /* ── WALLET BALANCE & RECAP CARD ── */
+        .tx-wallet-card {
+          width: 100%;
+          background: linear-gradient(135deg, #ffffff 40%, #eefbf9 100%);
+          border: 1px solid #d4f0ec;
+          border-radius: 22px;
+          box-shadow: 0 4px 18px rgba(0, 160, 145, 0.07);
+          padding: 18px 20px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          box-sizing: border-box;
+        }
+
+        .tx-wallet-left {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .tx-wallet-icon-box {
+          width: 46px;
+          height: 46px;
+          border-radius: 15px;
+          background: linear-gradient(135deg, #fff3e6 0%, #ffe3c4 100%);
+          border: 1px solid #ffd4a8;
+          color: #e06014;
+          display: grid;
+          place-items: center;
+          font-size: 22px;
           flex-shrink: 0;
         }
-        .chevron-icon.open { transform: rotate(180deg); }
-        .detail-copy {
-          cursor: pointer;
-          user-select: none;
-          transition: opacity 0.12s;
+
+        .tx-wallet-label {
+          font-size: 10px;
+          font-weight: 800;
+          color: #53757a;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
         }
-        .detail-copy:active { opacity: 0.55; }
+
+        .tx-wallet-amount {
+          font-family: 'Outfit', sans-serif;
+          font-size: 23px;
+          font-weight: 800;
+          color: #0e2e33;
+          letter-spacing: -0.4px;
+          line-height: 1.15;
+          margin-top: 2px;
+        }
+
+        .tx-btn-add {
+          padding: 9px 15px;
+          border-radius: 13px;
+          background: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+          border: none;
+          color: #ffffff;
+          font-size: 12.5px;
+          font-weight: 750;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(255, 82, 26, 0.35);
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: all 0.16s ease;
+          flex-shrink: 0;
+        }
+        .tx-btn-add:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(255, 82, 26, 0.45);
+        }
+        .tx-btn-add:active {
+          transform: scale(0.96);
+        }
+
+        /* ── SUMMARY STATS BANNER ── */
+        .tx-stats-grid {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        .tx-stat-pill {
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 16px;
+          padding: 12px 14px;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 2px 8px rgba(0, 160, 140, 0.04);
+        }
+
+        .tx-stat-caption {
+          font-size: 10.5px;
+          font-weight: 750;
+          color: #53757a;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .tx-stat-val {
+          font-family: 'Outfit', sans-serif;
+          font-size: 18px;
+          font-weight: 800;
+          margin-top: 3px;
+          line-height: 1.2;
+        }
+        .tx-stat-val.debit {
+          color: #0e2e33;
+        }
+        .tx-stat-val.credit {
+          color: #008764;
+        }
+
+        /* ── FILTER TABS ── */
+        .tx-tabs-scroll {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          overflow-x: auto;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+          padding: 2px 0;
+        }
+        .tx-tabs-scroll::-webkit-scrollbar {
+          display: none;
+        }
+
+        .tx-tab-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 14px;
+          border-radius: 999px;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          color: #53757a;
+          font-size: 12px;
+          font-weight: 750;
+          cursor: pointer;
+          white-space: nowrap;
+          flex-shrink: 0;
+          transition: all 0.16s ease;
+        }
+        .tx-tab-btn:hover {
+          background: #edfbf8;
+          border-color: #00d2b4;
+          color: #00776b;
+        }
+        .tx-tab-btn.active {
+          background: #00d2b4;
+          border-color: #00d2b4;
+          color: #ffffff;
+          box-shadow: 0 3px 10px rgba(0, 210, 180, 0.32);
+        }
+
+        .tx-tab-badge {
+          font-size: 10px;
+          padding: 1px 6px;
+          border-radius: 999px;
+          background: rgba(0, 0, 0, 0.06);
+          font-weight: 800;
+        }
+        .tx-tab-btn.active .tx-tab-badge {
+          background: rgba(255, 255, 255, 0.25);
+          color: #ffffff;
+        }
+
+        /* ── TRANSACTION CARDS ── */
+        .tx-card-list {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .tx-card {
+          width: 100%;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 20px;
+          box-shadow: 0 3px 12px rgba(0, 160, 145, 0.04);
+          overflow: hidden;
+          transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+          box-sizing: border-box;
+        }
+        .tx-card:hover {
+          border-color: #b7ede4;
+          box-shadow: 0 6px 18px rgba(0, 160, 145, 0.08);
+          transform: translateY(-1px);
+        }
+        .tx-card.expanded {
+          border-color: #00d2b4;
+          box-shadow: 0 8px 24px rgba(0, 160, 145, 0.12);
+        }
+
+        .tx-card-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 14px 16px;
+          cursor: pointer;
+          gap: 12px;
+          user-select: none;
+        }
+
+        .tx-card-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .tx-icon-circle {
+          width: 42px;
+          height: 42px;
+          border-radius: 14px;
+          display: grid;
+          place-items: center;
+          font-size: 20px;
+          flex-shrink: 0;
+        }
+
+        .tx-title-meta {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .tx-title-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .tx-title {
+          font-size: 13.5px;
+          font-weight: 750;
+          color: #0e2e33;
+          letter-spacing: -0.15px;
+          line-height: 1.25;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .tx-date {
+          font-size: 11px;
+          color: #799ea4;
+          font-weight: 500;
+          line-height: 1.3;
+        }
+
+        .tx-card-right {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
+          text-align: right;
+        }
+
+        .tx-amount {
+          font-family: 'Outfit', sans-serif;
+          font-size: 16px;
+          font-weight: 800;
+          letter-spacing: -0.3px;
+          font-variant-numeric: tabular-nums;
+        }
+        .tx-amount.debit {
+          color: #0e2e33;
+        }
+        .tx-amount.credit {
+          color: #008764;
+        }
+        .tx-amount.failed {
+          color: #d93b3b;
+          text-decoration: line-through;
+        }
+
+        .tx-chevron {
+          width: 16px;
+          height: 16px;
+          color: #799ea4;
+          transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .tx-chevron.open {
+          transform: rotate(180deg);
+          color: #008f7f;
+        }
+
+        /* ── EXPANDED DETAILS ACCORDION ── */
+        .tx-expanded-body {
+          padding: 12px 16px 16px;
+          border-top: 1px dashed #d8f2ee;
+          background: #fafdfd;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .tx-detail-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 11.5px;
+          color: #53757a;
+        }
+
+        .tx-detail-val {
+          font-weight: 600;
+          color: #0e2e33;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .tx-copy-chip {
+          padding: 2px 7px;
+          border-radius: 6px;
+          background: #eefbf8;
+          border: 1px solid #c9ede7;
+          color: #00776b;
+          font-size: 10px;
+          font-family: monospace;
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .tx-copy-chip:hover {
+          background: #dbf7f1;
+        }
+
+        .tx-fail-box {
+          background: #fff4f2;
+          border: 1px solid #ffd8d3;
+          border-radius: 12px;
+          padding: 10px 12px;
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          color: #c22b2b;
+          font-size: 11.5px;
+          line-height: 1.4;
+          font-weight: 600;
+        }
+
+        .tx-btn-view-receipt {
+          margin-top: 4px;
+          width: 100%;
+          padding: 9px 12px;
+          border-radius: 12px;
+          background: #ffffff;
+          border: 1.5px solid #c8ede6;
+          color: #00776b;
+          font-size: 12px;
+          font-weight: 750;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          transition: all 0.15s ease;
+        }
+        .tx-btn-view-receipt:hover {
+          background: #eefbf8;
+          border-color: #00d2b4;
+        }
+
+        /* ── EMPTY & SKELETON STATES ── */
+        .tx-empty-state {
+          width: 100%;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 24px;
+          padding: 36px 20px;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 8px;
+          box-shadow: 0 4px 18px rgba(0, 160, 145, 0.05);
+        }
+
+        .tx-empty-icon {
+          width: 54px;
+          height: 54px;
+          border-radius: 18px;
+          background: #eefbf8;
+          border: 1px solid #d2f0eb;
+          color: #00776b;
+          display: grid;
+          place-items: center;
+          font-size: 24px;
+          margin-bottom: 4px;
+        }
+
+        .tx-skeleton {
+          width: 100%;
+          height: 70px;
+          border-radius: 18px;
+          background: linear-gradient(90deg, #e4f4f3 25%, #f4fbfb 50%, #e4f4f3 75%);
+          background-size: 200% 100%;
+          animation: txShimmer 1.5s infinite ease-in-out;
+        }
+
+        @keyframes txShimmer {
+          0% { background-position: 100% 0; }
+          100% { background-position: -100% 0; }
+        }
+
+        /* ── TOAST NOTIFICATION ── */
+        .tx-toast {
+          position: fixed;
+          bottom: 96px;
+          left: 50%;
+          transform: translateX(-50%);
+          z-index: 9999;
+          padding: 10px 18px;
+          border-radius: 999px;
+          background: rgba(14, 46, 51, 0.92);
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 700;
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+          backdrop-filter: blur(8px);
+          animation: txFadeIn 0.2s ease;
+        }
+
+        @keyframes txFadeIn {
+          from { opacity: 0; transform: translate(-50%, 10px); }
+          to { opacity: 1; transform: translate(-50%, 0); }
+        }
       `}</style>
 
-      {/* TOP BAR */}
-      <div className="top-bar">
-        <img src="/logo.png" alt="VIZ Logo" className="top-bar-logo" />
-      </div>
+      <div className="tx-viewport">
+        <div className="tx-shell">
 
-      {/* ── OUTER SHELL ── */}
-      <div style={{
-        height: "100dvh",
-        background: "#edf0f3",
-        paddingTop: 56,
-        fontFamily: "Inter, 'Segoe UI', system-ui, -apple-system, sans-serif",
-        overflowY: "hidden",
-        overflowX: "hidden",
-        display: "flex",
-        flexDirection: "column",
-      }}>
-
-        {/* ══ FIXED HEADER ZONE ══ */}
-        <div style={{
-          flexShrink: 0,
-          background: "#edf0f3",
-          borderBottom: "1px solid rgba(0,0,0,0.06)",
-        }}>
-
-          {/* PAGE TITLE */}
-          <div style={{
-            display: "flex", alignItems: "center",
-            justifyContent: "space-between",
-            padding: "13px 16px 10px",
-          }}>
-            <div>
-              <h2 style={{
-                margin: 0, fontSize: 19, fontWeight: 700,
-                color: "#0b1c22", letterSpacing: "-0.3px",
-              }}>Transactions</h2>
-              <p style={{ margin: "1px 0 0", fontSize: 11, color: "#8aa4a4", fontWeight: 500 }}>
-                {tagged.length > 0 ? `${tagged.length} records` : "Your payment history"}
-              </p>
-            </div>
-            <button
-              onClick={fetchAll} disabled={loading}
-              style={{
-                width: 34, height: 34, borderRadius: "50%", padding: 0,
-                background: "rgba(4,191,191,0.10)",
-                border: "1.5px solid rgba(4,191,191,0.22)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                cursor: loading ? "not-allowed" : "pointer",
-                color: "#04BFBF", opacity: loading ? 0.45 : 1, flexShrink: 0,
-              }}
-              aria-label="Refresh"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2.5"
-                style={{ animation: loading ? "spin 0.8s linear infinite" : "none" }}>
-                <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-              </svg>
-            </button>
-          </div>
-
-          {/* WALLET BANNER */}
-          <div
-            className="wbanner"
-            onClick={() => navigate("/wallet/topup")}
-            style={{
-              margin: "0 16px 10px",
-              background: "linear-gradient(120deg, #011e26 0%, #013a47 55%, #011e26 100%)",
-              borderRadius: 14,
-              padding: "11px 13px",
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              border: "1px solid rgba(4,191,191,0.18)",
-              boxShadow: "0 3px 12px rgba(1,30,38,0.22)",
-              gap: 8,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                background: "rgba(4,191,191,0.14)",
-                border: "1px solid rgba(4,191,191,0.26)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-              }}>
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#04BFBF" strokeWidth="1.8">
-                  <rect x="2" y="7" width="20" height="14" rx="3"/>
-                  <path d="M16 14a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" fill="#04BFBF" stroke="none"/>
-                  <path d="M2 10h20"/>
+          {/* ── WALLET BALANCE & TOP-UP BANNER ── */}
+          <div className="tx-wallet-card">
+            <div className="tx-wallet-left">
+              <div className="tx-wallet-icon-box">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M20 7H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zm0 12H4V9h16v10zm-3-5c0-.55.45-1 1-1s1 .45 1 1-.45 1-1 1-1-.45-1-1zM4 5h16V3H4c-1.1 0-2 .9-2 2v2h2V5z" />
                 </svg>
               </div>
               <div>
-                <div style={{ fontSize: 9.5, fontWeight: 600, color: "rgba(4,191,191,0.60)",
-                  letterSpacing: "0.07em", textTransform: "uppercase" }}>VIZ Wallet</div>
-                <div style={{ fontSize: 19, fontWeight: 800, color: "#fff",
-                  letterSpacing: "-0.5px", lineHeight: 1.1, marginTop: 1 }}>
+                <span className="tx-wallet-label">VIZ Wallet Balance</span>
+                <div className="tx-wallet-amount">
                   {walletBalance !== null ? `₹${Number(walletBalance).toFixed(2)}` : "—"}
-                </div>
-                <div style={{ fontSize: 9.5, color: "rgba(4,191,191,0.48)", marginTop: 1, fontWeight: 500 }}>
-                  Available balance
                 </div>
               </div>
             </div>
+
             <button
-              className="add-btn"
-              onClick={e => { e.stopPropagation(); navigate("/wallet/topup"); }}
-              style={{
-                display: "flex", alignItems: "center", gap: 5,
-                background: "#04BFBF", color: "#011F26",
-                padding: "7px 13px", borderRadius: 9,
-                fontWeight: 700, fontSize: 11.5,
-                border: "none", cursor: "pointer",
-                boxShadow: "0 3px 10px rgba(4,191,191,0.30)",
-                whiteSpace: "nowrap", flexShrink: 0,
-              }}
+              type="button"
+              className="tx-btn-add"
+              onClick={() => navigate("/wallet/topup")}
+              aria-label="Add money to wallet"
             >
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="3">
-                <path d="M12 5v14M5 12h14"/>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-              Add Money
+              <span>Add Money</span>
             </button>
           </div>
 
-          {/* STAT CARDS */}
-          <div style={{ display: "flex", gap: 7, padding: "0 16px 10px" }}>
-            <StatCard
-              icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0a8c50" strokeWidth="2.4"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>}
-              label="Charged"     value={`₹${stats.charged.toFixed(2)}`}
-              sub={`${stats.chargedCount} sessions`}
-              color="#0a8c50" bg="rgba(10,140,80,0.09)" border="rgba(10,140,80,0.14)"
-            />
-            <StatCard
-              icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2.4"><rect x="2" y="7" width="20" height="14" rx="3"/><path d="M16 14a1 1 0 1 0 2 0 1 1 0 0 0-2 0z" fill="#7c3aed" stroke="none"/></svg>}
-              label="Wallet Used" value={`₹${stats.debited.toFixed(2)}`}
-              sub={`${stats.debitCount} uses`}
-              color="#7c3aed" bg="rgba(124,58,237,0.09)" border="rgba(124,58,237,0.14)"
-            />
-            <StatCard
-              icon={<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3a7bd5" strokeWidth="2.4"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>}
-              label="Refunded"    value={`₹${stats.refunded.toFixed(2)}`}
-              sub={`${stats.refundCount} refunds`}
-              color="#3a7bd5" bg="rgba(58,123,213,0.09)" border="rgba(58,123,213,0.14)"
-            />
+          {/* ── FINANCIAL RECAP (SPENT VS ADDED) ── */}
+          <div className="tx-stats-grid">
+            <div className="tx-stat-pill">
+              <span className="tx-stat-caption">
+                <span style={{ color: "#e06014" }}>↓</span> Total Spent
+              </span>
+              <div className="tx-stat-val debit">₹{stats.totalSpent.toFixed(2)}</div>
+            </div>
+
+            <div className="tx-stat-pill">
+              <span className="tx-stat-caption">
+                <span style={{ color: "#008764" }}>↑</span> Credited / Refund
+              </span>
+              <div className="tx-stat-val credit">₹{stats.totalCredited.toFixed(2)}</div>
+            </div>
           </div>
 
-          {/* FILTER PILLS */}
-          <div className="pill-scroll" style={{
-            display: "flex", gap: 6, overflowX: "auto", padding: "0 16px 11px",
-          }}>
-            {FILTER_ORDER.map(key => {
-              const cfg    = CAT[key];
-              const active = filter === key;
-              const cnt    = counts[key];
+          {/* ── FILTER TABS ── */}
+          <div className="tx-tabs-scroll" role="tablist">
+            {TABS.map((tab) => {
+              const active = activeTab === tab.id;
+              const count = counts[tab.id] || 0;
               return (
                 <button
-                  key={key}
-                  className="f-pill"
-                  onClick={() => setFilter(key)}
-                  style={{
-                    display: "flex", alignItems: "center", gap: 4,
-                    padding: "6px 11px", borderRadius: 99,
-                    whiteSpace: "nowrap", fontWeight: 600, fontSize: 11,
-                    background: active ? cfg.accent : "#fff",
-                    color:      active ? "#fff" : "#537878",
-                    border:     active ? `1.5px solid ${cfg.accent}` : "1.5px solid rgba(0,0,0,0.08)",
-                    boxShadow:  active ? `0 2px 8px ${cfg.accent}44` : "0 1px 3px rgba(0,0,0,0.06)",
-                    flexShrink: 0, letterSpacing: "-0.1px",
-                  }}
+                  type="button"
+                  key={tab.id}
+                  className={`tx-tab-btn ${active ? "active" : ""}`}
+                  onClick={() => setActiveTab(tab.id)}
+                  role="tab"
+                  aria-selected={active}
                 >
-                  <span style={{ fontSize: key === "REFUND_BANK" ? 9.5 : 11, lineHeight: 1 }}>{cfg.icon}</span>
-                  {cfg.label}
-                  {cnt > 0 && (
-                    <span style={{
-                      fontSize: 9.5, fontWeight: 700,
-                      background: active ? "rgba(255,255,255,0.22)" : `${cfg.accent}18`,
-                      color: active ? "#fff" : cfg.accent,
-                      borderRadius: 99, padding: "0 5px",
-                      minWidth: 16, textAlign: "center", lineHeight: "15px", display: "inline-block",
-                    }}>
-                      {cnt}
-                    </span>
-                  )}
+                  <span>{tab.label}</span>
+                  {count > 0 && <span className="tx-tab-badge">{count}</span>}
                 </button>
               );
             })}
           </div>
-        </div>
 
-        {/* ══ SCROLLABLE LIST ZONE ══ */}
-        <div style={{
-          flex: 1, overflowY: "auto", overflowX: "hidden",
-          WebkitOverflowScrolling: "touch",
-        }}>
-
-          {/* SKELETON */}
-          {loading && (
-            <div style={{ padding: "8px 16px", display: "flex", flexDirection: "column", gap: 7 }}>
-              {[1,2,3,4].map(i => (
-                <div key={i} className="txn-skel" style={{ height: 64 }} />
+          {/* ── TRANSACTIONS LIST ── */}
+          {loading ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="tx-skeleton" />
               ))}
             </div>
-          )}
+          ) : filtered.length === 0 ? (
+            <div className="tx-empty-state">
+              <div className="tx-empty-icon">🧾</div>
+              <h3 style={{ fontSize: 16, fontWeight: 750, margin: "2px 0 0" }}>No Transactions</h3>
+              <p style={{ fontSize: 12.5, color: "#53757a", margin: 0, maxWidth: 240, lineHeight: 1.5 }}>
+                {activeTab === "TOPUP"
+                  ? "No top-up records yet. Top up your wallet to start charging."
+                  : activeTab === "FAILED"
+                  ? "No failed payments — all transactions were processed smoothly!"
+                  : "No transaction records found in this category."}
+              </p>
+            </div>
+          ) : (
+            <div className="tx-card-list">
+              {filtered.map((txn) => {
+                const cat = txn._cat;
+                const cfg = CAT_CONFIG[cat] || CAT_CONFIG.SUCCESS;
+                const isExpanded = expandedId === txn._id;
+                const formattedDate = fmtDate(txn.paidAt || txn.createdAt);
+                const isCredit = !cfg.isDebit && cat !== "FAILED";
 
-          {/* EMPTY */}
-          {!loading && filtered.length === 0 && (
-            <div style={{
-              display: "flex", flexDirection: "column", alignItems: "center",
-              padding: "56px 24px 0", gap: 8, textAlign: "center",
-            }}>
-              <div style={{
-                width: 52, height: 52, borderRadius: "50%",
-                background: "rgba(4,191,191,0.08)",
-                border: "1.5px solid rgba(4,191,191,0.16)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 22, marginBottom: 4,
-              }}>🧾</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "#0b1c22" }}>No transactions</div>
-              <div style={{ fontSize: 12, color: "#7a9090", maxWidth: 210, lineHeight: 1.55 }}>
-                {filter === "TOPUP"
-                  ? "No wallet topups yet. Add money to get started."
-                  : filter === "FAILED"
-                    ? "No failed payments — you're all good!"
-                    : `No ${CAT[filter]?.label.toLowerCase()} transactions yet.`}
-              </div>
-              {filter === "TOPUP" && (
-                <button
-                  onClick={() => navigate("/wallet/topup")}
-                  style={{
-                    marginTop: 10, padding: "10px 22px", borderRadius: 10,
-                    background: "#04BFBF", color: "#011F26",
-                    fontWeight: 700, fontSize: 13, border: "none", cursor: "pointer",
-                    boxShadow: "0 4px 14px rgba(4,191,191,0.28)",
-                  }}
-                >+ Add Money to Wallet</button>
-              )}
+                return (
+                  <article
+                    key={txn._id}
+                    className={`tx-card ${isExpanded ? "expanded" : ""}`}
+                  >
+                    {/* Collapsed Header */}
+                    <div
+                      className="tx-card-header"
+                      onClick={() => toggleExpand(txn._id)}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={isExpanded}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") toggleExpand(txn._id);
+                      }}
+                    >
+                      <div className="tx-card-left">
+                        <div
+                          className="tx-icon-circle"
+                          style={{
+                            background: cfg.badgeBg,
+                            border: `1px solid ${cfg.badgeBorder}`,
+                            color: cfg.iconColor,
+                          }}
+                        >
+                          {cat === "FAILED" ? (
+                            "✕"
+                          ) : isCredit ? (
+                            "↑"
+                          ) : (
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                            </svg>
+                          )}
+                        </div>
+
+                        <div className="tx-title-meta">
+                          <div className="tx-title-row">
+                            <span className="tx-title">{cfg.label}</span>
+                          </div>
+                          <span className="tx-date">{formattedDate}</span>
+                        </div>
+                      </div>
+
+                      <div className="tx-card-right">
+                        <div
+                          className={`tx-amount ${cat === "FAILED" ? "failed" : isCredit ? "credit" : "debit"}`}
+                        >
+                          {cfg.sign}₹{Number(txn.amountPaid || txn.amount || 0).toFixed(2)}
+                        </div>
+
+                        <svg
+                          className={`tx-chevron ${isExpanded ? "open" : ""}`}
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2.5"
+                        >
+                          <polyline points="6 9 12 15 18 9" />
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Smooth Expanded Panel */}
+                    <ExpandPanel open={isExpanded}>
+                      <div className="tx-expanded-body">
+                        {/* Charger or Payment Channel */}
+                        {txn.deviceId && (
+                          <div className="tx-detail-row">
+                            <span>Charger Station</span>
+                            <span className="tx-detail-val">{txn.deviceId}</span>
+                          </div>
+                        )}
+
+                        <div className="tx-detail-row">
+                          <span>Payment Method</span>
+                          <span className="tx-detail-val">
+                            {cat === "WALLET_DEBIT"
+                              ? "VIZ Wallet"
+                              : fmtMethod(txn.paymentGroup) || txn.paymentMethod || txn.gateway || "UPI / Card"}
+                          </span>
+                        </div>
+
+                        {/* Order ID with Copy Chip */}
+                        {txn.orderId && (
+                          <div className="tx-detail-row">
+                            <span>Order ID</span>
+                            <button
+                              type="button"
+                              className="tx-copy-chip"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(txn.orderId, "Order ID");
+                              }}
+                              title="Click to copy Order ID"
+                            >
+                              <span>{txn.orderId}</span>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Session ID with Copy Chip */}
+                        {txn.sessionId && (
+                          <div className="tx-detail-row">
+                            <span>Session ID</span>
+                            <button
+                              type="button"
+                              className="tx-copy-chip"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(txn.sessionId, "Session ID");
+                              }}
+                              title="Click to copy Session ID"
+                            >
+                              <span>{txn.sessionId}</span>
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                              </svg>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Bank Ref */}
+                        {txn.bankReference && (
+                          <div className="tx-detail-row">
+                            <span>Bank Reference</span>
+                            <span className="tx-detail-val" style={{ fontFamily: "monospace", fontSize: 11 }}>
+                              {txn.bankReference}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Refund Tracking */}
+                        {cat === "REFUND_BANK" && txn.refundId && (
+                          <div className="tx-detail-row">
+                            <span>Refund Reference</span>
+                            <span className="tx-detail-val" style={{ fontFamily: "monospace", fontSize: 11 }}>
+                              {txn.refundId}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Failure Details */}
+                        {(txn.failureReason || txn.refundFailureReason) && (
+                          <div className="tx-fail-box">
+                            <span style={{ fontSize: 14 }}>⚠️</span>
+                            <span>{txn.failureReason || txn.refundFailureReason}</span>
+                          </div>
+                        )}
+
+                        {/* Direct Receipt / Summary Link */}
+                        {txn.sessionId && (
+                          <button
+                            type="button"
+                            className="tx-btn-view-receipt"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate("/session-summary", {
+                                state: { sessionId: txn.sessionId },
+                              });
+                            }}
+                          >
+                            <span>View Tax Invoice / Summary</span>
+                            <span>→</span>
+                          </button>
+                        )}
+                      </div>
+                    </ExpandPanel>
+                  </article>
+                );
+              })}
             </div>
           )}
 
-          {/* CARDS */}
-          <div style={{ padding: "6px 14px 90px", display: "flex", flexDirection: "column", gap: 6 }}>
-            {!loading && filtered.map(txn => (
-              <TxnCard
-                key={txn._id}
-                txn={txn}
-                expanded={expandedId === txn._id}
-                onToggle={() => toggleExpand(txn._id)}
-              />
-            ))}
-          </div>
         </div>
       </div>
 
+      {/* ── FLOATING COPY TOAST ── */}
+      {toastMessage && <div className="tx-toast">{toastMessage}</div>}
+
+      {/* ── FOOTER NAV ── */}
       <FooterNav />
     </>
   );
 };
-
-// ─── Copy-to-clipboard helper ─────────────────────────────────────────────────
-const copyText = (text, setCopied, key) => {
-  navigator.clipboard?.writeText(text).then(() => {
-    setCopied(key);
-    setTimeout(() => setCopied(null), 1600);
-  });
-};
-
-// ─── Transaction Card ──────────────────────────────────────────────────────────
-const TxnCard = ({ txn, expanded, onToggle }) => {
-  const cat    = txn._cat;
-  const cfg    = CAT[cat];
-  const date   = fmt(txn.paidAt || txn.createdAt);
-  const [copied, setCopied] = useState(null);
-
-  const isCredit = ["TOPUP","WALLET_REFUND","REFUND_BANK"].includes(cat);
-  const amtColor = isCredit ? cfg.color : "#0b1c22";
-  const amtStr   = `${cfg.sign}₹${Number(txn.amountPaid||0).toFixed(2)}`;
-
-  const methodVal = cat === "SUCCESS"
-    ? (fmtGroup(txn.paymentGroup) || txn.paymentMethod || null)
-    : cat === "WALLET_DEBIT" ? "VIZ Wallet" : null;
-
-  // ── Build detail rows (only those with actual values) ──
-  const detailRows = [
-    txn.orderId    && { label: "Order ID",   value: txn.orderId,         mono: true,  copyKey: "orderId"   },
-    txn.sessionId  && { label: "Session ID", value: txn.sessionId,       mono: true,  copyKey: "sessionId" },
-    txn.deviceId   && { label: "Device",     value: txn.deviceId,        mono: false, copyKey: null        },
-    txn.bankReference && { label: "Ref No.", value: txn.bankReference,   mono: true,  copyKey: "bankRef"   },
-    cat === "REFUND_BANK" && txn.refundId &&
-      { label: "Refund ID", value: txn.refundId, mono: true, copyKey: "refundId" },
-    cat === "REFUND_BANK" && txn.refundStatus &&
-      { label: "Refund Status", value: txn.refundStatus.charAt(0).toUpperCase() + txn.refundStatus.slice(1), mono: false, copyKey: null },
-    cat === "WALLET_REFUND" && txn.description &&
-      { label: "Note", value: txn.description, mono: false, copyKey: null },
-    // failure reasons always show
-  ].filter(Boolean);
-
-  const hasFailure =
-    (cat === "FAILED" && txn.failureReason) ||
-    (cat === "REFUND_BANK" && txn.refundFailureReason);
-
-  return (
-    <div
-      className={`txn-card${expanded ? " expanded" : ""}`}
-      onClick={onToggle}
-      style={{
-        background: "#fff",
-        borderRadius: 13,
-        overflow: "hidden",
-        display: "flex",
-        border: `1px solid ${expanded ? cfg.accent + "55" : cfg.border}`,
-        boxShadow: expanded
-          ? `0 4px 18px rgba(0,0,0,0.09), 0 0 0 1px ${cfg.accent}22`
-          : "0 1px 4px rgba(0,0,0,0.06)",
-        transition: "border-color 0.2s, box-shadow 0.2s",
-      }}
-    >
-      {/* Accent stripe */}
-      <div style={{
-        width: 3, flexShrink: 0,
-        background: cfg.accent,
-        borderRadius: "0",
-        opacity: expanded ? 1 : 0.7,
-        transition: "opacity 0.2s",
-      }} />
-
-      <div style={{ flex: 1, minWidth: 0 }}>
-
-        {/* ══ COLLAPSED ROW — always visible ══ */}
-        <div style={{
-          display: "flex", alignItems: "center",
-          padding: "13px 11px 13px 10px", gap: 8,
-        }}>
-
-          {/* Type icon circle */}
-          <div style={{
-            width: 32, height: 32, borderRadius: 9, flexShrink: 0,
-            background: cfg.bg,
-            border: `1px solid ${cfg.border}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: cat === "REFUND_BANK" ? 12 : 14,
-          }}>
-            {cfg.icon}
-          </div>
-
-          {/* Label + date */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              fontSize: 12.5, fontWeight: 700, color: "#0b1c22",
-              letterSpacing: "-0.1px", lineHeight: 1.2,
-            }}>
-              {labelMap[cat]}
-            </div>
-            <div style={{
-              fontSize: 10.5, color: "#8aa4a4", fontWeight: 500,
-              marginTop: 2, whiteSpace: "nowrap",
-            }}>
-              {date || "—"}
-            </div>
-          </div>
-
-          {/* Amount + chevron */}
-          <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
-            <div style={{
-              fontSize: 15, fontWeight: 800, color: amtColor,
-              letterSpacing: "-0.4px", fontVariantNumeric: "tabular-nums",
-              textAlign: "right",
-            }}>
-              {amtStr}
-            </div>
-            <svg
-              className={`chevron-icon${expanded ? " open" : ""}`}
-              width="13" height="13" viewBox="0 0 24 24"
-              fill="none" stroke="currentColor" strokeWidth="2.5"
-            >
-              <polyline points="6 9 12 15 18 9"/>
-            </svg>
-          </div>
-        </div>
-
-        {/* ══ EXPANDED PANEL — slides open ══ */}
-        <ExpandPanel open={expanded}>
-          <div
-            onClick={e => e.stopPropagation()} /* prevent collapse when tapping inside */
-            style={{
-              borderTop: `1px solid ${cfg.border}`,
-              background: `${cfg.bg.replace("0.10","0.04")}`,
-              padding: "9px 11px 10px 10px",
-            }}
-          >
-
-            {/* Method row (for SUCCESS / WALLET_DEBIT) */}
-            {methodVal && (
-              <DetailRow label="Via" value={methodVal} />
-            )}
-
-            {/* All detail rows with copy */}
-            {detailRows.map((row, i) => (
-              <DetailRow
-                key={i}
-                label={row.label}
-                value={row.value}
-                mono={row.mono}
-                canCopy={!!row.copyKey}
-                copied={copied === row.copyKey}
-                onCopy={row.copyKey
-                  ? e => { e.stopPropagation(); copyText(row.value, setCopied, row.copyKey); }
-                  : null
-                }
-              />
-            ))}
-
-            {/* Failure banner */}
-            {hasFailure && (
-              <div style={{
-                marginTop: 8,
-                background: "rgba(217,48,37,0.07)",
-                color: "#c4281e",
-                padding: "7px 10px", borderRadius: 8,
-                fontSize: 11, fontWeight: 600,
-                display: "flex", alignItems: "flex-start", gap: 5,
-              }}>
-                <span style={{ flexShrink: 0, marginTop: 0 }}>⚠</span>
-                <span style={{ lineHeight: 1.45 }}>
-                  {txn.failureReason || txn.refundFailureReason}
-                </span>
-              </div>
-            )}
-
-            {/* Tap-to-copy hint */}
-            {detailRows.some(r => r.copyKey) && (
-              <div style={{ marginTop: 8, fontSize: 9.5, color: "#b0c8c8", textAlign: "right" }}>
-                Tap ID to copy
-              </div>
-            )}
-          </div>
-        </ExpandPanel>
-
-      </div>
-    </div>
-  );
-};
-
-// ─── Detail Row (inside expanded panel) ───────────────────────────────────────
-// ✅ Fixed
-const DetailRow = ({ label, value, mono, canCopy, copied, copyKey, onCopy }) => (
-  <div style={{
-    display: "flex", justifyContent: "space-between",
-    alignItems: "flex-start", gap: 10,
-    padding: "4px 0",
-    borderBottom: "1px solid rgba(0,0,0,0.04)",
-  }}>
-    <span style={{
-      fontSize: 10.5, color: "#8faaaa", fontWeight: 500,
-      flexShrink: 0, paddingTop: 1,
-    }}>
-      {label}
-    </span>
-    <span
-      className={canCopy ? "detail-copy" : ""}
-      onClick={onCopy}
-      style={{
-        fontSize: 10.5, fontWeight: 600, color: canCopy ? "#0b4f6c" : "#1a3040",
-        fontFamily: mono ? "'Courier New', 'Courier', monospace" : "inherit",
-        textAlign: "right",
-        wordBreak: "break-all",
-        lineHeight: 1.5,
-        borderBottom: canCopy ? "1px dashed rgba(4,191,191,0.4)" : "none",
-        paddingBottom: canCopy ? 1 : 0,
-      }}
-    >
-      {canCopy && copied === copyKey ? "✓ Copied!" : value}
-    </span>
-  </div>
-);
-
-// ─── Stat Card ─────────────────────────────────────────────────────────────────
-const StatCard = ({ icon, label, value, sub, color, bg, border }) => (
-  <div style={{
-    flex: "1 1 0", minWidth: 0,
-    background: "#fff",
-    borderRadius: 11, padding: "9px 10px",
-    boxShadow: "0 1px 4px rgba(0,0,0,0.05)",
-    border: `1px solid ${border}`,
-  }}>
-    <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 5 }}>
-      <div style={{
-        width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-        background: bg,
-        display: "flex", alignItems: "center", justifyContent: "center",
-      }}>{icon}</div>
-      <span style={{
-        fontSize: 10, color: "#8aa4a4", fontWeight: 600,
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-      }}>{label}</span>
-    </div>
-    <div style={{
-      fontSize: 15, fontWeight: 800, color,
-      letterSpacing: "-0.4px", lineHeight: 1,
-      fontVariantNumeric: "tabular-nums",
-    }}>{value}</div>
-    <div style={{ fontSize: 9.5, color: "#b0c4c4", marginTop: 2, fontWeight: 500 }}>{sub}</div>
-  </div>
-);
 
 export default TransactionHistory;

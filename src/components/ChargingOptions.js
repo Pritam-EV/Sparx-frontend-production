@@ -1,23 +1,32 @@
-// ChargingOptions.js
-import React, { useState, useEffect, useRef  } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import AppHeader from "../components/AppHeader";
 import FooterNav from "../components/FooterNav";
 import {
   Box,
   Typography,
-  Grid,
   Card,
-  CardContent,
   Button,
   Slider,
   CircularProgress,
   Alert,
   Avatar,
   TextField,
+  Collapse,
 } from "@mui/material";
 
+import EvStationRoundedIcon from "@mui/icons-material/EvStationRounded";
+import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
+import CurrencyRupeeRoundedIcon from "@mui/icons-material/CurrencyRupeeRounded";
+import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
+import CreditCardRoundedIcon from "@mui/icons-material/CreditCardRounded";
+import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+
 function shortId(len = 8) {
-  // Browser-safe, uses Web Crypto API
   const bytes = new Uint8Array(len);
   window.crypto.getRandomValues(bytes);
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
@@ -37,9 +46,9 @@ function ChargingOptions() {
   const [error, setError] = useState(null);
 
   // ETA for occupied device
-const [occupiedEta, setOccupiedEta] = useState(null);      // raw ISO string from API
-const [etaLoading, setEtaLoading] = useState(false);
-const [etaDisplay, setEtaDisplay] = useState(null);         // { timeStr, remaining, progress }
+  const [occupiedEta, setOccupiedEta] = useState(null);
+  const [etaLoading, setEtaLoading] = useState(false);
+  const [etaDisplay, setEtaDisplay] = useState(null);
 
   // option/slider
   const [selectedOption, setSelectedOption] = useState("amount");
@@ -50,6 +59,7 @@ const [etaDisplay, setEtaDisplay] = useState(null);         // { timeStr, remain
   const [estimatedEnergy, setEstimatedEnergy] = useState(0);
 
   // coupon states
+  const [showCouponInput, setShowCouponInput] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponApplied, setCouponApplied] = useState(false);
   const [applyingCoupon, setApplyingCoupon] = useState(false);
@@ -61,165 +71,44 @@ const [etaDisplay, setEtaDisplay] = useState(null);         // { timeStr, remain
 
   const [paymentError, setPaymentError] = useState(null);
 
-  // ── Wallet ──
-const [walletBalance, setWalletBalance] = useState(0);
-const [showPaymentSheet, setShowPaymentSheet] = useState(false);
-const [walletPayLoading, setWalletPayLoading] = useState(false);
+  // Wallet
+  const [walletBalance, setWalletBalance] = useState(0);
+  const [showPaymentSheet, setShowPaymentSheet] = useState(false);
+  const [walletPayLoading, setWalletPayLoading] = useState(false);
 
   const [toast, setToast] = useState({
-  open: false,
-  message: "",
-  type: "error",
-});
-
-// LIMITS
-const minAmount = 20;
-const maxAmount = 1000;
-const amountStep = 10;
-
-const minEnergy = 1;
-const maxEnergy = 50;
-const energyStep = 0.5;
-
-// build energy options
-const energyOptions = [];
-for (let e = minEnergy; e <= maxEnergy + 1e-6; e += energyStep) {
-  energyOptions.push(Number(e.toFixed(2)));  // force max 2 decimals
-}
-
-
-const clampEnergy = (val) => {
-  // snap to nearest step
-  const snapped = Math.round(val / energyStep) * energyStep;
-  const clamped = Math.min(maxEnergy, Math.max(minEnergy, snapped));
-  // hard limit to 2 decimals
-  return Number(clamped.toFixed(2));
-};
-
-
-// build amount options: 10, 20, ..., 1000
-const amountOptions = [];
-for (let a = minAmount; a <= maxAmount; a += amountStep) {
-  amountOptions.push(a);
-}
-
-// clamp + snap to nearest step
-const clampAmount = (val) => {
-  const snapped = Math.round(val / amountStep) * amountStep;
-  return Math.min(maxAmount, Math.max(minAmount, snapped));
-};
-
-const [showLoginPrompt, setShowLoginPrompt] = useState(false);
-
-  // New: detect logged-in user via token or user object
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  const userRaw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
-  const userData =
-    userRaw && userRaw !== "undefined"
-      ? (() => {
-          try {
-            return JSON.parse(userRaw);
-          } catch {
-            return null;
-          }
-        })()
-      : null;
-
-
-// const touchStartYRef = useRef(null);
-
-// const handleAmountWheel = (event) => {
-//   event.preventDefault();
-// const scrollSpeed = 3; // adjust: 1=slow, 2=medium, 3=fast
-// const direction = event.deltaY > 0 ? 1 : -1;
-// const next = clampAmount(sliderValue + direction * amountStep * scrollSpeed);
-
-//   setSliderValue(next);
-// };
-
-// const handleAmountTouchStart = (event) => {
-//   touchStartYRef.current = event.touches[0].clientY;
-// };
-
-// const handleAmountTouchMove = (event) => {
-//   if (touchStartYRef.current == null) return;
-//   const currentY = event.touches[0].clientY;
-//   const diff = currentY - touchStartYRef.current;
-
-//   if (Math.abs(diff) > 20) {
-//     const direction = diff > 0 ? -1 : 1; // swipe up -> increase
-//     const next = clampAmount(sliderValue + direction * amountStep);
-//     setSliderValue(next);
-//     touchStartYRef.current = currentY; // allow continuous scrolling
-//   }
-// };
-
-// const energyTouchStartYRef = useRef(null);
-
-// const handleEnergyWheel = (event) => {
-//   event.preventDefault();
-//   // scroll down -> increase energy
-
-//   const rate = deviceDetails?.rate || 20;
-// const scrollSpeed = 3;
-// const direction = event.deltaY > 0 ? 1 : -1;
-
-//   const currentEnergy = estimatedEnergy || minEnergy;
-// const nextEnergy = clampEnergy(currentEnergy + direction * energyStep * scrollSpeed);
-
-//   let newAmount = Number((nextEnergy * rate).toFixed(2));
-//   newAmount = clampAmount(newAmount);
-//   setSliderValue(newAmount);
-// };
-
-// const handleEnergyTouchStart = (event) => {
-//   energyTouchStartYRef.current = event.touches[0].clientY;
-// };
-
-// const handleEnergyTouchMove = (event) => {
-//   if (energyTouchStartYRef.current == null) return;
-//   const currentY = event.touches[0].clientY;
-//   const diff = currentY - energyTouchStartYRef.current;
-
-//   if (Math.abs(diff) > 20) {
-//     const direction = diff > 0 ? -1 : 1; // swipe up -> increase
-//     const rate = deviceDetails?.rate || 20;
-
-//     const currentEnergy = estimatedEnergy || minEnergy;
-//     const nextEnergy = clampEnergy(currentEnergy + direction * energyStep);
-//     let newAmount = Number((nextEnergy * rate).toFixed(2));
-//     newAmount = clampAmount(newAmount);
-//     setSliderValue(newAmount);
-
-//     energyTouchStartYRef.current = currentY;
-//   }
-// };
-const toastTimeoutRef = useRef(null);
-
-const showToast = (
-  message,
-  type = "error"
-) => {
-  if (toastTimeoutRef.current) {
-    clearTimeout(toastTimeoutRef.current);
-  }
-
-  setToast({
-    open: true,
-    message,
-    type,
+    open: false,
+    message: "",
+    type: "error",
   });
 
-  toastTimeoutRef.current = setTimeout(() => {
-    setToast((prev) => ({
-      ...prev,
-      open: false,
-    }));
-  }, 2800);
-};
+  // LIMITS
+  const minAmount = 20;
+  const maxAmount = 1000;
+  const amountStep = 10;
 
+  const minEnergy = 1;
+  const maxEnergy = 50;
+  const energyStep = 0.5;
 
-  // ── Fetch wallet balance ──
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const userRaw = typeof window !== "undefined" ? localStorage.getItem("user") : null;
+
+  const toastTimeoutRef = useRef(null);
+
+  const showToast = (message, type = "error") => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToast({ open: true, message, type });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToast((prev) => ({ ...prev, open: false }));
+    }, 2800);
+  };
+
+  // Fetch wallet balance
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -230,12 +119,10 @@ const showToast = (
       .then((d) => {
         if (typeof d.balance === "number") setWalletBalance(d.balance);
       })
-      .catch(() => {}); // silent fail — wallet balance is non-critical for page load
+      .catch(() => {});
   }, []);
 
-  /* -------------------------
-   *  Fetch device details
-   * ------------------------- */
+  // Fetch device details
   useEffect(() => {
     if (!deviceId) {
       setError("Device ID is missing.");
@@ -271,270 +158,196 @@ const showToast = (
     fetchDeviceDetails();
   }, [deviceId]);
 
-
   // Fetch ETA when device is confirmed occupied
-useEffect(() => {
-  if (!deviceDetails || deviceDetails.status?.toLowerCase() !== 'occupied') {
-    setOccupiedEta(null);
-    setEtaDisplay(null);
-    return;
-  }
-
-  const fetchDeviceEta = async () => {
-    setEtaLoading(true);
-    try {
-      const token = localStorage.getItem('token');
-      const resp = await fetch(
-        `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/device-eta/${deviceId}`,
-        { headers: { Authorization: token ? `Bearer ${token}` : '' } }
-      );
-      if (!resp.ok) { setOccupiedEta(null); return; }
-      const data = await resp.json();
-      setOccupiedEta(data.estimatedEndTime || null);
-      // store progress for the bar
-      setEtaDisplay(prev => ({ ...prev, progress: data.energyProgressPercent || 0 }));
-    } catch (e) {
-      console.error('ETA fetch error:', e);
+  useEffect(() => {
+    if (!deviceDetails || deviceDetails.status?.toLowerCase() !== 'occupied') {
       setOccupiedEta(null);
-    } finally {
-      setEtaLoading(false);
-    }
-  };
-
-  fetchDeviceEta();
-}, [deviceDetails, deviceId]);
-
-// Live countdown from occupiedEta
-useEffect(() => {
-  const compute = () => {
-    if (!occupiedEta) { setEtaDisplay(null); return; }
-    const eta = new Date(occupiedEta);
-    const now = new Date();
-    const diffMs = eta - now;
-
-    const timeStr = eta.toLocaleTimeString('en-IN', {
-      hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
-    });
-
-    if (diffMs <= 0) {
-      setEtaDisplay(prev => ({ ...prev, timeStr, remaining: 'Any moment', label: 'Finishing up' }));
+      setEtaDisplay(null);
       return;
     }
-    const totalMins = Math.ceil(diffMs / 60000);
-    const h = Math.floor(totalMins / 60);
-    const m = totalMins % 60;
-    const remaining = h > 0 ? `${h}h ${m}m` : `${m} min`;
-    setEtaDisplay(prev => ({ ...prev, timeStr, remaining, label: 'Available in' }));
-  };
 
-  compute();
-  const t = setInterval(compute, 30_000);
-  return () => clearInterval(t);
-}, [occupiedEta]);
+    const fetchDeviceEta = async () => {
+      setEtaLoading(true);
+      try {
+        const token = localStorage.getItem('token');
+        const resp = await fetch(
+          `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/device-eta/${deviceId}`,
+          { headers: { Authorization: token ? `Bearer ${token}` : '' } }
+        );
+        if (!resp.ok) { setOccupiedEta(null); return; }
+        const data = await resp.json();
+        setOccupiedEta(data.estimatedEndTime || null);
+        setEtaDisplay(prev => ({ ...prev, progress: data.energyProgressPercent || 0 }));
+      } catch (e) {
+        console.error('ETA fetch error:', e);
+        setOccupiedEta(null);
+      } finally {
+        setEtaLoading(false);
+      }
+    };
 
+    fetchDeviceEta();
+  }, [deviceDetails, deviceId]);
 
-
-  /* -------------------------
-   *  Keep estimatedCost / energy in sync with selection
-   *  and compute originalSelectedAmount (before coupon)
-   * ------------------------- */
+  // Live countdown from occupiedEta
   useEffect(() => {
-   
-    if (!deviceDetails) return;
+    const compute = () => {
+      if (!occupiedEta) { setEtaDisplay(null); return; }
+      const eta = new Date(occupiedEta);
+      const now = new Date();
+      const diffMs = eta - now;
 
+      const timeStr = eta.toLocaleTimeString('en-IN', {
+        hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata',
+      });
+
+      if (diffMs <= 0) {
+        setEtaDisplay(prev => ({ ...prev, timeStr, remaining: 'Any moment', label: 'Finishing up' }));
+        return;
+      }
+      const totalMins = Math.ceil(diffMs / 60000);
+      const h = Math.floor(totalMins / 60);
+      const m = totalMins % 60;
+      const remaining = h > 0 ? `${h}h ${m}m` : `${m} min`;
+      setEtaDisplay(prev => ({ ...prev, timeStr, remaining, label: 'Available in' }));
+    };
+
+    compute();
+    const t = setInterval(compute, 30_000);
+    return () => clearInterval(t);
+  }, [occupiedEta]);
+
+  // Keep estimatedCost / energy in sync
+  useEffect(() => {
+    if (!deviceDetails) return;
     const rate = deviceDetails.rate || 20;
 
     if (selectedOption === "amount") {
-      // sliderValue is an amount (₹)
       setEstimatedCost(sliderValue);
       setEstimatedEnergy(Number((sliderValue / rate).toFixed(2)));
       setOriginalSelectedAmount(sliderValue);
     } else {
-      // selectedOption === "energy", sliderValue is kWh
       const computedCost = Number((sliderValue * rate).toFixed(2));
       setEstimatedCost(computedCost);
       setEstimatedEnergy(sliderValue);
-      setOriginalSelectedAmount(computedCost); // carry forward the amount equivalent of energy selection
+      setOriginalSelectedAmount(computedCost);
     }
 
-    // If a coupon was previously applied but the user changes slider/option, disable coupon (to avoid inconsistency)
-    // (We enforce single-apply before proceeding.)
     if (couponApplied) {
       setCouponApplied(false);
       setAppliedCouponObj(null);
       setDiscountedPrice(null);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sliderValue, selectedOption, deviceDetails]);
 
-  // --- Show login/signup popup after 3s if not logged in ---
+  // Show login/signup prompt if guest
   useEffect(() => {
-    // consider "logged in" when token exists; optional: also check userData
     const isLoggedIn = !!token;
-
     if (isLoggedIn) {
       setShowLoginPrompt(false);
       return;
     }
-
     const timer = setTimeout(() => {
       setShowLoginPrompt(true);
-    }, 3000); // 3 seconds delay
-
+    }, 3000);
     return () => clearTimeout(timer);
   }, [token]);
 
-
-  /* -------------------------
-   *  Option handlers
-   * ------------------------- */
   const handleOptionSelect = (option) => {
     setSelectedOption(option);
-    // reset slider to safer default (0 so user explicitly picks)
     setSliderValue(option === "amount" ? 100 : 10);
-    // reset estimated fields will be recalculated by effect
   };
 
   const handleSliderChange = (event, value) => {
     setSliderValue(value);
   };
 
-  // User edits the amount (₹) field
-const handleAmountInputChange = (e) => {
-  const raw = e.target.value;
-  const value = Number(raw) || 0;
-  setSliderValue(value); // still the single source of truth
-};
+  // Coupon validation
+  async function applyCoupon() {
+    if (couponApplied) return;
+    setApplyingCoupon(true);
 
-// User edits the energy (kWh) field
-const handleEnergyInputChange = (e) => {
-  const raw = e.target.value;
-  const value = Number(raw) || 0;
-  setSliderValue(value); // still the single source of truth
-};
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        showToast('You must be logged in to apply a coupon.', "error");
+        setApplyingCoupon(false);
+        return;
+      }
 
-
-  /* -------------------------
-   *  Coupon apply -> server validation
-   *  - Sends (code, deviceId, amount) to backend
-   *  - backend returns { newAmount, coupon? }
-   *  - If newAmount === 0 -> generate viz_ ID and immediately navigate
-   * ------------------------- */
-async function applyCoupon() {
-  if (couponApplied) return;
-  setApplyingCoupon(true);
-
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      showToast('You must be logged in to apply a coupon.',  "error");
-      setApplyingCoupon(false);
-      return;
-    }
-
-    const backendBase = process.env.REACT_APP_Backend_API_Base_URL || 'https://localhost:3000'
-    const resp = await fetch(
+      const resp = await fetch(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/coupons/apply`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ code: couponCode.trim(), deviceId, amount: originalSelectedAmount }),
-    });
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ code: couponCode.trim(), deviceId, amount: originalSelectedAmount }),
+      });
 
-    // Defensive: check for non-JSON response (like HTML error page)
-    const ct = resp.headers.get('content-type') || '';
-    if (!resp.ok) {
-      // Read text to show helpful message
-      const text = await resp.text();
-      // If HTML returned, show cleaner message
-      if (ct.includes('html')) {
-        throw new Error('Server returned HTML. Check backend URL and that the API is running.');
+      const ct = resp.headers.get('content-type') || '';
+      if (!resp.ok) {
+        const text = await resp.text();
+        if (ct.includes('html')) {
+          throw new Error('Server returned HTML. Check API status.');
+        }
+        try {
+          const jsonErr = JSON.parse(text);
+          throw new Error(jsonErr.error || JSON.stringify(jsonErr));
+        } catch (e) {
+          throw new Error(text || 'Failed to apply coupon');
+        }
       }
-      // try to parse JSON error
-      try {
-        const jsonErr = JSON.parse(text);
-        throw new Error(jsonErr.error || JSON.stringify(jsonErr));
-      } catch (e) {
-        throw new Error(text || 'Failed to apply coupon');
+
+      const data = await resp.json();
+      if (!data || typeof data.newAmount !== 'number') {
+        throw new Error('Unexpected response');
       }
+
+      setCouponApplied(true);
+      setAppliedCouponObj({ ...data.coupon, code: data.coupon.code });
+      setDiscountedPrice(data.newAmount);
+      showToast(`Coupon applied! Payable: ₹${data.newAmount.toFixed(2)}`, "success");
+      setApplyingCoupon(false);
+    } catch (err) {
+      console.error('applyCoupon error:', err);
+      const errorMessage =
+        err.message === "Invalid coupon code"
+          ? "Invalid Coupon"
+          : err.message || "Failed to apply coupon";
+
+      showToast(errorMessage, "error");
+      setApplyingCoupon(false);
     }
-
-    if (!ct.includes('application/json')) {
-      const text = await resp.text();
-      throw new Error('Expected JSON response but got: ' + text.slice(0, 200));
-    }
-
-    const data = await resp.json();
-
-
-
-    // success handling
-    if (!data || typeof data.newAmount !== 'number') {
-      throw new Error('Unexpected response');
-    }
-
-    setCouponApplied(true);
-    setAppliedCouponObj({ ...data.coupon, code: data.coupon.code });
-    setDiscountedPrice(data.newAmount);
-showToast(
-  `Coupon applied • Payable ₹${data.newAmount.toFixed(2)}`,
-  "success"
-);
-
-    setApplyingCoupon(false);
-  } catch (err) {
-    console.error('applyCoupon error:', err);
-const errorMessage =
-  err.message === "Invalid coupon code"
-    ? "Invalid Coupon"
-    : err.message || "Failed to apply coupon";
-
-showToast(errorMessage, "error");
-    setApplyingCoupon(false);
   }
-}
 
-async function consumeCoupon() {
-  if (!couponApplied || !appliedCouponObj?.code) return;
-
-  try {
-    const token = localStorage.getItem("token");
-    await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/coupons/consume`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        code: appliedCouponObj.code,
-        deviceId,
-      }),
-    });
-    // console.log("Coupon consumed successfully");
-  } catch (err) {
-    console.error("Failed to consume coupon:", err);
+  async function consumeCoupon() {
+    if (!couponApplied || !appliedCouponObj?.code) return;
+    try {
+      const token = localStorage.getItem("token");
+      await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/coupons/consume`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          code: appliedCouponObj.code,
+          deviceId,
+        }),
+      });
+    } catch (err) {
+      console.error("Failed to consume coupon:", err);
+    }
   }
-}
 
-
-
-  /* -------------------------
-   *  Proceed to Payment
-   *  - If coupon applied: payable = discountedPrice
-   *  - Else: payable = estimatedCost
-   *  - If payable === 0 (edge case), generate transaction id and navigate
-   *  - Otherwise create Razorpay order and open modal; on success navigate to session-start passing transaction id from Razorpay
-   * ------------------------- */
-  // Opens the payment method selector sheet (does NOT go to Cashfree directly)
-  const handleProceedToPayment = async () => {
+  const handleProceedToPayment = () => {
     if (!selectedOption || sliderValue === 0) {
       showToast("Please select a charging option and value!", "error");
       return;
     }
     if (!deviceDetails) {
-      showToast("Device not loaded. Try again.", "error");
+      showToast("Device details not ready. Try again.", "error");
       return;
     }
     const currentDeviceStatus = (deviceDetails?.status || "").toString().toLowerCase();
@@ -542,19 +355,16 @@ async function consumeCoupon() {
       showToast(`Device is not available. Current status: ${currentDeviceStatus}`, "error");
       return;
     }
-    // Show the payment method sheet — actual payment triggered from there
     setShowPaymentSheet(true);
   };
 
-  // ── Called when user picks WALLET in the sheet ──
   const handlePayWithWallet = async () => {
     const payable = couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost;
     const payableNum = Number(payable || 0);
 
     if (walletBalance < payableNum) {
-      // Redirect to topup — pass shortfall as hint
       const shortfall = payableNum - walletBalance;
-navigate(`/wallet/topup?need=${shortfall.toFixed(2)}`);
+      navigate(`/wallet/topup?need=${shortfall.toFixed(2)}`);
       return;
     }
 
@@ -580,17 +390,14 @@ navigate(`/wallet/topup?need=${shortfall.toFixed(2)}`);
       );
 
       const data = await resp.json();
-
       if (!resp.ok || !data.success) {
         showToast(data.message || "Wallet payment failed.", "error");
         setWalletPayLoading(false);
         return;
       }
 
-      // Consume coupon if applied
       if (couponApplied) await consumeCoupon();
 
-      // Store pendingPayment exactly like Cashfree flow
       localStorage.setItem(
         "pendingPayment",
         JSON.stringify({
@@ -614,12 +421,10 @@ navigate(`/wallet/topup?need=${shortfall.toFixed(2)}`);
     }
   };
 
-  // ── Called when user picks UPI/CARD in the sheet ──
   const handlePayWithCashfree = async () => {
     const payable = couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost;
     const payableNum = Number(payable || 0);
 
-    // Free / zero-amount edge case
     if (payableNum === 0) {
       const fakeOrderId = shortId(10);
       localStorage.setItem(
@@ -642,7 +447,6 @@ navigate(`/wallet/topup?need=${shortfall.toFixed(2)}`);
 
     try {
       setPaymentError(null);
-
       const orderResp = await fetch(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/payment/order`,
         {
@@ -664,7 +468,7 @@ navigate(`/wallet/topup?need=${shortfall.toFixed(2)}`);
       if (contentType.includes("application/json")) {
         orderData = await orderResp.json();
       } else {
-        throw new Error("Something went wrong while creating the order. Please try again.");
+        throw new Error("Something went wrong while creating the order.");
       }
 
       if (!orderResp.ok) {
@@ -677,8 +481,7 @@ navigate(`/wallet/topup?need=${shortfall.toFixed(2)}`);
 
       const paymentSessionId =
         orderData?.paymentSessionId || orderData?.order?.payment_session_id;
-      const orderId =
-        orderData?.orderId || orderData?.order?.order_id;
+      const orderId = orderData?.orderId || orderData?.order?.order_id;
 
       if (!paymentSessionId || !orderId) {
         showToast("Invalid response from payment server.", "error");
@@ -720,741 +523,1050 @@ navigate(`/wallet/topup?need=${shortfall.toFixed(2)}`);
   };
 
   /* -------------------------
-   *  Loading / error UI
+   *  Loading / Error UI
    * ------------------------- */
   if (isLoading) {
-
-    return  (
-
-      
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="110dvh" sx={{ background: "#0b0e13" }}>
-        <CircularProgress size={70} sx={{ color: "#04BFBF" }} />
+    return (
+      <Box
+        display="flex"
+        flexDirection="column"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100dvh"
+        sx={{ background: "#f3fbfc" }}
+      >
+        <CircularProgress size={50} sx={{ color: "#00d2b4", mb: 2 }} />
+        <Typography sx={{ color: "#0e2e33", fontWeight: 700, fontSize: "15px" }}>
+          Connecting to Charger…
+        </Typography>
       </Box>
     );
   }
 
   if (error) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="110dvh" sx={{ background: "#0b0e13" }}>
-        <Alert severity="error">{error}</Alert>
+      <Box
+        display="flex"
+        flexDirection="column"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100dvh"
+        sx={{ background: "#f3fbfc", p: 3 }}
+      >
+        <Alert severity="error" sx={{ borderRadius: "16px", maxWidth: 420 }}>
+          {error}
+        </Alert>
+        <Button
+          onClick={() => navigate("/home")}
+          sx={{
+            mt: 2,
+            background: "#00d2b4",
+            color: "#fff",
+            fontWeight: 700,
+            borderRadius: "12px",
+            textTransform: "none",
+            "&:hover": { background: "#00a896" },
+          }}
+        >
+          Return to Map
+        </Button>
       </Box>
     );
   }
 
   if (!deviceDetails) return null;
-const deviceStatus = (deviceDetails.status || "").toString().toLowerCase();
+  const deviceStatus = (deviceDetails.status || "").toString().toLowerCase();
+  const isOccupied = deviceStatus === "occupied";
+  const finalPayable = couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost;
 
-  /* -------------------------
-   *  UI render
-   * ------------------------- */
-return (
-  <>
-    <style>
-      {`
-        @keyframes slideUpFade {
+  return (
+    <>
+      <AppHeader />
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+        .co-screen {
+          width: 100%;
+          min-height: calc(100dvh - 68px);
+          height: calc(100dvh - 68px);
+          overflow-y: auto;
+          overflow-x: hidden;
+          background:
+            radial-gradient(circle at 100% 0%, rgba(0, 229, 190, 0.08), transparent 26rem),
+            radial-gradient(circle at 0% 45%, rgba(255, 130, 54, 0.05), transparent 24rem),
+            #f3fbfc;
+          color: #0e2e33;
+          font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, sans-serif;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          -webkit-overflow-scrolling: touch;
+          box-sizing: border-box;
+        }
+
+        .co-shell {
+          width: 100%;
+          max-width: 480px;
+          margin: 0 auto;
+          padding: 16px 16px calc(110px + env(safe-area-inset-bottom, 0px));
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          box-sizing: border-box;
+        }
+
+        /* ── DEVICE SUMMARY CARD ── */
+        .co-device-card {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          padding: 16px;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 22px;
+          box-shadow: 0 4px 18px rgba(0, 160, 145, 0.06);
+          box-sizing: border-box;
+        }
+
+        .co-device-avatar {
+          width: 68px;
+          height: 68px;
+          border-radius: 16px;
+          background: #f1fcf9;
+          border: 1px solid #c9ede7;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .co-device-info {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .co-device-title-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+
+        .co-device-id {
+          font-family: 'Outfit', sans-serif;
+          font-size: 16px;
+          font-weight: 800;
+          color: #0e2e33;
+          letter-spacing: -0.2px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .co-status-pill {
+          padding: 3px 9px;
+          border-radius: 999px;
+          font-size: 10.5px;
+          font-weight: 750;
+          text-transform: capitalize;
+          flex-shrink: 0;
+        }
+        .co-status-pill.available {
+          background: #dbfaf0;
+          border: 1px solid #b8f2dd;
+          color: #008764;
+        }
+        .co-status-pill.occupied {
+          background: #fff3ed;
+          border: 1px solid #ffd8c7;
+          color: #ff521a;
+        }
+
+        .co-device-sub {
+          font-size: 11.5px;
+          color: #53757a;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .co-device-rate {
+          font-size: 12px;
+          font-weight: 700;
+          color: #008f7f;
+          margin-top: 2px;
+        }
+
+        /* ── OCCUPIED BANNER ── */
+        .co-eta-banner {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          padding: 10px 16px;
+          border-radius: 14px;
+          background: #fff8f3;
+          border: 1px solid #ffe1cf;
+        }
+
+        .co-eta-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #ff8236;
+          box-shadow: 0 0 6px #ff8236;
+          animation: coPulse 1.8s infinite ease-in-out;
+        }
+
+        /* ── CHARGE BUILDER CARD ── */
+        .co-builder-card {
+          width: 100%;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 26px;
+          box-shadow: 0 8px 28px rgba(0, 160, 145, 0.08);
+          padding: 22px 18px 20px;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .co-pill-switch {
+          width: 100%;
+          max-width: 320px;
+          display: flex;
+          background: #edf8f6;
+          border-radius: 999px;
+          padding: 4px;
+          border: 1px solid #d4f2ec;
+          margin-bottom: 20px;
+        }
+
+        .co-pill-btn {
+          flex: 1;
+          border: none;
+          background: transparent;
+          padding: 9px 0;
+          border-radius: 999px;
+          font-size: 13px;
+          font-weight: 750;
+          color: #53757a;
+          cursor: pointer;
+          transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .co-pill-btn.active {
+          background: #ffffff;
+          color: #00776b;
+          box-shadow: 0 3px 12px rgba(0, 160, 140, 0.14);
+        }
+
+        .co-val-heading {
+          font-size: 11px;
+          font-weight: 800;
+          color: #799ea4;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+        }
+
+        .co-main-val {
+          font-family: 'Outfit', sans-serif;
+          font-size: clamp(38px, 11vw, 48px);
+          font-weight: 800;
+          color: #ff8236;
+          line-height: 1.1;
+          margin: 4px 0 2px;
+          letter-spacing: -1px;
+        }
+
+        .co-equiv-val {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 4px 12px;
+          border-radius: 999px;
+          background: #f1fcf9;
+          border: 1px solid #d2f0eb;
+          color: #00776b;
+          font-size: 12px;
+          font-weight: 750;
+          margin-bottom: 18px;
+        }
+
+        /* ── PRESETS CHIPS ── */
+        .co-presets-wrap {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+          justify-content: center;
+          width: 100%;
+          margin-top: 14px;
+        }
+
+        .co-preset-chip {
+          padding: 7px 14px;
+          border-radius: 12px;
+          background: #f6fbfb;
+          border: 1px solid #d8ede9;
+          color: #53757a;
+          font-size: 12px;
+          font-weight: 750;
+          cursor: pointer;
+          transition: all 0.15s ease;
+        }
+        .co-preset-chip:hover {
+          background: #edfbf8;
+          border-color: #00d2b4;
+          color: #00776b;
+        }
+        .co-preset-chip.active {
+          background: #e4faf6;
+          border-color: #00d2b4;
+          color: #00776b;
+          box-shadow: 0 2px 8px rgba(0, 210, 180, 0.2);
+        }
+
+        /* ── COUPON SECTION ── */
+        .co-coupon-shell {
+          width: 100%;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 20px;
+          padding: 16px;
+          box-shadow: 0 4px 16px rgba(0, 160, 145, 0.05);
+          box-sizing: border-box;
+        }
+
+        .co-coupon-toggle {
+          background: transparent;
+          border: none;
+          color: #008f7f;
+          font-size: 13px;
+          font-weight: 750;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          cursor: pointer;
+          padding: 0;
+        }
+
+        .co-coupon-applied-chip {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 14px;
+          background: #dbfaf0;
+          border: 1px solid #b8f2dd;
+          border-radius: 14px;
+          color: #008764;
+          font-size: 12.5px;
+          font-weight: 750;
+        }
+
+        /* ── PROCEED ACTION ── */
+        .co-btn-proceed {
+          width: 100%;
+          min-height: 52px;
+          border-radius: 16px;
+          background: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+          color: #ffffff;
+          border: none;
+          font-size: 15px;
+          font-weight: 800;
+          letter-spacing: -0.2px;
+          cursor: pointer;
+          box-shadow: 0 6px 20px rgba(255, 82, 26, 0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          transition: all 0.16s ease;
+        }
+        .co-btn-proceed:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 8px 24px rgba(255, 82, 26, 0.45);
+        }
+        .co-btn-proceed:active:not(:disabled) {
+          transform: scale(0.985);
+        }
+        .co-btn-proceed:disabled {
+          background: #cad4d6;
+          color: #8c9fa3;
+          box-shadow: none;
+          cursor: not-allowed;
+        }
+
+        /* ── PAYMENT SHEET OVERLAY ── */
+        .co-sheet-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 9000;
+          background: rgba(6, 38, 43, 0.55);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          padding: 20px;
+          justify-content: center;
+          animation: coFade 0.2s ease;
+        }
+
+        .co-sheet {
+          width: 100%;
+          max-width: 480px;
+          background: #ffffff;
+          border-top: 1px solid #d4f0ec;
+          border-radius: 28px 28px 0 0;
+          box-shadow: 0 -12px 40px rgba(0, 60, 66, 0.18);
+          padding: 24px 20px calc(24px + env(safe-area-inset-bottom, 0px));
+          box-sizing: border-box;
+          animation: coSlideUp 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .co-sheet-handle {
+          width: 40px;
+          height: 4px;
+          border-radius: 999px;
+          background: #d4e8e5;
+          margin: 0 auto 16px;
+        }
+
+        .co-method-tile {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px;
+          border-radius: 18px;
+          border: 1.5px solid transparent;
+          cursor: pointer;
+          margin-bottom: 12px;
+          transition: all 0.16s ease;
+        }
+        .co-method-tile.wallet-ok {
+          background: linear-gradient(135deg, #f0fbf9 0%, #ffffff 100%);
+          border-color: #bceee5;
+        }
+        .co-method-tile.wallet-low {
+          background: #fff8f8;
+          border-color: #ffd8d8;
+        }
+        .co-method-tile.gateway {
+          background: #fffdf9;
+          border-color: #ffe8d6;
+        }
+        .co-method-tile:active {
+          transform: scale(0.985);
+        }
+
+        /* ── GUEST LOGIN PROMPT MODAL ── */
+          .co-guest-modal {
+          width: 100%;
+          max-width: 360px;
+          padding: 24px 20px 20px;
+          text-align: center;
+          position: relative;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 26px;
+          box-shadow: 0 20px 60px rgba(0, 60, 66, 0.18);
+          animation: coScaleCenter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes coScaleCenter {
           from {
             opacity: 0;
-            transform: translate(-50%, 20px);
+            transform: scale(0.92);
           }
-
           to {
             opacity: 1;
-            transform: translate(-50%, 0);
+            transform: scale(1);
           }
         }
-      `}
-    </style>
 
-    <Box
-      sx={{
-        height: "100dvh",
-        display: "flex",
-        flexDirection: "column",
-        background:
-          "radial-gradient(circle at top, rgba(4,191,191,0.10), transparent 35%), linear-gradient(145deg, #0b0e13, #111a21)",
-        boxShadow: "0 0 20px rgba(4, 191, 191, 0.3)",
-        color: "#e1f5f5",
-      }}
-    >
-    <Box
-      sx={{
-        flex: 1,
-        minHeight: 0,
-        overflowY: "auto",
-        overflowX: "hidden",
-        WebkitOverflowScrolling: "touch",
-        width: "100%",
-        maxWidth: 720,
-        mx: "auto",
-        px: { xs: 2, sm: 4 },
-        pt: { xs: 2, sm: 3 },
-        pb: "170px",
-        boxSizing: "border-box",
-      }}
-    >
-      {/* all your existing page content stays inside here */} {/* pb for footer overlap avoidance */}
-      {/* Device Info Card */}
-      <Card
-        sx={{
-          mb: 2,
-          width: { xs: "90%", sm: "80%" },
-           mx: "auto", 
-          background:"linear-gradient(180deg, rgba(26,39,49,0.96) 0%, rgba(17,26,33,0.96) 100%)",
-          borderRadius: "22px",
-          padding: "14px",
-          color: "#e1f5f5",
-          boxShadow: "0 0 10px rgba(4, 191, 191, 0.2)",
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
-        <Avatar variant="rounded" src="/device-image.png" alt="Device" sx={{ width: 90, height: 90 }} />
-
-<Box sx={{ flex: 1 }}>
-  <Typography variant="subtitle2" sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>
-    Charger ID{" "}
-    <Typography
-      component="span"
-      variant="subtitle1"
-      sx={{ color: "#ffffff", fontWeight: "bold", fontSize: "0.9rem", ml: 0.5 }}
-    >
-      {deviceDetails.device_id}
-    </Typography>
-  </Typography>
-
-  <Typography variant="subtitle2" sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>
-    Location:{" "}
-    <Typography
-      component="span"
-      variant="subtitle1"
-      sx={{ color: "#ffffff", fontWeight: "bold", fontSize: "0.9rem", ml: 0.5 }}
-    >
-      {deviceDetails.location}
-    </Typography>
-  </Typography>
-
-
-
-  <Typography variant="subtitle2" sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>
-    Rate:{" "}
-    <Typography
-      component="span"
-      variant="subtitle1"
-      sx={{ color: "#ffffff", fontWeight: "bold", fontSize: "0.9rem", ml: 0.5 }}
-    >
-      ₹{deviceDetails?.rate || 20}/kWh 
-    </Typography>
-  </Typography>
-
-    <Typography variant="subtitle2" sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>
-    Status:{" "}
-    <Typography
-      component="span"
-      variant="subtitle1"
-      sx={{ color: "#ffffff", fontWeight: "bold", fontSize: "0.9rem", ml: 0.5 }}
-    >
-      {deviceDetails.status || "Unknown"}
-    </Typography>
-  </Typography>
-
-
-</Box>
-
-      </Card>
-{/* ── Device ETA pill ── */}
-{deviceStatus === 'occupied' && (
-  <Box
-    sx={{
-      width: { xs: '90%', sm: '80%' },
-      mx: 'auto',
-      mb: 2,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 1.2,
-      px: 2.5,
-      py: 1.2,
-      borderRadius: '999px',
-      background: 'rgba(242,160,7,0.08)',
-      border: '1px solid rgba(242,160,7,0.22)',
-    }}
-  >
-    {/* Pulsing dot */}
-    <Box sx={{
-      width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-      background: '#f2a007', boxShadow: '0 0 6px #f2a007',
-      animation: 'etaPulse 2s ease-in-out infinite',
-      '@keyframes etaPulse': {
-        '0%,100%': { opacity: 1 },
-        '50%':     { opacity: 0.3 },
-      },
-    }} />
-
-    <Typography sx={{ color: '#aaa', fontSize: '0.8rem', fontWeight: 500, whiteSpace: 'nowrap' }}>
-      Est. Available:
-    </Typography>
-
-    <Typography sx={{ color: '#f2a007', fontSize: '0.85rem', fontWeight: 700 }}>
-      {etaLoading
-        ? 'Checking…'
-        : etaDisplay?.timeStr
-          ? `${etaDisplay.timeStr}  (${etaDisplay.remaining})`
-          : 'Unavailable'}
-    </Typography>
-  </Box>
-)}
-{/* ────────────────────── */}
-{/* SMART CHARGE BUILDER */}
-{/* SMART CHARGE BUILDER */}
-<Box
-  mt={0.5}
-  width={{ xs: "100%", sm: "82%" }}
-  sx={{
-    maxWidth: 580,
-    mx: "auto",
-    p: 2,
-    borderRadius: "18px",
-    background: "linear-gradient(180deg, #121b22 0%, #0f161d 100%)",
-    boxShadow: "inset 0 0 0 1px rgba(4, 191, 191, 0.12)",
-  }}
->
-  <Typography
-    sx={{
-      color: "#ffffff",
-      fontWeight: 600,
-      textAlign: "center",
-      fontSize: "0.98rem",
-      mb: 1.2,
-    }}
-  >
-    Choose how you want to charge
-  </Typography>
-
-  {/* Toggle */}
-  <Box
-    sx={{
-      display: "flex",
-      background: "#0c1319",
-      borderRadius: "999px",
-      p: 0.4,
-    }}
-  >
-    <Button
-      fullWidth
-      onClick={() => handleOptionSelect("amount")}
-      sx={{
-        borderRadius: "999px",
-        minHeight: 42,
-        background:
-          selectedOption === "amount"
-            ? "linear-gradient(135deg,#04BFBF,#029a9a)"
-            : "transparent",
-        color: selectedOption === "amount" ? "#000" : "#7de0dd",
-        fontWeight: 700,
-      }}
-    >
-      Amount
-    </Button>
-
-    <Button
-      fullWidth
-      onClick={() => handleOptionSelect("energy")}
-      sx={{
-        borderRadius: "999px",
-        minHeight: 42,
-        background:
-          selectedOption === "energy"
-            ? "linear-gradient(135deg,#04BFBF,#029a9a)"
-            : "transparent",
-        color: selectedOption === "energy" ? "#000" : "#7de0dd",
-        fontWeight: 700,
-      }}
-    >
-      Energy
-    </Button>
-  </Box>
-
-  {/* MAIN VALUE */}
-  <Box textAlign="center" mt={2}>
-    <Typography color="#7de0dd" fontSize="0.88rem">
-      {selectedOption === "amount" ? "Amount" : "Energy"}
-    </Typography>
-
-    <Typography
-      variant="h3"
-      color="#F2A007"
-      fontWeight={700}
-      sx={{
-        lineHeight: 1.1,
-        mt: 0.4,
-      }}
-    >
-      {selectedOption === "amount"
-        ? `₹${sliderValue}`
-        : `${sliderValue} kWh`}
-    </Typography>
-
-    <Typography
-      mt={0.8}
-      variant="subtitle1"
-      color="#aaa"
-      fontWeight={600}
-    >
-      {selectedOption === "amount"
-        ? `≈ ${estimatedEnergy} kWh`
-        : `≈ ₹${estimatedCost}`}
-    </Typography>
-  </Box>
-
-  {/* SLIDER */}
-  <Slider
-    value={sliderValue}
-    onChange={handleSliderChange}
-    min={selectedOption === "amount" ? minAmount : minEnergy}
-    max={selectedOption === "amount" ? maxAmount : maxEnergy}
-    step={selectedOption === "amount" ? amountStep : energyStep}
-    sx={{
-      mt: 1,
-      mb: 0.5,
-      color: "#04BFBF",
-    }}
-  />
-
-  {/* PRESETS */}
-  <Box
-    mt={1}
-    display="flex"
-    gap={0.8}
-    flexWrap="wrap"
-    justifyContent="center"
-  >
-    {(selectedOption === "amount"
-      ? [50, 100, 200, 500]
-      : [5, 10, 20, 50]
-    ).map((v) => (
-      <Button
-        key={v}
-        size="small"
-        onClick={() => setSliderValue(v)}
-        sx={{
-          borderRadius: "999px",
-          color: "#7de0dd",
-          border: "1px solid rgba(4,191,191,.25)",
-          minWidth: "unset",
-          px: 1.8,
-          py: 0.45,
-          fontSize: "0.78rem",
-        }}
-      >
-        {selectedOption === "amount" ? `₹${v}` : `${v} kWh`}
-      </Button>
-    ))}
-  </Box>
-</Box>
-      {/* Proceed to Payment */}
-{/* Proceed */}
-<Box
-  mt={2}
-  width="100%"
-  sx={{
-    display: "flex",
-    justifyContent: "center",
-  }}
->
-  <Button
-    variant="contained"
-    onClick={handleProceedToPayment}
-    disabled={
-      !selectedOption ||
-      sliderValue === 0 ||
-      (deviceDetails.status || "")
-        .toString()
-        .toLowerCase() === "occupied"
-    }
-    sx={{
-      width: {
-        xs: "100%",
-        sm: 420,
-      },
-      maxWidth: 420,
-      py: 1.25,
-      borderRadius: "14px",
-      backgroundColor:
-        (deviceDetails.status || "")
-          .toString()
-          .toLowerCase() === "occupied"
-          ? "#6c757d"
-          : "#F2A007",
-      color: "#fff",
-      fontSize: "0.95rem",
-      fontWeight: 700,
-      textTransform: "none",
-      boxShadow:
-        (deviceDetails.status || "")
-          .toString()
-          .toLowerCase() === "occupied"
-          ? "none"
-          : "0 0 14px rgba(242,160,7,.35)",
-      "&:hover": {
-        backgroundColor:
-          (deviceDetails.status || "")
-            .toString()
-            .toLowerCase() === "occupied"
-            ? "#6c757d"
-            : "#f4af2d",
-      },
-    }}
-  >
-    {(deviceDetails.status || "")
-      .toString()
-      .toLowerCase() === "occupied"
-      ? "Device Occupied"
-      : "Proceed to Payment"}
-  </Button>
-</Box>
-
-      {/* Coupon input & Apply (styled to match) */}
-{/* Coupon Section */}
-<Box
-  mt={1.8}
-  width="100%"
-  sx={{
-    display: "flex",
-    justifyContent: "center",
-  }}
->
-  <Box
-    sx={{
-      width: {
-        xs: "100%",
-        sm: 420,
-      },
-    }}
-  >
-    <Box
-      sx={{
-        display: "flex",
-        gap: 1,
-        alignItems: "center",
-      }}
-    >
-      <TextField
-        placeholder="Coupon code"
-        value={couponCode}
-        onChange={(e) => setCouponCode(e.target.value)}
-        disabled={couponApplied || applyingCoupon}
-        size="small"
-        fullWidth
-        sx={{
-          "& .MuiOutlinedInput-root": {
-            height: 46,
-            borderRadius: "14px",
-            background: "#243745",
-            color: "#fff",
-          },
-          input: {
-            color: "#fff",
-            px: 1.6,
-          },
-        }}
-      />
-
-      <Button
-        variant="contained"
-        onClick={applyCoupon}
-        disabled={
-          !couponCode.trim() ||
-          couponApplied ||
-          applyingCoupon
+        .co-guest-close {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #f1fcf9;
+          border: 1px solid #d4f2ec;
+          color: #53757a;
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          font-size: 14px;
+          transition: all 0.15s ease;
         }
-        sx={{
-          minWidth: 110,
-          height: 46,
-          borderRadius: "14px",
-          backgroundColor: couponApplied
-            ? "#6c757d"
-            : "#04BFBF",
-          color: "#011F26",
-          fontWeight: 700,
-          textTransform: "none",
-          boxShadow: "none",
-          "&:hover": {
-            backgroundColor: couponApplied
-              ? "#6c757d"
-              : "#03a9a9",
-          },
-        }}
-      >
-        {applyingCoupon
-          ? "Applying..."
-          : couponApplied
-          ? "Applied"
-          : "Apply"}
-      </Button>
-    </Box>
+        .co-guest-close:hover {
+          background: #e2f7f3;
+          color: #0e2e33;
+        }
+
+        .co-guest-icon-box {
+          width: 58px;
+          height: 58px;
+          border-radius: 20px;
+          background: linear-gradient(135deg, #fff3e6 0%, #ffe3c4 100%);
+          border: 1px solid #ffd4a8;
+          color: #ff8236;
+          display: grid;
+          place-items: center;
+          margin: 0 auto 14px;
+          box-shadow: 0 8px 22px rgba(255, 130, 54, 0.22);
+        }
+
+        .co-guest-title {
+          font-family: 'Outfit', sans-serif;
+          font-size: 19px;
+          font-weight: 800;
+          color: #0e2e33;
+          letter-spacing: -0.2px;
+          margin: 0 0 6px;
+        }
+
+        .co-guest-desc {
+          font-size: 12.5px;
+          color: #53757a;
+          line-height: 1.5;
+          margin: 0 auto 18px;
+          max-width: 280px;
+        }
+
+        .co-guest-perks {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          margin-bottom: 20px;
+          text-align: left;
+        }
+
+        .co-guest-perk-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 12px;
+          background: #f7fdfc;
+          border: 1px solid #e1f5f2;
+          font-size: 12px;
+          font-weight: 700;
+          color: #00776b;
+        }
+
+        .co-btn-guest-login {
+          width: 100%;
+          min-height: 48px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+          color: #ffffff;
+          border: none;
+          font-size: 14px;
+          font-weight: 800;
+          cursor: pointer;
+          box-shadow: 0 4px 16px rgba(255, 82, 26, 0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          transition: all 0.16s ease;
+        }
+        .co-btn-guest-login:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 20px rgba(255, 82, 26, 0.45);
+        }
+        .co-btn-guest-login:active {
+          transform: scale(0.985);
+        }
 
 
-  </Box>
-</Box>
+        @keyframes coPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.9); }
+        }
+        @keyframes coFade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes coSlideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+      `}</style>
 
+      <div className="co-screen">
+        <div className="co-shell">
 
+          {/* ── DEVICE SUMMARY CARD ── */}
+          <div className="co-device-card">
+            <div className="co-device-avatar">
+              <EvStationRoundedIcon sx={{ fontSize: 34, color: "#00776b" }} />
+            </div>
 
+            <div className="co-device-info">
+              <div className="co-device-title-row">
+                <span className="co-device-id">{deviceDetails.device_id}</span>
+                <span className={`co-status-pill ${isOccupied ? "occupied" : "available"}`}>
+                  {deviceDetails.status || "Unknown"}
+                </span>
+              </div>
 
-       </Box>
-{/* Floating Toast */}
-{toast.open && (
-  <Box
-    sx={{
-      position: "fixed",
-      bottom: 120,
-      left: "50%",
-      transform: "translateX(-50%)",
-      zIndex: 9999,
-      animation: "slideUpFade 0.3s ease",
-      width: "calc(100% - 32px)",
-      maxWidth: 420,
-    }}
-  >
-    <Box
-sx={{
-  px: 2.2,
-  py: 1.6,
-  borderRadius: "18px",
-  backdropFilter: "blur(18px)",
-  WebkitBackdropFilter: "blur(18px)",
+              <div className="co-device-sub">
+                <LocationOnOutlinedIcon sx={{ fontSize: 14, color: "#799ea4" }} />
+                <span>{deviceDetails.location || "Location unavailable"}</span>
+              </div>
 
-  background:
-    toast.type === "success"
-      ? "rgba(14, 184, 84, 0.88)"
-      : toast.type === "warning"
-      ? "rgba(245, 158, 11, 0.90)"
-      : "rgba(253, 70, 70, 0.7)",
+              <div className="co-device-rate">
+                ₹{deviceDetails?.rate || 20} / kWh
+              </div>
+            </div>
+          </div>
 
-  color: "#fff",
-
-  border:
-    toast.type === "success"
-      ? "1px solid rgba(74, 222, 128, 0.45)"
-      : toast.type === "warning"
-      ? "1px solid rgba(251, 191, 36, 0.45)"
-      : "1px solid rgba(252, 165, 165, 0.35)",
-
-  boxShadow:
-    toast.type === "success"
-      ? "0 12px 30px rgba(14,184,84,.35)"
-      : toast.type === "warning"
-      ? "0 12px 30px rgba(245,158,11,.30)"
-      : "0 12px 30px rgba(239,68,68,.28)",
-}}
-    >
-      <Typography
-        sx={{
-          color: "#fff",
-          fontWeight: 600,
-          fontSize: "0.92rem",
-          textAlign: "center",
-        }}
-      >
-        {toast.message}
-      </Typography>
-    </Box>
-  </Box>
-)}
-
-{/* ── Payment Method Sheet ── */}
-{showPaymentSheet && (
-  <Box
-    sx={{
-      position: "fixed",
-      inset: 0,
-      zIndex: 9000,
-      background: "rgba(0,0,0,0.78)",
-      display: "flex",
-      alignItems: "flex-end",
-      justifyContent: "center",
-    }}
-  >
-    <Box
-      sx={{
-        width: "100%",
-        maxWidth: 480,
-        borderRadius: "24px 24px 0 0",
-        background: "linear-gradient(180deg,#121b22 0%,#0f161d 100%)",
-        border: "1px solid rgba(4,191,191,0.15)",
-        p: 3,
-        pb: 5,
-      }}
-    >
-      {/* Header */}
-      <Typography
-        sx={{
-          color: "#ffffff",
-          fontWeight: 700,
-          fontSize: "1.05rem",
-          mb: 0.5,
-          textAlign: "center",
-        }}
-      >
-        Select Payment Method
-      </Typography>
-      <Typography
-        sx={{ color: "#7de0dd", fontSize: "0.78rem", textAlign: "center", mb: 2.5 }}
-      >
-        Paying ₹{(couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost).toFixed(2)}
-      </Typography>
-
-      {/* ── Wallet Option ── */}
-      <Box
-        onClick={!walletPayLoading ? handlePayWithWallet : undefined}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          p: 2,
-          borderRadius: "16px",
-          background:
-            walletBalance >= (couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost)
-              ? "rgba(4,191,191,0.08)"
-              : "rgba(255,100,100,0.06)",
-          border:
-            walletBalance >= (couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost)
-              ? "1px solid rgba(4,191,191,0.25)"
-              : "1px solid rgba(255,100,100,0.22)",
-          cursor: walletPayLoading ? "not-allowed" : "pointer",
-          mb: 1.5,
-          transition: "opacity 0.2s",
-          "&:active": { opacity: 0.75 },
-        }}
-      >
-        <Box>
-          <Typography sx={{ color: "#ffffff", fontWeight: 600, fontSize: "0.95rem" }}>
-             Wallet
-          </Typography>
-          {walletBalance < (couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost) ? (
-            <Typography sx={{ color: "#f77", fontSize: "0.78rem", mt: 0.3 }}>
-              Low balance — tap to Top Up ₹
-              {(
-                (couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost) -
-                walletBalance
-              ).toFixed(2)}{" "}
-
-            </Typography>
-          ) : (
-            <Typography sx={{ color: "#7de0dd", fontSize: "0.78rem", mt: 0.3 }}>
-              Instant • No redirect
-            </Typography>
+          {/* ── OCCUPIED COUNTDOWN BANNER (CONDITIONAL) ── */}
+          {isOccupied && (
+            <div className="co-eta-banner">
+              <div className="co-eta-dot" />
+              <Typography sx={{ fontSize: "12px", color: "#53757a", fontWeight: 600 }}>
+                Est. Available:
+              </Typography>
+              <Typography sx={{ fontSize: "12.5px", color: "#ff8236", fontWeight: 750 }}>
+                {etaLoading
+                  ? "Checking…"
+                  : etaDisplay?.timeStr
+                  ? `${etaDisplay.timeStr} (${etaDisplay.remaining})`
+                  : "Unavailable"}
+              </Typography>
+            </div>
           )}
-        </Box>
-        <Box sx={{ textAlign: "right" }}>
-          <Typography
-            sx={{
-              fontWeight: 700,
-              fontSize: "1rem",
-              color:
-                walletBalance >= (couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost)
-                  ? "#04BFBF"
-                  : "#f77",
-            }}
+
+          {/* ── SMART CHARGE BUILDER ── */}
+          <div className="co-builder-card">
+            {/* Pill Switch */}
+            <div className="co-pill-switch">
+              <button
+                type="button"
+                className={`co-pill-btn ${selectedOption === "amount" ? "active" : ""}`}
+                onClick={() => handleOptionSelect("amount")}
+              >
+                By Amount (₹)
+              </button>
+              <button
+                type="button"
+                className={`co-pill-btn ${selectedOption === "energy" ? "active" : ""}`}
+                onClick={() => handleOptionSelect("energy")}
+              >
+                By Energy (kWh)
+              </button>
+            </div>
+
+            <span className="co-val-heading">
+              {selectedOption === "amount" ? "Select Amount" : "Select Energy"}
+            </span>
+
+            <div className="co-main-val">
+              {selectedOption === "amount" ? `₹${sliderValue}` : `${sliderValue} kWh`}
+            </div>
+
+            <div className="co-equiv-val">
+              {selectedOption === "amount" ? (
+                <>
+                  <BoltRoundedIcon sx={{ fontSize: 16, color: "#00d2b4" }} />
+                  <span>≈ {estimatedEnergy} kWh delivered</span>
+                </>
+              ) : (
+                <>
+                  <CurrencyRupeeRoundedIcon sx={{ fontSize: 15, color: "#ff8236" }} />
+                  <span>≈ ₹{estimatedCost} estimated</span>
+                </>
+              )}
+            </div>
+
+            {/* Slider */}
+            <Slider
+              value={sliderValue}
+              onChange={handleSliderChange}
+              min={selectedOption === "amount" ? minAmount : minEnergy}
+              max={selectedOption === "amount" ? maxAmount : maxEnergy}
+              step={selectedOption === "amount" ? amountStep : energyStep}
+              sx={{
+                width: "92%",
+                color: "#00d2b4",
+                height: 7,
+                "& .MuiSlider-thumb": {
+                  width: 24,
+                  height: 24,
+                  backgroundColor: "#ffffff",
+                  border: "3px solid #00d2b4",
+                  boxShadow: "0 3px 10px rgba(0, 210, 180, 0.35)",
+                  "&:hover, &.Mui-focusVisible": {
+                    boxShadow: "0 0 0 8px rgba(0, 210, 180, 0.16)",
+                  },
+                },
+                "& .MuiSlider-track": {
+                  border: "none",
+                  background: "linear-gradient(90deg, #00d2b4, #00b4c5)",
+                },
+                "& .MuiSlider-rail": {
+                  opacity: 1,
+                  backgroundColor: "#e2f4f1",
+                },
+              }}
+            />
+
+            {/* Presets */}
+            <div className="co-presets-wrap">
+              {(selectedOption === "amount"
+                ? [50, 100, 200, 500]
+                : [5, 10, 20, 50]
+              ).map((val) => (
+                <button
+                  type="button"
+                  key={val}
+                  className={`co-preset-chip ${sliderValue === val ? "active" : ""}`}
+                  onClick={() => setSliderValue(val)}
+                >
+                  {selectedOption === "amount" ? `₹${val}` : `${val} kWh`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── PROACTIVE COUPON CARD ── */}
+          <div className="co-coupon-shell">
+            {couponApplied ? (
+              <div className="co-coupon-applied-chip">
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <CheckCircleRoundedIcon sx={{ fontSize: 18 }} />
+                  <span>
+                    Coupon <strong>{appliedCouponObj?.code}</strong> Applied!
+                  </span>
+                </Box>
+                <span>Payable: ₹{discountedPrice?.toFixed(2)}</span>
+              </div>
+            ) : !showCouponInput ? (
+              <button
+                type="button"
+                className="co-coupon-toggle"
+                onClick={() => setShowCouponInput(true)}
+              >
+                <LocalOfferOutlinedIcon sx={{ fontSize: 16 }} />
+                <span>I have a coupon code</span>
+              </button>
+            ) : (
+              <Box>
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+                  <Typography sx={{ fontSize: "12px", fontWeight: 700, color: "#00776b" }}>
+                    Apply Coupon
+                  </Typography>
+                  <Button
+                    onClick={() => setShowCouponInput(false)}
+                    sx={{ minWidth: "auto", p: 0, color: "#799ea4", fontSize: "11px", textTransform: "none" }}
+                  >
+                    Hide
+                  </Button>
+                </Box>
+
+                <Box sx={{ display: "flex", gap: 1 }}>
+                  <TextField
+                    placeholder="Enter code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    disabled={applyingCoupon}
+                    size="small"
+                    fullWidth
+                    sx={{
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "14px",
+                        background: "#f4fbfb",
+                        fontSize: "13px",
+                        fontWeight: 700,
+                        height: 44,
+                      },
+                      "& .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#d4f0ec",
+                      },
+                      "& .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#00d2b4",
+                      },
+                      "& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                        borderColor: "#00d2b4",
+                      },
+                    }}
+                  />
+
+                  <Button
+                    variant="contained"
+                    onClick={applyCoupon}
+                    disabled={!couponCode.trim() || applyingCoupon}
+                    sx={{
+                      minWidth: 94,
+                      height: 44,
+                      borderRadius: "14px",
+                      background: "linear-gradient(135deg, #00d2b4 0%, #009e8f 100%)",
+                      color: "#ffffff",
+                      fontWeight: 750,
+                      textTransform: "none",
+                      boxShadow: "0 3px 12px rgba(0, 190, 165, 0.28)",
+                      "&:hover": {
+                        background: "linear-gradient(135deg, #00e0c0 0%, #00ab9c 100%)",
+                      },
+                    }}
+                  >
+                    {applyingCoupon ? <CircularProgress size={16} sx={{ color: "#fff" }} /> : "Apply"}
+                  </Button>
+                </Box>
+              </Box>
+            )}
+          </div>
+
+          {/* ── PROCEED BUTTON ── */}
+          <button
+            type="button"
+            className="co-btn-proceed"
+            disabled={!selectedOption || sliderValue === 0 || isOccupied}
+            onClick={handleProceedToPayment}
           >
-            ₹{walletBalance.toFixed(2)}
-          </Typography>
-          <Typography sx={{ color: "#aaa", fontSize: "0.7rem" }}>Available</Typography>
-        </Box>
-      </Box>
+            <span>
+              {isOccupied ? "Device Occupied" : `Pay ₹${finalPayable.toFixed(2)} & Start`}
+            </span>
+            {!isOccupied && <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />}
+          </button>
 
-      {/* ── UPI / Card Option ── */}
-      <Box
-        onClick={!walletPayLoading ? handlePayWithCashfree : undefined}
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          p: 2,
-          borderRadius: "16px",
-          background: "rgba(242,160,7,0.07)",
-          border: "1px solid rgba(242,160,7,0.22)",
-          cursor: walletPayLoading ? "not-allowed" : "pointer",
-          mb: 2.5,
-          "&:active": { opacity: 0.75 },
-        }}
-      >
-        <Box>
-          <Typography sx={{ color: "#ffffff", fontWeight: 600, fontSize: "0.95rem" }}>
-            UPI / Debit / Credit Card
-          </Typography>
-          <Typography sx={{ color: "#aaa", fontSize: "0.78rem", mt: 0.3 }}>
-            Redirects to Payment Gateway
-          </Typography>
-        </Box>
-        <Typography sx={{ color: "#F2A007", fontWeight: 700, fontSize: "0.88rem" }}>
-          Pay →
-        </Typography>
-      </Box>
+        </div>
+      </div>
 
-      {/* ── Cancel ── */}
-      <Box sx={{ display: "flex", justifyContent: "center" }}>
-        <Button
-          onClick={() => !walletPayLoading && setShowPaymentSheet(false)}
+      {/* ── FLOATING TOAST ALERT ── */}
+      {toast.open && (
+        <Box
           sx={{
-            color: "#7de0dd",
-            textTransform: "none",
-            fontSize: "0.85rem",
-            fontWeight: 500,
+            position: "fixed",
+            bottom: 100,
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 9999,
+            width: "calc(100% - 32px)",
+            maxWidth: 420,
+            animation: "coFade 0.25s ease",
           }}
         >
-          Cancel
-        </Button>
-      </Box>
-
-      {walletPayLoading && (
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 1.5 }}>
-          <CircularProgress size={22} sx={{ color: "#04BFBF" }} />
-          <Typography sx={{ color: "#7de0dd", ml: 1.5, fontSize: "0.85rem", alignSelf: "center" }}>
-            Processing wallet payment…
-          </Typography>
+          <Box
+            sx={{
+              px: 2.2,
+              py: 1.4,
+              borderRadius: "16px",
+              background:
+                toast.type === "success"
+                  ? "rgba(0, 168, 120, 0.94)"
+                  : "rgba(224, 60, 49, 0.94)",
+              color: "#ffffff",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              textAlign: "center",
+              boxShadow: "0 10px 28px rgba(0,0,0,0.18)",
+            }}
+          >
+            <Typography sx={{ fontWeight: 700, fontSize: "13px" }}>
+              {toast.message}
+            </Typography>
+          </Box>
         </Box>
       )}
-    </Box>
-  </Box>
-)}
 
+      {/* ── PAYMENT METHOD BOTTOM SHEET ── */}
+      {showPaymentSheet && (
+        <div className="co-sheet-overlay" onClick={() => !walletPayLoading && setShowPaymentSheet(false)}>
+          <div className="co-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="co-sheet-handle" />
 
-    {/* Not logged in popup — only on ChargingOptions page */}
-{showLoginPrompt && !token && (
-  <div className="login-popup-overlay">
-    <div className="login-popup enhanced">
-      <button
-        className="login-popup-close"
-        onClick={() => setShowLoginPrompt(false)}
-        aria-label="Close"
-      >
-        ×
-      </button>
+            <Typography
+              sx={{
+                fontFamily: "'Outfit', sans-serif",
+                fontWeight: 750,
+                fontSize: "18px",
+                textAlign: "center",
+                color: "#0e2e33",
+              }}
+            >
+              Select Payment Method
+            </Typography>
 
-      <h3 className="login-popup-title">Ready to start charging?</h3>
+            <Typography
+              sx={{
+                color: "#53757a",
+                fontSize: "12.5px",
+                textAlign: "center",
+                mb: 2.5,
+                mt: 0.4,
+              }}
+            >
+              Total Payable: <strong style={{ color: "#ff8236" }}>₹{finalPayable.toFixed(2)}</strong>
+            </Typography>
 
-      <p className="login-popup-text">
-        Create a VIZ account or login 
-      </p>
+            {/* Wallet Option */}
+            <div
+              className={`co-method-tile ${walletBalance >= finalPayable ? "wallet-ok" : "wallet-low"}`}
+              onClick={!walletPayLoading ? handlePayWithWallet : undefined}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: "14px",
+                    background: walletBalance >= finalPayable ? "#dcfaf5" : "#ffe8e8",
+                    display: "grid",
+                    placeItems: "center",
+                    color: walletBalance >= finalPayable ? "#008f7f" : "#d93b3b",
+                  }}
+                >
+                  <AccountBalanceWalletRoundedIcon sx={{ fontSize: 24 }} />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontWeight: 750, fontSize: "14px", color: "#0e2e33" }}>
+                    VIZ Wallet
+                  </Typography>
+                  {walletBalance < finalPayable ? (
+                    <Typography sx={{ color: "#d93b3b", fontSize: "11px", fontWeight: 600 }}>
+                      Low balance — Tap to Top Up ₹{(finalPayable - walletBalance).toFixed(2)}
+                    </Typography>
+                  ) : (
+                    <Typography sx={{ color: "#008764", fontSize: "11px", fontWeight: 600 }}>
+                      Instant 1-tap checkout
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
 
+              <Box sx={{ textAlign: "right" }}>
+                <Typography
+                  sx={{
+                    fontFamily: "'Outfit', sans-serif",
+                    fontWeight: 800,
+                    fontSize: "15px",
+                    color: walletBalance >= finalPayable ? "#008f7f" : "#d93b3b",
+                  }}
+                >
+                  ₹{walletBalance.toFixed(2)}
+                </Typography>
+                <Typography sx={{ color: "#799ea4", fontSize: "10.5px" }}>Available</Typography>
+              </Box>
+            </div>
 
-      <div className="login-popup-actions single">
-        <button
-          className="login-popup-btn primary"
-          onClick={() => navigate("/login")} // update to your actual route
-        >
-          Login/ Signup
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            {/* UPI / Cards Gateway Option */}
+            <div
+              className="co-method-tile gateway"
+              onClick={!walletPayLoading ? handlePayWithCashfree : undefined}
+            >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                <Box
+                  sx={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: "14px",
+                    background: "#fff1e6",
+                    display: "grid",
+                    placeItems: "center",
+                    color: "#ff8236",
+                  }}
+                >
+                  <CreditCardRoundedIcon sx={{ fontSize: 24 }} />
+                </Box>
+                <Box>
+                  <Typography sx={{ fontWeight: 750, fontSize: "14px", color: "#0e2e33" }}>
+                    UPI / Credit / Debit Card
+                  </Typography>
+                  <Typography sx={{ color: "#53757a", fontSize: "11px" }}>
+                    Google Pay, PhonePe, Cards, NetBanking
+                  </Typography>
+                </Box>
+              </Box>
 
+              <ArrowForwardRoundedIcon sx={{ color: "#ff8236", fontSize: 18 }} />
+            </div>
+
+            {walletPayLoading && (
+              <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 1.5, my: 1 }}>
+                <CircularProgress size={20} sx={{ color: "#00d2b4" }} />
+                <Typography sx={{ color: "#00776b", fontSize: "13px", fontWeight: 600 }}>
+                  Authorizing wallet payment…
+                </Typography>
+              </Box>
+            )}
+
+            <Button
+              fullWidth
+              onClick={() => !walletPayLoading && setShowPaymentSheet(false)}
+              sx={{
+                mt: 1,
+                color: "#53757a",
+                fontWeight: 700,
+                fontSize: "13px",
+                textTransform: "none",
+              }}
+            >
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+
+{/* ── GUEST LOGIN PROMPT ── */}
+      {showLoginPrompt && !token && (
+        <div className="co-sheet-overlay" onClick={() => setShowLoginPrompt(false)}>
+          <div className="co-guest-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="co-guest-close"
+              onClick={() => setShowLoginPrompt(false)}
+              aria-label="Dismiss login modal"
+            >
+              ✕
+            </button>
+
+            <div className="co-guest-icon-box">
+              <EvStationRoundedIcon sx={{ fontSize: 30 }} />
+            </div>
+
+            <h3 className="co-guest-title">Ready to start charging?</h3>
+            <p className="co-guest-desc">
+              Sign in to unlock exclusive cashback rewards, wallet top-ups, and live session telemetry.
+            </p>
+
+            <div className="co-guest-perks">
+              <div className="co-guest-perk-item">
+                <span>⚡</span>
+                <span>Real-time charging progress tracking</span>
+              </div>
+              <div className="co-guest-perk-item">
+                <span>💰</span>
+                <span>Instant refunds on unutilized energy</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="co-btn-guest-login"
+              onClick={() => navigate("/login")}
+            >
+              <span>Login / Sign Up</span>
+              <ArrowForwardRoundedIcon sx={{ fontSize: 17 }} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <FooterNav />
-</Box>
-</>
-);
+    </>
+  );
 }
 
 export default ChargingOptions;

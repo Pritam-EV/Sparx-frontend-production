@@ -95,33 +95,29 @@ const AppContent = () => {
       const target = initialUrlRef.current;
 
       // 3a) If it’s a deep link (not root/home/welcome/login/signup), go there
-    const deepLink =
-      target &&
-      !["/", "/home", "/welcome", "/login", "/signup"].includes(target);
+// 3a) Check for deep link bypass (payment returns)
+      const isPaymentSuccess = target?.startsWith("/payment-success");
+      const isWalletReturn   = target?.startsWith("/wallet/topup-success");
 
-    // 🔐 Allow Cashfree redirect to bypass splash logic
-const isPaymentSuccess = target.startsWith("/payment-success");
-const isWalletReturn   = target.startsWith("/wallet/topup-success");
+      if (isPaymentSuccess || isWalletReturn) {
+        navigate(target, { replace: true });
+        firstLoadRef.current = false;
+        return;
+      }
 
-if (isPaymentSuccess || isWalletReturn) {
-  // console.log("Payment/wallet return deep link ->", target);
-  navigate(target, { replace: true });
-  firstLoadRef.current = false;
-  return;
-}
-
+      // Check if it's a specific deep link
+      const deepLink =
+        target &&
+        !["/", "/landing-home", "/home", "/welcome", "/login", "/signup"].includes(target);
 
       if (deepLink) {
-        // console.log("Deep link ->", target);
         navigate(target, { replace: true });
       } else {
-        // 3b) Normal launch: auth → home, else → welcome
+        // 3b) Normal launch: Authenticated goes to /landing-home, Guest goes to /home (map)
         if (isAuthenticated) {
-          // console.log("Authenticated → /home");
-          navigate("/home", { replace: true });
+          navigate("/landing-home", { replace: true });
         } else {
-          // console.log("Not authenticated → /welcome");
-          navigate("/welcome", { replace: true });
+          navigate("/home", { replace: true });
         }
       }
       firstLoadRef.current = false;
@@ -160,7 +156,7 @@ if (showSplash) return <SplashScreen />;
     <div className="app-container">
       <Routes>
         {/* Public routes */}
-        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/" element={<Navigate to="/landing-home" replace />} />
         <Route path="/home" element={<Home />} />
         <Route path="/welcome" element={<WelcomeScreen />} />
         
@@ -220,13 +216,13 @@ if (showSplash) return <SplashScreen />;
         <Route
           path="/login"
           element={
-            isAuthenticated ? <Navigate to="/home" replace /> : <Login />
+            isAuthenticated ? <Navigate to="/landing-home" replace /> : <Login />
           }
         />
         <Route
           path="/signup"
           element={
-            isAuthenticated ? <Navigate to="/home" replace /> : <SignUp />
+            isAuthenticated ? <Navigate to="/landing-home" replace /> : <SignUp />
           }
         />
 
@@ -247,14 +243,17 @@ if (showSplash) return <SplashScreen />;
             </PrivateRoute>
           }
         />
+{/* Landing Home Route (Redirects to /home if not logged in) */}
         <Route
-        path="/landing-home"
-        element={
-          <PrivateRoute>
-            <LandingHome />
-          </PrivateRoute>
-        }
-      />
+          path="/landing-home"
+          element={
+            isAuthenticated ? (
+              <LandingHome />
+            ) : (
+              <Navigate to="/home" replace />
+            )
+          }
+        />
         <Route path="/transactions" element={ <PrivateRoute> <TransactionHistory /> </PrivateRoute> } />
         <Route path="/qr-scanner" element={<QRScanner />} />
         

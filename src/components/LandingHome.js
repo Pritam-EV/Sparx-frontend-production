@@ -8,20 +8,16 @@ import {
   BoltRounded,
   CalendarMonthRounded,
   CheckCircleRounded,
-  CloseRounded,
   HistoryRounded,
   MapOutlined,
-  MenuRounded,
-  PersonOutlineRounded,
   QrCode2Rounded,
-  QrCodeScannerRounded,
   ReceiptLongRounded,
-  SupportAgentRounded,
 } from "@mui/icons-material";
 
 import { api } from "../api";
 import { getAuthState } from "../utils/auth";
 import FooterNav from "./FooterNav";
+import AppHeader from "./AppHeader";
 import "../styles/landingHome.css";
 
 const money = (value) => {
@@ -148,7 +144,6 @@ const LandingHome = () => {
   const firstName = getFirstName();
   const userPhone = getUserPhone();
 
-  const [menuOpen, setMenuOpen] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const [activeSession, setActiveSession] = useState(null);
@@ -284,27 +279,6 @@ const LandingHome = () => {
     };
   }, []);
 
-  // Close the drawer with the Escape key.
-  useEffect(() => {
-    if (!menuOpen) return;
-
-    const handleKeyDown = (event) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [menuOpen]);
-
-  const goTo = (path) => {
-    setMenuOpen(false);
-    navigate(path);
-  };
 
   const activeSessionId =
     activeSession?.sessionId || activeSession?._id;
@@ -322,38 +296,6 @@ const LandingHome = () => {
       recentSession.createdAt
     : null;
 
-  const menuItems = [
-    {
-      label: "My profile",
-      description: "Account and personal details",
-      icon: <PersonOutlineRounded />,
-      path: "/profile",
-    },
-    {
-      label: "Sessions",
-      description: "Current and previous charging",
-      icon: <BoltRounded />,
-      path: "/sessions",
-    },
-    {
-      label: "Transactions",
-      description: "Payments, top-ups and refunds",
-      icon: <ReceiptLongRounded />,
-      path: "/transactions",
-    },
-    {
-      label: "Scan QR code",
-      description: "Start charging at a VIZ point",
-      icon: <QrCodeScannerRounded />,
-      path: "/qr-scanner",
-    },
-    {
-      label: "Find a charger",
-      description: "Explore chargers on the map",
-      icon: <MapOutlined />,
-      path: "/home",
-    },
-  ];
 
   return (
     <div className="lh-page">
@@ -362,39 +304,7 @@ const LandingHome = () => {
         {/* --------------------------------
             HEADER
         --------------------------------- */}
-        <header className="lh-header">
-          <button
-            type="button"
-            className="lh-icon-button"
-            aria-label="Open navigation menu"
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen(true)}
-          >
-            <MenuRounded />
-          </button>
-
-          <button
-            type="button"
-            className="lh-brand"
-            aria-label="VIZ Home"
-            onClick={() => navigate("/landing-home")}
-          >
-            <img
-              src="/logo.png"
-              alt="VIZ Smart Charging"
-              className="lh-logo"
-            />
-          </button>
-
-          <button
-            type="button"
-            className="lh-profile-button"
-            aria-label="Open my profile"
-            onClick={() => navigate("/profile")}
-          >
-            <PersonOutlineRounded />
-          </button>
-        </header>
+      <AppHeader />
 
         <main className="lh-main">
 
@@ -820,107 +730,6 @@ const LandingHome = () => {
         </main>
       </div>
 
-      {/* --------------------------------
-          ANIMATED NAVIGATION DRAWER
-      --------------------------------- */}
-      {menuOpen && (
-        <div
-          className="lh-drawer-backdrop"
-          role="presentation"
-          onClick={() => setMenuOpen(false)}
-        >
-          <aside
-            className="lh-drawer"
-            role="dialog"
-            aria-modal="true"
-            aria-label="VIZ navigation"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="lh-drawer-header">
-              <div className="lh-drawer-brand">
-                <img src="/logo.png" alt="VIZ" />
-
-                <div>
-                  <strong>VIZ Smart Charging</strong>
-                  <span>Your charging companion</span>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="lh-icon-button"
-                aria-label="Close navigation menu"
-                onClick={() => setMenuOpen(false)}
-              >
-                <CloseRounded />
-              </button>
-            </div>
-
-            <div className="lh-drawer-user">
-              <div className="lh-drawer-avatar">
-                <PersonOutlineRounded />
-              </div>
-
-              <div>
-                <span>Signed in as</span>
-                <strong>{firstName}</strong>
-                {userPhone && (
-                  <span className="lh-drawer-user-phone">{userPhone}</span>
-                )}
-              </div>
-            </div>
-
-            <nav className="lh-drawer-nav" aria-label="Main menu">
-              <p className="lh-small-label">MENU</p>
-
-              {menuItems.map((item) => (
-                <button
-                  type="button"
-                  key={item.path}
-                  className="lh-drawer-item"
-                  onClick={() => goTo(item.path)}
-                >
-                  <span className="lh-drawer-item-icon">
-                    {item.icon}
-                  </span>
-
-                  <span className="lh-drawer-item-copy">
-                    <strong>{item.label}</strong>
-                    <small>{item.description}</small>
-                  </span>
-
-                  <ArrowForwardRounded className="lh-drawer-arrow" />
-                </button>
-              ))}
-            </nav>
-
-            <div className="lh-drawer-support">
-              <SupportAgentRounded />
-
-              <div>
-                <strong>Need help?</strong>
-                <span>Contact VIZ support</span>
-              </div>
-
-              <button
-                type="button"
-                aria-label="Contact VIZ support on WhatsApp"
-                onClick={() => {
-                  setMenuOpen(false);
-
-                  window.open(
-                    "https://wa.me/918855094432",
-                    "_blank",
-                    "noopener,noreferrer"
-                  );
-                }}
-              >
-                <ArrowForwardRounded />
-              </button>
-            </div>
-          </aside>
-        </div>
-      )}
 
       {/* Use the existing shared footer, with light styling on this page only. */}
       <FooterNav homePath="/landing-home" variant="light" />

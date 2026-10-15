@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import "../styles/appStyles.css";
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
+import AppHeader from "../components/AppHeader";
 import FooterNav from "../components/FooterNav";
-import { useParams } from "react-router-dom";
+import "../styles/appStyles.css";
 
 export default function LiveSessionPage() {
   const navigate = useNavigate();
@@ -109,51 +109,50 @@ export default function LiveSessionPage() {
   const KNOB_SIZE = 52;
   const MAX_DRAG = SLIDER_WIDTH - KNOB_SIZE - 6;
 
-  
-const resetSlider = () => {
-  setDragX(0);
-  setIsDragging(false);
-  setStopSliderSuccess(false);
-};
-
-const closeStopPopup = () => {
-  resetSlider();
-  setShowStopConfirmPopup(false);
-};
-
-const startDrag = (clientX) => {
-  if (stopSliderSuccess) return;
-  setIsDragging(true);
-  dragStartXRef.current = clientX;
-  dragStartOffsetRef.current = dragX;
-};
-
-const onDragMove = (clientX) => {
-  if (!isDragging || stopSliderSuccess) return;
-  const delta = clientX - dragStartXRef.current;
-  const next = Math.max(0, Math.min(MAX_DRAG, dragStartOffsetRef.current + delta));
-  setDragX(next);
-};
-
-const endDrag = async () => {
-  if (!isDragging || stopSliderSuccess) return;
-  setIsDragging(false);
-
-  if (dragX >= MAX_DRAG * 0.88) {
-    setDragX(MAX_DRAG);
-    setStopSliderSuccess(true);
-
-    setTimeout(async () => {
-      setShowStopConfirmPopup(false);
-      resetSlider();
-      await handleStop();
-    }, 420);
-  } else {
+  const resetSlider = () => {
     setDragX(0);
-  }
-};
+    setIsDragging(false);
+    setStopSliderSuccess(false);
+  };
 
-    useEffect(() => {
+  const closeStopPopup = () => {
+    resetSlider();
+    setShowStopConfirmPopup(false);
+  };
+
+  const startDrag = (clientX) => {
+    if (stopSliderSuccess) return;
+    setIsDragging(true);
+    dragStartXRef.current = clientX;
+    dragStartOffsetRef.current = dragX;
+  };
+
+  const onDragMove = (clientX) => {
+    if (!isDragging || stopSliderSuccess) return;
+    const delta = clientX - dragStartXRef.current;
+    const next = Math.max(0, Math.min(MAX_DRAG, dragStartOffsetRef.current + delta));
+    setDragX(next);
+  };
+
+  const endDrag = async () => {
+    if (!isDragging || stopSliderSuccess) return;
+    setIsDragging(false);
+
+    if (dragX >= MAX_DRAG * 0.88) {
+      setDragX(MAX_DRAG);
+      setStopSliderSuccess(true);
+
+      setTimeout(async () => {
+        setShowStopConfirmPopup(false);
+        resetSlider();
+        await handleStop();
+      }, 420);
+    } else {
+      setDragX(0);
+    }
+  };
+
+  useEffect(() => {
     const handleMouseMove = (e) => onDragMove(e.clientX);
     const handleMouseUp = () => endDrag();
     const handleTouchMove = (e) => {
@@ -178,7 +177,6 @@ const endDrag = async () => {
 
   useEffect(() => {
     if (isFull && isCharging) {
-      // console.log('100% reached → redirecting');
       const lastId = lastSessionIdRef.current;
       if (lastId) {
         lastSessionIdRef.current = null;
@@ -192,12 +190,9 @@ const endDrag = async () => {
     relayRef.current = relayState;
   }, [relayState]);
 
-  const intervalRef = useRef(null);
-
   const savePauseEndTime = (endTimeMs) => {
     if (sessionId) {
       localStorage.setItem(`pause_${sessionId}`, endTimeMs.toString());
-      // console.log('[PAUSE] Saved pause end time to localStorage:', endTimeMs);
     }
   };
 
@@ -205,9 +200,7 @@ const endDrag = async () => {
     if (sessionId) {
       const stored = localStorage.getItem(`pause_${sessionId}`);
       if (stored) {
-        const endTime = parseInt(stored, 10);
-        // console.log('[PAUSE] Loaded pause end time from localStorage:', endTime);
-        return endTime;
+        return parseInt(stored, 10);
       }
     }
     return null;
@@ -216,7 +209,6 @@ const endDrag = async () => {
   const clearPauseEndTime = () => {
     if (sessionId) {
       localStorage.removeItem(`pause_${sessionId}`);
-      // console.log('[PAUSE] Cleared pause end time from localStorage');
     }
   };
 
@@ -227,33 +219,23 @@ const endDrag = async () => {
       const secondsLeft = Math.max(0, Math.ceil((storedEndTime - now) / 1000));
 
       if (secondsLeft > 0) {
-        // console.log(
-        //   '[PAUSE] Restoring pause state from localStorage, secondsLeft=',
-        //   secondsLeft
-        // );
         pauseEndTimeRef.current = storedEndTime;
         pauseInitializedRef.current = true;
         setShowPausePopup(true);
         setPausedReason('button');
         setTimeLeft(secondsLeft);
       } else {
-        // console.log('[PAUSE] Stored pause already expired, clearing');
         clearPauseEndTime();
       }
     }
   }, []);
 
-const stopSessionAndRedirect = async (triggerType, finalEnergy) => {   // ← ADD finalEnergy param
+  const stopSessionAndRedirect = async (triggerType, finalEnergy) => {
     const sid = lastSessionIdRef.current || sessionData?.sessionId;
-
-    if (!sid) {
-      // console.log('[STOP] No sessionId found, cannot stop');
-      return;
-    }
+    if (!sid) return;
 
     try {
       const token = localStorage.getItem('token');
-
       const response = await fetch(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/stop`,
         {
@@ -267,7 +249,7 @@ const stopSessionAndRedirect = async (triggerType, finalEnergy) => {   // ← AD
             deviceId: deviceId || deviceIdFromState,
             endTime: new Date().toISOString(),
             endTrigger: triggerType,
-            ...(finalEnergy !== undefined && { deltaEnergy: finalEnergy }), // ← ADD THIS LINE
+            ...(finalEnergy !== undefined && { deltaEnergy: finalEnergy }),
           }),
         }
       );
@@ -277,11 +259,8 @@ const stopSessionAndRedirect = async (triggerType, finalEnergy) => {   // ← AD
         throw new Error(errorText);
       }
 
-      // console.log(`[STOP] Session stopped via ${triggerType}`);
-
       clearPauseEndTime();
       lastSessionIdRef.current = null;
-
       navigate('/session-summary', { state: { sessionId: sid } });
     } catch (err) {
       console.error('[STOP] Stop API failed:', err);
@@ -289,57 +268,48 @@ const stopSessionAndRedirect = async (triggerType, finalEnergy) => {   // ← AD
     }
   };
 
-// Live ETA countdown — recalculates every 30s from estimatedEndTime
-useEffect(() => {
-  const computeEta = () => {
-    if (!estimatedEndTime) {
-      setEtaDisplay({ timeStr: null, remaining: null });
-      return;
-    }
-    const eta = new Date(estimatedEndTime);
-    const now = new Date();
-    const diffMs = eta.getTime() - now.getTime();
+  useEffect(() => {
+    const computeEta = () => {
+      if (!estimatedEndTime) {
+        setEtaDisplay({ timeStr: null, remaining: null });
+        return;
+      }
+      const eta = new Date(estimatedEndTime);
+      const now = new Date();
+      const diffMs = eta.getTime() - now.getTime();
 
-    // Format ETA time as "HH:MM AM/PM"
-    const timeStr = eta.toLocaleTimeString('en-IN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: 'Asia/Kolkata',
-    });
+      const timeStr = eta.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata',
+      });
 
-    if (diffMs <= 0) {
-      setEtaDisplay({ timeStr, remaining: 'Any moment' });
-      return;
-    }
+      if (diffMs <= 0) {
+        setEtaDisplay({ timeStr, remaining: 'Any moment' });
+        return;
+      }
 
-    const totalMins = Math.ceil(diffMs / 60000);
-    const hours = Math.floor(totalMins / 60);
-    const mins = totalMins % 60;
-    const remaining = hours > 0 ? `${hours}h ${mins}m left` : `${mins}m left`;
+      const totalMins = Math.ceil(diffMs / 60000);
+      const hours = Math.floor(totalMins / 60);
+      const mins = totalMins % 60;
+      const remaining = hours > 0 ? `${hours}h ${mins}m left` : `${mins}m left`;
 
-    setEtaDisplay({ timeStr, remaining });
-  };
+      setEtaDisplay({ timeStr, remaining });
+    };
 
-  computeEta(); // run immediately
-  const ticker = setInterval(computeEta, 30_000); // refresh every 30s
-  return () => clearInterval(ticker);
-}, [estimatedEndTime]);
-
+    computeEta();
+    const ticker = setInterval(computeEta, 30_000);
+    return () => clearInterval(ticker);
+  }, [estimatedEndTime]);
 
   const fetchActiveSession = async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        // console.log('No token found, redirecting to login');
         navigate('/login');
         return;
       }
-
-      // console.log(
-      //   'Fetching from URL:',
-      //   `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/active`
-      // );
 
       const res = await fetch(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/active`,
@@ -352,26 +322,16 @@ useEffect(() => {
         }
       );
 
-      // console.log('Response status:', res.status, res.statusText);
+      if (res.status === 404) {
+        const sid = lastSessionIdRef.current;
+        lastSessionIdRef.current = null;
+        clearPauseEndTime();
 
-if (res.status === 404) {
-  const sid = lastSessionIdRef.current;
-
-  // console.log(
-  //   'No active session returned by backend; not sending automatic stop request.'
-  // );
-
-  lastSessionIdRef.current = null;
-  clearPauseEndTime();
-
-  if (sid) {
-    navigate('/session-summary', {
-      state: { sessionId: sid },
-    });
-  }
-
-  return;
-}
+        if (sid) {
+          navigate('/session-summary', { state: { sessionId: sid } });
+        }
+        return;
+      }
 
       if (!res.ok) {
         if (res.status === 401) {
@@ -382,23 +342,9 @@ if (res.status === 404) {
       }
 
       const data = await res.json();
-      // console.log('FE DEBUG: fetchActiveSession data:', data);
-
       const deviceStatus = data.status?.toString().toLowerCase();
       const normalizedRelay =
         data.relayState?.toUpperCase() === 'ON' ? 'ON' : 'OFF';
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error('API Error:', res.status, errorText);
-        if (res.status === 401) {
-          localStorage.removeItem('token');
-          navigate('/login');
-          return;
-        }
-        return;
-      }
-
 
       setVoltage(Number(data.voltage) || 0);
       setCurrent(Number(data.current) || 0);
@@ -414,13 +360,10 @@ if (res.status === 404) {
       if (deviceStatus === 'paused') {
         if (!pauseInitializedRef.current) {
           pauseInitializedRef.current = true;
-
-          // console.log('[PAUSE] Device paused → initializing pause popup (once)');
           setShowPausePopup(true);
           setPausedReason('button');
 
           let endTime = pauseEndTimeRef.current || loadPauseEndTime();
-
           if (!endTime) {
             const now = Date.now();
             endTime = now + 5 * 60 * 1000;
@@ -436,23 +379,12 @@ if (res.status === 404) {
             Math.ceil((endTime - now) / 1000)
           );
           setTimeLeft(initialSecondsLeft);
-
-          // console.log(
-          //   '[PAUSE] Pause end time:',
-          //   new Date(endTime).toISOString(),
-          //   '| Seconds left:',
-          //   initialSecondsLeft
-          // );
         }
-
         return;
       }
 
       if (deviceStatus === 'occupied') {
         if (showPausePopup || pauseInitializedRef.current) {
-          // console.log(
-          //   '[PAUSE] Device resumed → hiding pause popup and resetting pause state'
-          // );
           setShowPausePopup(false);
           setPausedReason(null);
           setTimeLeft(0);
@@ -509,7 +441,6 @@ if (res.status === 404) {
 
   useEffect(() => {
     if (!sessionId) return;
-
     const fetchSessionById = async () => {
       try {
         const token = localStorage.getItem("token");
@@ -519,7 +450,7 @@ if (res.status === 404) {
             method: "GET",
             headers: {
               "Content-Type": "application/json",
-              "Authorization": `Bearer ${token}`,
+              Authorization: `Bearer ${token}`,
             },
           }
         );
@@ -534,7 +465,6 @@ if (res.status === 404) {
             ? 'ON'
             : 'OFF'
         );
-
         lastSessionIdRef.current = data.sessionId || sessionId;
       } catch (err) {
         setError("Failed to load session data.");
@@ -544,20 +474,6 @@ if (res.status === 404) {
 
     fetchSessionById();
   }, [sessionId]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (process.env.NODE_ENV !== 'production') {
-        // console.log(
-        //   'Current relay state:',
-        //   relayRef.current,
-        //   ' showPausePopup=',
-        //   showPausePopup
-        // );
-      }
-    }, 10000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleStop = async () => {
     await stopSessionAndRedirect('manual');
@@ -570,10 +486,6 @@ if (res.status === 404) {
       pauseEndTimeRef.current &&
       !timerRef.current
     ) {
-      // console.log(
-      //   '[PAUSE] Starting countdown interval (absolute), endTime=',
-      //   pauseEndTimeRef.current
-      // );
       timerRef.current = setInterval(async () => {
         const now = Date.now();
         const endTime = pauseEndTimeRef.current;
@@ -589,9 +501,7 @@ if (res.status === 404) {
         const secondsLeft = Math.max(0, Math.ceil((endTime - now) / 1000));
 
         if (secondsLeft <= 0) {
-          // console.log('[PAUSE] Countdown reached zero, clearing interval');
           setTimeLeft(0);
-
           if (timerRef.current) {
             clearInterval(timerRef.current);
             timerRef.current = null;
@@ -599,12 +509,8 @@ if (res.status === 404) {
 
           if (!pauseTimeoutCalledRef.current) {
             pauseTimeoutCalledRef.current = true;
-
-            // console.log('[PAUSE] Timeout expired → stopping session properly');
-
             await stopSessionAndRedirect('pause_timeout');
           }
-
           return;
         }
 
@@ -616,9 +522,6 @@ if (res.status === 404) {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
-        // console.log(
-        //   '[PAUSE] Cleared countdown interval because pause ended or popup hidden'
-        // );
       }
     }
 
@@ -631,7 +534,6 @@ if (res.status === 404) {
   }, [showPausePopup, pausedReason, deviceId, deviceIdFromState, navigate, sessionData]);
 
   const handleDismissPopup = () => {
-    // console.log('[PAUSE] User dismissed popup, will re-show in 5 seconds');
     setShowPausePopup(false);
     popupDismissedAtRef.current = Date.now();
   };
@@ -643,16 +545,11 @@ if (res.status === 404) {
       pauseInitializedRef.current
     ) {
       const dismissedAt = popupDismissedAtRef.current;
-
       if (!dismissedAt) return;
 
       const checkInterval = setInterval(() => {
         const elapsed = Date.now() - dismissedAt;
-
         if (elapsed >= 5000) {
-          // console.log(
-          //   '[PAUSE] 5 seconds elapsed since dismiss, re-showing popup'
-          // );
           setShowPausePopup(true);
           popupDismissedAtRef.current = null;
           clearInterval(checkInterval);
@@ -663,804 +560,727 @@ if (res.status === 404) {
     }
   }, [pausedReason, showPausePopup, pauseInitializedRef.current]);
 
+  // Radius 88, circumference = 2 * PI * 88 ~= 552.92
+  const CIRCLE_CIRCUMFERENCE = 552.92;
+  const strokeOffset = CIRCLE_CIRCUMFERENCE - (usagePercent / 100) * CIRCLE_CIRCUMFERENCE;
+
   return (
     <>
+      {/* ── TOP HEADER ── */}
+      <AppHeader />
+
       <style>{`
-        :root {
-          --primary: #04bfbf;
-          --primary-2: #029c9c;
-          --text-main: #ecfbff;
-          --text-soft: #b8d4db;
-          --text-faint: #7da0a8;
-          --danger: #d93b3b;
-          --danger-hover: #b82727;
-          --warning: #f2a007;
-          --success: #01d146;
-          --card-bg: rgba(255,255,255,0.06);
-          --card-border: rgba(255,255,255,0.12);
-          --glass-bg: rgba(10, 19, 25, 0.78);
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-        .ev-screen {
-          min-height: 100dvh;
-          height: 100dvh;
-          display: flex;
-          flex-direction: column;
-          color: var(--text-main);
-          font-family: 'Calibri', sans-serif;
-          overflow: hidden;
-          background:
-            radial-gradient(circle at top, rgba(6, 36, 52, 0.95) 0%, rgba(10, 18, 24, 1) 38%, rgba(7, 11, 15, 1) 100%),
-            linear-gradient(180deg, rgba(4,191,191,0.06), rgba(4,191,191,0));
-        }
-
-        .content-wrapper {
-          flex: 1;
-          min-height: 0;
+        .ls-screen {
+          width: 100%;
+          min-height: calc(100dvh - 68px);
+          height: calc(100dvh - 68px);
           overflow-y: auto;
           overflow-x: hidden;
-          width: 100%;
-          max-width: 460px;
-          margin: 0 auto;
-          padding: 64px 16px 120px;
-          box-sizing: border-box;
-          scrollbar-width: none;
+          background:
+            radial-gradient(circle at 100% 0%, rgba(0, 229, 190, 0.08), transparent 26rem),
+            radial-gradient(circle at 0% 45%, rgba(255, 130, 54, 0.05), transparent 24rem),
+            #f3fbfc;
+          color: #0e2e33;
+          font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, sans-serif;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
           -webkit-overflow-scrolling: touch;
-        }
-
-        .content-wrapper::-webkit-scrollbar {
-          display: none;
-        }
-
-        .main-content {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 16px;
-        }
-
-        .charging-status {
-          margin: 4px 0 0;
-          font-size: 14px;
-          font-weight: 600;
-          letter-spacing: 0.03em;
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          padding: 8px 14px;
-          border-radius: 999px;
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.08);
-        }
-
-        .charging-status .on {
-          color: #34e676;
-        }
-
-        .charging-status .off {
-          color: #ff7272;
-        }
-
-        .device-card {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          gap: 12px;
-          padding: 16px;
-          margin-bottom: 18px;
-          width: 100%;
           box-sizing: border-box;
-          background: linear-gradient(180deg, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0.04) 100%);
-          backdrop-filter: blur(14px);
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          border-radius: 24px;
-          box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
         }
 
-        .device-card-left {
-          flex: 1;
+        .ls-shell {
+          width: 100%;
+          max-width: 480px;
+          margin: 0 auto;
+          padding: 16px 16px calc(100px + env(safe-area-inset-bottom, 0px));
           display: flex;
           flex-direction: column;
-          align-items: flex-start;
-          text-align: left;
-          gap: 7px;
-          min-width: 0;
+          gap: 16px;
+          box-sizing: border-box;
         }
 
-        .device-chip {
+        /* ── DEVICE CONNECTED CARD ── */
+        .ls-device-card {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 16px 18px;
+          background: linear-gradient(135deg, #ffffff 30%, #f1fcf9 100%);
+          border: 1px solid #d4f0ec;
+          border-radius: 22px;
+          box-shadow: 0 4px 18px rgba(0, 160, 145, 0.07);
+          box-sizing: border-box;
+        }
+
+        .ls-device-left {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .ls-device-badge {
           display: inline-flex;
           align-items: center;
-          gap: 7px;
-          font-size: 12px;
-          font-weight: 600;
-          padding: 5px 11px;
+          gap: 6px;
+          padding: 4px 10px;
           border-radius: 999px;
-          background: rgba(1, 209, 70, 0.13);
-          border: 1px solid rgba(1, 209, 70, 0.24);
-          color: #5ef08d;
+          background: #dbfaf0;
+          border: 1px solid #b8f2dd;
+          color: #008764;
+          font-size: 11px;
+          font-weight: 750;
           width: fit-content;
         }
 
-        .chip-dot {
-          width: 8px;
-          height: 8px;
+        .ls-badge-dot {
+          width: 7px;
+          height: 7px;
           border-radius: 50%;
-          background: #01d146;
-          box-shadow: 0 0 8px #01d146;
-          flex-shrink: 0;
+          background: #00c98d;
+          box-shadow: 0 0 0 3px rgba(0, 201, 141, 0.2);
+          animation: lsPulse 1.8s ease-in-out infinite;
         }
 
-        .device-id {
-          font-size: 20px;
-          font-weight: 700;
-          color: var(--primary);
-          letter-spacing: 0.03em;
+        .ls-device-id {
+          font-family: 'Outfit', sans-serif;
+          font-size: 18px;
+          font-weight: 800;
+          color: #00776b;
+          letter-spacing: -0.2px;
           line-height: 1.2;
-          word-break: break-word;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
-        .device-location {
-          font-size: 13px;
-          color: var(--text-soft);
-          opacity: 0.95;
-          line-height: 1.45;
+        .ls-device-location {
+          font-size: 12px;
+          color: #53757a;
+          line-height: 1.35;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
-        .device-card-right {
+        .ls-device-actions {
           display: flex;
           flex-direction: column;
-          gap: 10px;
-          width: 104px;
+          gap: 8px;
           flex-shrink: 0;
         }
 
-        .device-action-btn {
-          min-height: 42px;
-          padding: 0 12px;
-          border-radius: 14px;
-          border: 1px solid rgba(255,255,255,0.14);
-          font-size: 13px;
-          font-weight: 700;
-          letter-spacing: 0.02em;
+        .ls-btn-info {
+          padding: 8px 14px;
+          border-radius: 12px;
+          background: #edfbf8;
+          border: 1px solid #d3f2ec;
+          color: #00776b;
+          font-size: 12px;
+          font-weight: 750;
           cursor: pointer;
-          transition: all 0.22s ease;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        /* ── ETA Row ─────────────────────────────────────── */
-.eta-row {
-  display: flex;
-  align-items: stretch;
-  justify-content: center;
-  gap: 10px;
-  margin-top: 14px;
-  width: 100%;
-}
-
-.eta-cell {
-  flex: 1;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 16px;
-  padding: 12px 10px;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-}
-
-.eta-cell-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  color: var(--text-faint);
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.eta-pulse-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #f2a007;
-  box-shadow: 0 0 6px #f2a007;
-  animation: etaPulse 2s ease-in-out infinite;
-  flex-shrink: 0;
-}
-
-@keyframes etaPulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.45; transform: scale(0.7); }
-}
-
-.eta-cell-value {
-  font-size: 20px;
-  font-weight: 700;
-  line-height: 1.1;
-  color: #f2a007;
-}
-
-.eta-cell-value.faint {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-faint);
-  font-style: italic;
-}
-
-.eta-cell-sub {
-  font-size: 11px;
-  color: var(--text-soft);
-  opacity: 0.8;
-}
-
-.eta-cell.time-left .eta-cell-value {
-  color: #04bfbf;
-}
-/* ─────────────────────────────────────────────────── */
-
-        .info-btn {
-          background: rgba(255, 255, 255, 0.07);
-          color: #d7eef4;
-        }
-
-        .info-btn:hover {
-          background: rgba(255, 255, 255, 0.12);
-          transform: translateY(-1px);
-        }
-
-        .stop-btn {
-          background: linear-gradient(180deg, #d74444 0%, #b72c2c 100%);
-          color: #fff;
-          border: 1px solid rgba(255, 80, 80, 0.35);
-          box-shadow: 0 10px 20px rgba(191, 44, 44, 0.18);
-        }
-
-        .stop-btn:hover {
-          background: linear-gradient(180deg, #c73434 0%, #a21e1e 100%);
-          transform: translateY(-1px);
-        }
-
-        .progress-card {
-          width: 100%;
-          box-sizing: border-box;
-          background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%);
-          border: 1px solid rgba(255,255,255,0.10);
-          border-radius: 28px;
-          padding: 18px 16px 14px;
-          box-shadow: 0 18px 40px rgba(0,0,0,0.22);
+          transition: all 0.16s ease;
           text-align: center;
         }
-
-        .progress-heading {
-          font-size: 13px;
-          color: var(--text-faint);
-          margin-bottom: 4px;
-          letter-spacing: 0.02em;
+        .ls-btn-info:hover {
+          background: #dbf7f1;
         }
 
-        .progress-subheading {
-          font-size: 16px;
-          color: var(--text-main);
-          font-weight: 700;
+        .ls-btn-stop {
+          padding: 8px 14px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+          border: none;
+          color: #ffffff;
+          font-size: 12px;
+          font-weight: 750;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(255, 82, 26, 0.30);
+          transition: all 0.16s ease;
+          text-align: center;
+        }
+        .ls-btn-stop:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(255, 82, 26, 0.40);
+        }
+
+        /* ── HERO CHARGING GAUGE CARD ── */
+        .ls-hero-card {
+          width: 100%;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 26px;
+          box-shadow: 0 8px 28px rgba(0, 160, 145, 0.08);
+          padding: 22px 18px 18px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          position: relative;
+          box-sizing: border-box;
+        }
+
+        .ls-status-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          padding: 6px 14px;
+          border-radius: 999px;
+          font-size: 11.5px;
+          font-weight: 750;
+          margin-bottom: 12px;
+        }
+        .ls-status-pill.on {
+          color: #008764;
+          background: #dbfaf0;
+          border: 1px solid #b8f2dd;
+        }
+        .ls-status-pill.off {
+          color: #d93b3b;
+          background: #fdeeee;
+          border: 1px solid #f9cccc;
+        }
+
+        .ls-gauge-wrap {
+          position: relative;
+          width: min(220px, 64vw);
+          height: min(220px, 64vw);
+          margin: 6px auto 14px;
+          display: grid;
+          place-items: center;
+        }
+
+        .ls-gauge-svg {
+          width: 100%;
+          height: 100%;
+          transform: rotate(-90deg);
+        }
+
+        .ls-gauge-bg {
+          fill: none;
+          stroke: #e6f6f4;
+          stroke-width: 14;
+        }
+
+        .ls-gauge-fill {
+          fill: none;
+          stroke: url(#lsAquaGradient);
+          stroke-width: 14;
+          stroke-linecap: round;
+          transition: stroke-dashoffset 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+          filter: drop-shadow(0 0 8px rgba(0, 210, 180, 0.4));
+        }
+
+        .ls-gauge-aura {
+          fill: none;
+          stroke: #00d2b4;
+          stroke-width: 14;
+          stroke-linecap: round;
+          opacity: 0.25;
+          animation: lsPulseGlow 2.4s ease-in-out infinite;
+        }
+
+        @keyframes lsPulseGlow {
+          0%, 100% { opacity: 0.15; }
+          50% { opacity: 0.45; }
+        }
+
+        .ls-gauge-center {
+          position: absolute;
+          inset: 0;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          pointer-events: none;
+        }
+
+        .ls-gauge-value {
+          font-family: 'Outfit', sans-serif;
+          font-size: clamp(34px, 10vw, 42px);
+          font-weight: 800;
+          color: #0e2e33;
+          line-height: 1;
+          letter-spacing: -1px;
+        }
+
+        .ls-gauge-caption {
+          font-size: 11px;
+          font-weight: 800;
+          color: var(--viz-teal-deep, #008f7f);
+          letter-spacing: 0.8px;
+          text-transform: uppercase;
+          margin-top: 5px;
+        }
+
+        /* ── ETA ROW TILES ── */
+        .ls-eta-grid {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-top: 4px;
+        }
+
+        .ls-eta-card {
+          background: linear-gradient(135deg, #f7fdfc 0%, #edfbf8 100%);
+          border: 1px solid #d4f2ec;
+          border-radius: 18px;
+          padding: 13px 12px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          gap: 3px;
+        }
+
+        .ls-eta-label {
+          font-size: 10.5px;
+          font-weight: 750;
+          color: #53757a;
+          letter-spacing: 0.5px;
+          text-transform: uppercase;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .ls-eta-dot {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #ff8236;
+          box-shadow: 0 0 6px #ff8236;
+          animation: lsPulse 1.8s ease-in-out infinite;
+        }
+
+        .ls-eta-val {
+          font-family: 'Outfit', sans-serif;
+          font-size: 18px;
+          font-weight: 750;
+          color: #ff8236;
+          line-height: 1.2;
+        }
+        .ls-eta-val.time-left {
+          color: #008f7f;
+        }
+        .ls-eta-val.faint {
+          font-size: 13px;
+          color: #799ea4;
+          font-weight: 500;
+        }
+
+        .ls-eta-sub {
+          font-size: 10.5px;
+          color: #799ea4;
+        }
+
+        /* ── 4 METRICS GRID ── */
+        .ls-metrics-grid {
+          width: 100%;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+        }
+
+        .ls-metric-card {
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 20px;
+          padding: 16px 14px;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 4px 16px rgba(0, 160, 145, 0.05);
+          transition: transform 0.16s ease;
+        }
+
+        .ls-metric-card:hover {
+          transform: translateY(-1px);
+        }
+
+        .ls-metric-label {
+          font-size: 11px;
+          font-weight: 750;
+          color: #53757a;
+          letter-spacing: 0.3px;
           margin-bottom: 6px;
         }
 
-        .circular-container {
-          position: relative;
-          width: min(200px, 62vw);
-          height: min(200px, 62vw);
-          margin: 10px auto 8px;
-        }
-
-        .circular-bg {
-          fill: none;
-          stroke: rgba(255,255,255,0.08);
-          stroke-width: 12;
-        }
-
-        .circular-progress {
-          fill: none;
-          stroke: #04bfbf;
-          stroke-width: 12;
-          stroke-linecap: round;
-          transform: rotate(-90deg);
-          transform-origin: 50% 50%;
-          transition: stroke-dashoffset 0.5s ease;
-          filter: drop-shadow(0 0 8px rgba(4,191,191,0.65));
-        }
-
-        .circular-glow {
-          fill: none;
-          stroke: url(#glowGradient);
-          stroke-width: 14;
-          stroke-linecap: round;
-          transform: rotate(-90deg);
-          transform-origin: 50% 50%;
-          stroke-dasharray: 565;
-          stroke-dashoffset: 0;
-          animation: sweepGlow 2s linear infinite;
-        }
-
-        @keyframes sweepGlow {
-          0% { stroke-dashoffset: 565; }
-          100% { stroke-dashoffset: 0; }
-        }
-
-        .metrics-grid {
-          width: 100%;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-        }
-          @media (max-width: 380px) {
-          .metrics-grid {
-            grid-template-columns: 1fr;
-          }
-
-          .split-row {
-            grid-template-columns: 1fr;
-          }
-
-          .device-card {
-            flex-direction: column;
-            align-items: stretch;
-          }
-
-          .device-card-left {
-            align-items: center;
-            text-align: center;
-          }
-
-          .device-card-right {
-            width: 100%;
-            flex-direction: row;
-            
-          }
-
-          .device-action-btn {
-            flex: 1;
-          }
-        }
-
-        .metric-card {
-          background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%);
-          border: 1px solid rgba(255,255,255,0.10);
-          border-radius: 20px;
-          padding: 16px 14px;
-          text-align: center;
-          box-shadow: 0 14px 32px rgba(0,0,0,0.18);
-        }
-
-        .metric-label {
-          font-size: 12px;
-          color: var(--text-faint);
-          margin-bottom: 8px;
-          letter-spacing: 0.03em;
-        }
-
-        .metric-value {
+        .ls-metric-number {
+          font-family: 'Outfit', sans-serif;
           font-size: 24px;
-          font-weight: 700;
-          color: var(--primary);
+          font-weight: 800;
+          color: #0e2e33;
           line-height: 1.1;
+          letter-spacing: -0.4px;
+          font-variant-numeric: tabular-nums;
+        }
+        .ls-metric-number.highlight-aqua {
+          color: #008f7f;
+        }
+        .ls-metric-number.highlight-orange {
+          color: #d85400;
         }
 
-        .metric-value-warn {
-          font-size: 24px;
-          font-weight: 700;
-          color: var(--warning);
-          line-height: 1.1;
+        .ls-metric-unit {
+          font-size: 11px;
+          color: #799ea4;
+          margin-top: 4px;
         }
 
-        .metric-unit {
-          font-size: 13px;
-          color: var(--text-soft);
-          margin-top: 3px;
-        }
-
-        .wide-card {
+        /* ── VOLTAGE & CURRENT WIDE CARD ── */
+        .ls-telemetry-card {
           width: 100%;
-          box-sizing: border-box;
-          background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 100%);
-          border: 1px solid rgba(255,255,255,0.10);
-          border-radius: 24px;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 22px;
           padding: 16px;
-          box-shadow: 0 16px 36px rgba(0,0,0,0.2);
-        }
-
-        .split-row {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 12px;
+          gap: 14px;
+          box-shadow: 0 4px 16px rgba(0, 160, 145, 0.05);
+          box-sizing: border-box;
         }
 
-        .popup-overlay {
+        .ls-telemetry-col {
+          display: flex;
+          flex-direction: column;
+          padding: 12px 14px;
+          background: #f4fbfb;
+          border: 1px solid #e1f3f1;
+          border-radius: 16px;
+        }
+
+        .ls-telemetry-label {
+          font-size: 11px;
+          font-weight: 750;
+          color: #53757a;
+          margin-bottom: 4px;
+        }
+
+        .ls-telemetry-value {
+          font-family: 'Outfit', sans-serif;
+          font-size: 20px;
+          font-weight: 800;
+          color: #e06014;
+          line-height: 1.1;
+        }
+
+        .ls-telemetry-sub {
+          font-size: 10.5px;
+          color: #799ea4;
+          margin-top: 4px;
+        }
+
+        /* ── POPUPS & MODALS ── */
+        .ls-popup-overlay {
           position: fixed;
           inset: 0;
-          backdrop-filter: blur(9px);
-          background: rgba(2, 8, 10, 0.42);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          background: rgba(6, 38, 43, 0.45);
           display: flex;
           justify-content: center;
           align-items: center;
-          z-index: 100;
+          z-index: 3000;
           padding: 20px;
+          animation: lsFadeIn 0.2s ease;
         }
 
-        .popup-box {
-          background: linear-gradient(180deg, rgba(13,19,24,0.97) 0%, rgba(8,13,16,0.97) 100%);
-          border: 1px solid rgba(4,191,191,0.18);
-          border-radius: 22px;
-          padding: 22px 18px 18px;
+        .ls-popup-box {
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 24px;
+          padding: 24px 20px 20px;
           width: 100%;
-          max-width: 390px;
-          color: #fff;
+          max-width: 380px;
+          color: #0e2e33;
           position: relative;
-          box-shadow: 0 24px 60px rgba(0,0,0,0.38);
+          box-shadow: 0 24px 60px rgba(0, 60, 66, 0.22);
+          box-sizing: border-box;
+          animation: lsModalScale 0.22s ease-out;
         }
 
-        .popup-box h3 {
-          margin: 0 0 14px;
-          color: #04bfbf;
+        .ls-popup-box h3 {
+          margin: 0 0 16px;
+          color: #00776b;
+          font-family: 'Outfit', sans-serif;
           font-size: 20px;
+          font-weight: 750;
           text-align: center;
         }
 
-        .popup-row {
+        .ls-popup-row {
           display: flex;
-          align-items: flex-start;
+          align-items: center;
           justify-content: space-between;
           gap: 12px;
           padding: 10px 12px;
-          border-radius: 14px;
-          background: rgba(255,255,255,0.04);
-          border: 1px solid rgba(255,255,255,0.06);
-          margin-bottom: 10px;
+          border-radius: 12px;
+          background: #f7fcfb;
+          border: 1px solid #e2f4f1;
+          margin-bottom: 8px;
         }
 
-        .popup-label {
-          color: #8fb4bc;
+        .ls-popup-label {
+          color: #53757a;
           font-size: 12px;
           font-weight: 600;
-          min-width: 96px;
         }
 
-        .popup-value {
-          color: #effcff;
+        .ls-popup-value {
+          color: #0e2e33;
           font-size: 13px;
-          font-weight: 600;
+          font-weight: 750;
           text-align: right;
           word-break: break-word;
         }
 
-        .close-btn {
+        .ls-close-btn {
           position: absolute;
-          top: 10px;
-          right: 12px;
+          top: 12px;
+          right: 14px;
           width: 32px;
           height: 32px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 18px;
-          color: white;
+          font-size: 16px;
+          color: #53757a;
           cursor: pointer;
-          background: rgba(255,255,255,0.06);
+          background: #edf7f5;
+          border: none;
+          transition: background 0.15s ease;
+        }
+        .ls-close-btn:hover {
+          background: #dff2ee;
+          color: #00776b;
         }
 
-        .pause-box-center {
-          min-height: 220px;
+        /* ── SLIDE TO STOP CONFIRMATION MODAL ── */
+        .ls-stop-modal {
+          max-width: 360px;
+          padding: 26px 20px 22px;
+          text-align: center;
+        }
+
+        .ls-stop-icon-circle {
+          width: 58px;
+          height: 58px;
+          border-radius: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #fff3ed;
+          border: 1px solid #ffd8c7;
+          color: #ff521a;
+          font-size: 26px;
+          margin: 0 auto 14px;
+          box-shadow: 0 8px 24px rgba(255, 82, 26, 0.20);
+          transition: all 0.24s ease;
+        }
+        .ls-stop-icon-circle.success {
+          background: #e6faf6;
+          border-color: #b7ede4;
+          color: #00a896;
+          box-shadow: 0 8px 24px rgba(0, 168, 150, 0.22);
+          transform: scale(1.05);
+        }
+
+        .ls-stop-title {
+          font-family: 'Outfit', sans-serif;
+          font-size: 20px;
+          font-weight: 750;
+          color: #0e2e33;
+          margin: 0 0 6px;
+        }
+
+        .ls-stop-desc {
+          font-size: 13px;
+          color: #53757a;
+          line-height: 1.5;
+          margin: 0 auto 20px;
+          max-width: 270px;
+        }
+
+        .ls-slide-shell {
+          width: 100%;
           display: flex;
           flex-direction: column;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .ls-slide-label {
+          font-size: 12.5px;
+          font-weight: 750;
+          color: #e06014;
+          letter-spacing: 0.2px;
+          transition: all 0.2s ease;
+        }
+        .ls-slide-label.success {
+          color: #008f7f;
+        }
+
+        .ls-slide-track {
+          position: relative;
+          height: 58px;
+          border-radius: 999px;
+          background: #f4fbfb;
+          border: 1.5px solid #d4f0ec;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          padding: 3px;
+          user-select: none;
+          touch-action: none;
+          box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.04);
+        }
+        .ls-slide-track.success {
+          background: #eafaf7;
+          border-color: #b7ede4;
+        }
+
+        .ls-slide-fill {
+          position: absolute;
+          left: 3px;
+          top: 3px;
+          bottom: 3px;
+          border-radius: 999px;
+          background: linear-gradient(90deg, rgba(255, 130, 54, 0.15), rgba(255, 82, 26, 0.35));
+          transition: width 0.18s ease;
+          pointer-events: none;
+        }
+        .ls-slide-fill.success {
+          background: linear-gradient(90deg, rgba(0, 210, 180, 0.25), rgba(0, 168, 150, 0.45));
+        }
+
+        .ls-slide-hints {
+          position: absolute;
+          right: 20px;
+          display: flex;
+          gap: 3px;
+          color: #a4c4c8;
+          font-size: 16px;
+          font-weight: 800;
+          pointer-events: none;
+        }
+        .ls-slide-hints span {
+          animation: lsArrowPulse 1.4s infinite ease-in-out;
+        }
+        .ls-slide-hints span:nth-child(2) { animation-delay: 0.14s; }
+        .ls-slide-hints span:nth-child(3) { animation-delay: 0.28s; }
+
+        @keyframes lsArrowPulse {
+          0%, 100% { opacity: 0.2; transform: translateX(0); }
+          50% { opacity: 0.8; transform: translateX(3px); }
+        }
+
+        .ls-slide-thumb {
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+          color: #ffffff;
+          display: flex;
+          align-items: center;
           justify-content: center;
-          text-align: center;
-          padding: 6px;
+          font-size: 20px;
+          font-weight: 800;
+          cursor: grab;
+          z-index: 2;
+          box-shadow: 0 4px 16px rgba(255, 82, 26, 0.4);
+        }
+        .ls-slide-thumb.success {
+          background: linear-gradient(135deg, #00d2b4 0%, #009e8f 100%);
+          box-shadow: 0 4px 16px rgba(0, 210, 180, 0.4);
         }
 
-        .pause-box-center p {
-          margin: 8px 0;
-          color: #d8edf3;
-          line-height: 1.5;
+        .ls-cancel-btn {
+          margin-top: 14px;
+          padding: 9px 24px;
+          border-radius: 12px;
+          border: 1px solid #dcefed;
+          background: #f3fcfb;
+          color: #53757a;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.16s ease;
+        }
+        .ls-cancel-btn:hover {
+          background: #e4f7f4;
+          color: #0e2e33;
         }
 
-        .pause-box-center strong {
-          color: #04bfbf;
+        @keyframes lsPulse {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(0.9); opacity: 0.4; }
         }
 
-        @media (max-width: 420px) {
-          .device-card {
-            padding: 16px;
-            gap: 12px;
-          }
-
-          .device-card-right {
-            width: 108px;
-          }
-
-          .metric-value,
-          .metric-value-warn {
-            font-size: 22px;
-          }
-
-          .circular-container {
-            width: 186px;
-            height: 186px;
-          }
-          .slide-track {
-            width: 100% !important;
-          }
+        @keyframes lsFadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
 
-.stop-confirm-popup {
-  max-width: 370px;
-  padding: 24px 18px 18px;
-  overflow: hidden;
-}
-.stop-confirm-popup.success {
-  border-color: rgba(4,191,191,0.22);
-  box-shadow: 0 24px 60px rgba(0,0,0,0.38), 0 0 0 1px rgba(4,191,191,0.06);
-}
+        @keyframes lsModalScale {
+          from { transform: scale(0.94); opacity: 0.6; }
+          to { transform: scale(1); opacity: 1; }
+        }
 
-.stop-confirm-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.stop-confirm-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(180deg, rgba(217,68,68,0.24), rgba(183,44,44,0.14));
-  border: 1px solid rgba(255,90,90,0.18);
-  font-size: 24px;
-  margin-bottom: 12px;
-  box-shadow: 0 10px 28px rgba(215,68,68,0.18);
-  transition: all 0.28s ease;
-}
-.stop-confirm-icon.success {
-  background: linear-gradient(180deg, rgba(4,191,191,0.26), rgba(2,156,156,0.16));
-  border: 1px solid rgba(4,191,191,0.20);
-  box-shadow: 0 12px 30px rgba(4,191,191,0.20);
-  transform: scale(1.05);
-}
-
-.stop-confirm-content h3 {
-  margin: 0 0 8px;
-  color: #ffffff;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.stop-confirm-content p {
-  margin: 0 0 18px;
-  color: #a9c6cd;
-  font-size: 13px;
-  line-height: 1.5;
-  max-width: 265px;
-}
-
-.slide-shell {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.slide-label {
-  font-size: 13px;
-  font-weight: 700;
-  color: #ffb3b3;
-  letter-spacing: 0.02em;
-  transition: color 0.22s ease, transform 0.22s ease;
-}
-  
-.slide-label.success {
-  color: #7be5d8;
-  transform: scale(1.02);
-}
-
-.slide-track {
-  position: relative;
-  height: 58px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.10);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  padding: 3px;
-  user-select: none;
-  touch-action: none;
-  box-shadow: inset 0 1px 1px rgba(255,255,255,0.04);
-}
-.slide-track.dragging {
-  border-color: rgba(255,255,255,0.14);
-}
-
-.slide-track.success {
-  border-color: rgba(4,191,191,0.24);
-  background: rgba(4,191,191,0.08);
-}
-
-.slide-shimmer {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    110deg,
-    transparent 0%,
-    rgba(255,255,255,0.04) 35%,
-    rgba(255,255,255,0.08) 50%,
-    transparent 65%
-  );
-  transform: translateX(-100%);
-  animation: slideShimmer 2.2s linear infinite;
-  pointer-events: none;
-}
-
-.slide-shimmer.hidden {
-  opacity: 0;
-  animation: none;
-}
-
-@keyframes slideShimmer {
-  0% { transform: translateX(-100%); }
-  100% { transform: translateX(100%); }
-}
-.slide-fill {
-  position: absolute;
-  left: 3px;
-  top: 3px;
-  bottom: 3px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(215,68,68,0.20), rgba(215,68,68,0.46));
-  box-shadow: 0 0 18px rgba(215,68,68,0.16);
-  transition: width 0.18s ease, background 0.22s ease;
-  pointer-events: none;
-}
-
-.slide-fill.success {
-  background: linear-gradient(90deg, rgba(4,191,191,0.32), rgba(4,191,191,0.56));
-  box-shadow: 0 0 22px rgba(4,191,191,0.20);
-}
-
-.slide-hint-arrows {
-  position: absolute;
-  right: 18px;
-  display: flex;
-  gap: 4px;
-  color: rgba(255,255,255,0.30);
-  font-size: 16px;
-  font-weight: 700;
-  pointer-events: none;
-}
-
-.slide-hint-arrows span {
-  animation: arrowPulse 1.4s infinite ease-in-out;
-}
-
-.slide-hint-arrows span:nth-child(2) {
-  animation-delay: 0.12s;
-}
-
-.slide-hint-arrows span:nth-child(3) {
-  animation-delay: 0.24s;
-}
-
-@keyframes arrowPulse {
-  0%, 100% {
-    opacity: 0.18;
-    transform: translateX(0);
-  }
-  50% {
-    opacity: 0.75;
-    transform: translateX(2px);
-  }
-}
-
-.slide-thumb {
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #ea5555 0%, #b72c2c 100%);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
-  font-weight: 700;
-  cursor: grab;
-  z-index: 2;
-  box-shadow:
-    0 10px 24px rgba(183,44,44,0.30),
-    inset 0 1px 0 rgba(255,255,255,0.18);
-  transition: box-shadow 0.2s ease, background 0.2s ease;
-}
-  .slide-thumb.dragging {
-  box-shadow:
-    0 14px 30px rgba(183,44,44,0.38),
-    inset 0 1px 0 rgba(255,255,255,0.20);
-}
-.slide-thumb.success {
-  background: linear-gradient(180deg, #05d0d0 0%, #029a9a 100%);
-  box-shadow:
-    0 12px 26px rgba(4,191,191,0.28),
-    inset 0 1px 0 rgba(255,255,255,0.18);
-}
-
-.slide-thumb:active {
-  cursor: grabbing;
-}
-.stop-cancel-btn {
-  margin-top: 16px;
-  min-width: 110px;
-  height: 42px;
-  border-radius: 14px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.05);
-  color: #d6edf2;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.stop-cancel-btn:hover {
-  background: rgba(255,255,255,0.09);
-}
-
-@media (max-width: 420px) {
-  .stop-confirm-popup {
-    max-width: 100%;
-  }
-
-  .slide-track {
-    width: 100% !important;
-  }
-}
+        @media (max-width: 360px) {
+          .ls-metrics-grid {
+            grid-template-columns: 1fr;
+          }
+          .ls-telemetry-card {
+            grid-template-columns: 1fr;
+          }
+          .ls-gauge-wrap {
+            width: 190px;
+            height: 190px;
+          }
+        }
       `}</style>
 
-      <div className="ev-screen">
-        <div className="top-bar">
-          <img src="/logo.png" alt="VIZ Logo" className="top-bar-logo" />
-        </div>
+      <div className="ls-screen">
+        <div className="ls-shell">
 
-        <div className="content-wrapper">
-          <div className="device-card">
-            <div className="device-card-left">
-              <div className="device-chip">
-                <span className="chip-dot" />
-                Connected
+          {/* ── TOP DEVICE INFORMATION CARD ── */}
+          <section className="ls-device-card" aria-label="Charger status">
+            <div className="ls-device-left">
+              <div className="ls-device-badge">
+                <span className="ls-badge-dot" />
+                <span>Connected</span>
               </div>
 
-              <div className="device-id">
+              <div className="ls-device-id">
                 {deviceDetails?.device_id || deviceIdFromState || "—"}
               </div>
 
-              <div className="device-location">
+              <div className="ls-device-location">
                 {deviceDetails?.location || "Fetching location…"}
               </div>
             </div>
 
-            <div className="device-card-right">
+            <div className="ls-device-actions">
               <button
-                className="device-action-btn info-btn"
+                type="button"
+                className="ls-btn-info"
                 onClick={() => setShowPopup(true)}
               >
                 More Info
               </button>
               <button
-                className="device-action-btn stop-btn"
+                type="button"
+                className="ls-btn-stop"
                 onClick={() => {
                   setDragX(0);
                   setStopSliderSuccess(false);
@@ -1470,364 +1290,303 @@ if (res.status === 404) {
                 Stop
               </button>
             </div>
-          </div>
+          </section>
 
-          <div className="main-content">
-            <p className="charging-status">
-              <span className={isCharging ? 'on' : 'off'}>
-                Charging {isCharging ? 'ON' : 'OFF'}
-              </span>
-            </p>
-
-            <div className="progress-card">
-              <div className="progress-heading">Live charging progress</div>
-
-<div className="circular-container">
-  <svg width="100%" height="100%" viewBox="0 0 200 200">
-    <circle className="circular-bg" cx="100" cy="100" r="90" />
-
-    <circle
-      className="circular-progress"
-      cx="100"
-      cy="100"
-      r="90"
-      strokeDasharray="565"
-      strokeDashoffset={565 - (usagePercent / 100) * 565}
-      style={{ transition: isCharging ? undefined : 'none' }}
-    />
-
-    <defs>
-      <linearGradient id="glowGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stopColor="rgba(9, 218, 61, 0.25)" />
-        <stop offset="50%" stopColor="#08d619" />
-        <stop offset="100%" stopColor="rgba(9, 218, 61, 0.25)" />
-      </linearGradient>
-    </defs>
-
-    <circle
-      className="circular-glow"
-      cx="100"
-      cy="100"
-      r="90"
-      style={{
-        animationPlayState: isCharging ? 'running' : 'paused',
-      }}
-    />
-  </svg>
-
-  <div
-    style={{
-      position: 'absolute',
-      top: '50%',
-      left: '50%',
-      transform: 'translate(-50%, -50%)',
-      textAlign: 'center',
-    }}
-  >
-    <div
-      style={{
-        fontSize: '30px',
-        fontWeight: '700',
-        color: '#09e02d',
-        lineHeight: 1,
-      }}
-    >
-      {displayPercent.toFixed(0)}%
-    </div>
-    <div
-      style={{
-        fontSize: '12px',
-        color: '#8fc6b0',
-        marginTop: '6px',
-        letterSpacing: '0.04em',
-      }}
-    >
-      Utilized
-    </div>
-  </div>
-</div>
-
-          {/* ── ETA Row ─────────────────────────────── */}
-          <div className="eta-row">
-            <div className="eta-cell">
-              <div className="eta-cell-label">
-                {etaDisplay.timeStr && <span className="eta-pulse-dot" />}
-                Est. Finish
-              </div>
-              {etaDisplay.timeStr ? (
-                <>
-                  <div className="eta-cell-value">{etaDisplay.timeStr}</div>
-                  <div className="eta-cell-sub">today</div>
-                </>
-              ) : (
-                <div className="eta-cell-value faint">
-                  {usagePercent >= 1 ? 'Calculating…' : 'Waiting for data'}
-                </div>
-              )}
+          {/* ── HERO CIRCULAR PROGRESS GAUGE ── */}
+          <section className="ls-hero-card" aria-label="Charging gauge">
+            <div className={`ls-status-pill ${isCharging ? 'on' : 'off'}`}>
+              <span>{isCharging ? '⚡ Charging Active' : '⏸ Charging Paused'}</span>
             </div>
 
-            <div className="eta-cell time-left">
-              <div className="eta-cell-label">Time Left</div>
-              {etaDisplay.remaining ? (
-                <div className="eta-cell-value">{etaDisplay.remaining}</div>
-              ) : (
-                <div className="eta-cell-value faint">—</div>
-              )}
-              <div className="eta-cell-sub">est. remaining</div>
-            </div>
-          </div>
-          {/* ──────────────────────────────────────── */}
+            <div className="ls-gauge-wrap">
+              <svg className="ls-gauge-svg" viewBox="0 0 200 200">
+                <defs>
+                  <linearGradient id="lsAquaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#00e5be" />
+                    <stop offset="100%" stopColor="#00a896" />
+                  </linearGradient>
+                </defs>
 
+                {/* Background Ring Track */}
+                <circle className="ls-gauge-bg" cx="100" cy="100" r="88" />
 
-            </div>
+                {/* Progress Stroke */}
+                <circle
+                  className="ls-gauge-fill"
+                  cx="100"
+                  cy="100"
+                  r="88"
+                  strokeDasharray={CIRCLE_CIRCUMFERENCE}
+                  strokeDashoffset={strokeOffset}
+                  style={{ transition: isCharging ? undefined : 'none' }}
+                />
 
-            <div className="metrics-grid">
-              <div className="metric-card">
-                <div className="metric-label">Energy Consumed</div>
-                <div className="metric-value">{energyConsumed.toFixed(2)}</div>
-                <div className="metric-unit">kWh</div>
-              </div>
+                {/* Subtle Breathing Aura when Active */}
+                {isCharging && (
+                  <circle
+                    className="ls-gauge-aura"
+                    cx="100"
+                    cy="100"
+                    r="88"
+                    strokeDasharray={CIRCLE_CIRCUMFERENCE}
+                    strokeDashoffset={strokeOffset}
+                  />
+                )}
+              </svg>
 
-              <div className="metric-card">
-                <div className="metric-label">Energy Selected</div>
-                <div className="metric-value">{energySelected.toFixed(2)}</div>
-                <div className="metric-unit">kWh</div>
-              </div>
-
-              <div className="metric-card">
-                <div className="metric-label">Amount Utilized</div>
-                <div className="metric-value">₹{amountUtilized}</div>
-                <div className="metric-unit">Live billed usage</div>
-              </div>
-
-              <div className="metric-card">
-                <div className="metric-label">Amount Paid</div>
-                <div className="metric-value">₹{Number(amountPaid || 0).toFixed(1)}</div>
-                <div className="metric-unit">Prepaid amount</div>
+              <div className="ls-gauge-center">
+                <div className="ls-gauge-value">{displayPercent.toFixed(0)}%</div>
+                <div className="ls-gauge-caption">Utilized</div>
               </div>
             </div>
 
-            <div className="wide-card">
-              <div className="split-row">
-                <div className="metric-card" style={{ margin: 0 }}>
-                  <div className="metric-label">Voltage</div>
-                  <div className="metric-value-warn">{voltage.toFixed(1)}V</div>
-                  <div className="metric-unit">Live voltage</div>
-                </div>
 
-                <div className="metric-card" style={{ margin: 0 }}>
-                  <div className="metric-label">Current</div>
-                  <div className="metric-value-warn">{current.toFixed(1)}A</div>
-                  <div className="metric-unit">Live current</div>
-                </div>
-              </div>
+          </section>
+
+          {/* ── 4 KEY METRICS ── */}
+          <section className="ls-metrics-grid" aria-label="Energy and billing metrics">
+            <div className="ls-metric-card">
+              <span className="ls-metric-label">Energy Consumed</span>
+              <strong className="ls-metric-number highlight-aqua">{energyConsumed.toFixed(2)}</strong>
+              <span className="ls-metric-unit">kWh delivered</span>
             </div>
 
-            {showPopup && (
-              <div className="popup-overlay" onClick={() => setShowPopup(false)}>
-                <div className="popup-box" onClick={(e) => e.stopPropagation()}>
-                  <div className="close-btn" onClick={() => setShowPopup(false)}>✕</div>
-                  <h3>Charging Session Info</h3>
-
-                  <div className="popup-row">
-                    <div className="popup-label">Charger ID</div>
-                    <div className="popup-value">{deviceIdToShow || '—'}</div>
-                  </div>
-
-                  <div className="popup-row">
-                    <div className="popup-label">Session ID</div>
-                    <div className="popup-value">
-                      {sessionId || sessionData?.sessionId || sessionData?._id || '—'}
-                    </div>
-                  </div>
-
-                  <div className="popup-row">
-                    <div className="popup-label">Transaction ID</div>
-                    <div className="popup-value">
-                      {transactionId ||
-                        sessionData?.transactionId ||
-                        sessionData?.transaction_id ||
-                        '—'}
-                    </div>
-                  </div>
-
-                  <div className="popup-row">
-                    <div className="popup-label">Start Date</div>
-                    <div className="popup-value">
-                      {(
-                        startTime ||
-                        sessionData?.startTime ||
-                        sessionData?.start_time
-                      )
-                        ? new Date(
-                            startTime ||
-                              sessionData?.startTime ||
-                              sessionData?.start_time
-                          ).toLocaleDateString("en-IN", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                            timeZone: "Asia/Kolkata",
-                          })
-                        : "—"}
-                    </div>
-                  </div>
-
-                  <div className="popup-row">
-                    <div className="popup-label">Start Time</div>
-                    <div className="popup-value">
-                      {(
-                        startTime ||
-                        sessionData?.startTime ||
-                        sessionData?.start_time
-                      )
-                        ? new Date(
-                            startTime ||
-                              sessionData?.startTime ||
-                              sessionData?.start_time
-                          ).toLocaleTimeString("en-IN", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                            hour12: true,
-                          })
-                        : "—"}
-                    </div>
-                  </div>
-
-                  <div className="popup-row">
-                    <div className="popup-label">Amount Paid</div>
-                    <div className="popup-value">₹{amountPaid}</div>
-                  </div>
-
-                  <div className="popup-row" style={{ marginBottom: 0 }}>
-                    <div className="popup-label">Energy Selected</div>
-                    <div className="popup-value">{energySelected.toFixed(2)} kWh</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-{showStopConfirmPopup && (
-  <div className="popup-overlay" onClick={closeStopPopup}>
-    <div
-      className={`popup-box stop-confirm-popup ${stopSliderSuccess ? "success" : ""}`}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div className="close-btn" onClick={closeStopPopup}>✕</div>
-
-      <div className="stop-confirm-content">
-        <div className={`stop-confirm-icon ${stopSliderSuccess ? "success" : ""}`}>
-          {stopSliderSuccess ? "✓" : "⚡"}
-        </div>
-
-        <h3>{stopSliderSuccess ? "Stopping Session..." : "Stop Charging?"}</h3>
-
-        <p>
-          {stopSliderSuccess
-            ? "Please wait while we safely end the charging session."
-            : "Slide to confirm and safely stop the current charging session."}
-        </p>
-
-        <div className="slide-shell">
-          <div className={`slide-label ${stopSliderSuccess ? "success" : ""}`}>
-            {stopSliderSuccess
-              ? "Confirmed"
-              : dragX >= MAX_DRAG * 0.88
-              ? "Release to stop"
-              : "Slide to stop charging"}
-          </div>
-
-          <div
-            className={`slide-track ${isDragging ? "dragging" : ""} ${stopSliderSuccess ? "success" : ""}`}
-            ref={sliderTrackRef}
-            style={{
-              width: `${SLIDER_WIDTH}px`,
-              maxWidth: "100%",
-            }}
-          >
-            <div
-              className={`slide-shimmer ${isDragging ? "hidden" : ""} ${stopSliderSuccess ? "hidden" : ""}`}
-            />
-
-            <div
-              className={`slide-fill ${stopSliderSuccess ? "success" : ""}`}
-              style={{
-                width: `${dragX + KNOB_SIZE / 2}px`,
-              }}
-            />
-
-            {!stopSliderSuccess && (
-              <div className="slide-hint-arrows">
-                <span>»</span>
-                <span>»</span>
-                <span>»</span>
-              </div>
-            )}
-
-            <div
-              className={`slide-thumb ${isDragging ? "dragging" : ""} ${stopSliderSuccess ? "success" : ""}`}
-              style={{
-                transform: `translateX(${dragX}px) scale(${isDragging ? 1.03 : 1})`,
-                transition: isDragging
-                  ? "none"
-                  : "transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s ease",
-              }}
-              onMouseDown={(e) => startDrag(e.clientX)}
-              onTouchStart={(e) => startDrag(e.touches[0].clientX)}
-            >
-              {stopSliderSuccess ? "✓" : "»"}
+            <div className="ls-metric-card">
+              <span className="ls-metric-label">Energy Selected</span>
+              <strong className="ls-metric-number">{energySelected.toFixed(2)}</strong>
+              <span className="ls-metric-unit">kWh target</span>
             </div>
-          </div>
-        </div>
 
-        {!stopSliderSuccess && (
-          <button className="stop-cancel-btn" onClick={closeStopPopup}>
-            Cancel
-          </button>
-        )}
-      </div>
-    </div>
-  </div>
-)}
+            <div className="ls-metric-card">
+              <span className="ls-metric-label">Amount Utilized</span>
+              <strong className="ls-metric-number highlight-orange">₹{amountUtilized}</strong>
+              <span className="ls-metric-unit">Live billed usage</span>
+            </div>
 
-            {showPausePopup && (
-              <div className="popup-overlay" onClick={handleDismissPopup}>
-                <div
-                  className="popup-box"
-                  onClick={(e) => e.stopPropagation()}
-                  style={{ maxWidth: '320px' }}
+            <div className="ls-metric-card">
+              <span className="ls-metric-label">Amount Paid</span>
+              <strong className="ls-metric-number">₹{Number(amountPaid || 0).toFixed(1)}</strong>
+              <span className="ls-metric-unit">Prepaid balance</span>
+            </div>
+          </section>
+
+          {/* ── ELECTRICAL TELEMETRY (VOLTAGE & CURRENT) ── */}
+          <section className="ls-telemetry-card" aria-label="Voltage and current">
+            <div className="ls-telemetry-col">
+              <span className="ls-telemetry-label">Voltage</span>
+              <strong className="ls-telemetry-value">{voltage.toFixed(1)} V</strong>
+              <span className="ls-telemetry-sub">Live supply</span>
+            </div>
+
+            <div className="ls-telemetry-col">
+              <span className="ls-telemetry-label">Current</span>
+              <strong className="ls-telemetry-value">{current.toFixed(1)} A</strong>
+              <span className="ls-telemetry-sub">Live draw</span>
+            </div>
+            
+          </section>
+
+          {/* ── SESSION INFO MODAL ── */}
+          {showPopup && (
+            <div className="ls-popup-overlay" onClick={() => setShowPopup(false)}>
+              <div className="ls-popup-box" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  className="ls-close-btn"
+                  onClick={() => setShowPopup(false)}
+                  aria-label="Close"
                 >
-                  <div className="close-btn" onClick={handleDismissPopup}>✕</div>
+                  ✕
+                </button>
+                <h3>Charging Session Info</h3>
 
-                  {pausedReason === 'offline' ? (
-                    <div className="pause-box-center">
-                      <h3 style={{ color: '#04bfbf' }}>Device Offline</h3>
-                      <p>Charger is offline or powered off.</p>
-                      <p>
-                        Session remains active. Wait for reconnection or stop the
-                        session manually.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="pause-box-center">
-                      <h3 style={{ color: '#04bfbf' }}>Charging Paused</h3>
-                      <p>Charging is paused due to the emergency button.</p>
-                      <p>
-                        Press the button for 5 seconds to resume, or the session
-                        ends in{' '}
-                        <strong>
-                          {minutes}:{seconds.toString().padStart(2, "0")}
-                        </strong>
-                      </p>
-                    </div>
-                  )}
+                <div className="ls-popup-row">
+                  <span className="ls-popup-label">Charger ID</span>
+                  <span className="ls-popup-value">{deviceIdToShow || '—'}</span>
+                </div>
+
+                <div className="ls-popup-row">
+                  <span className="ls-popup-label">Session ID</span>
+                  <span className="ls-popup-value">
+                    {sessionId || sessionData?.sessionId || sessionData?._id || '—'}
+                  </span>
+                </div>
+
+                <div className="ls-popup-row">
+                  <span className="ls-popup-label">Transaction ID</span>
+                  <span className="ls-popup-value">
+                    {transactionId ||
+                      sessionData?.transactionId ||
+                      sessionData?.transaction_id ||
+                      '—'}
+                  </span>
+                </div>
+
+                <div className="ls-popup-row">
+                  <span className="ls-popup-label">Start Date</span>
+                  <span className="ls-popup-value">
+                    {(startTime || sessionData?.startTime || sessionData?.start_time)
+                      ? new Date(
+                          startTime || sessionData?.startTime || sessionData?.start_time
+                        ).toLocaleDateString("en-IN", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                          timeZone: "Asia/Kolkata",
+                        })
+                      : "—"}
+                  </span>
+                </div>
+
+                <div className="ls-popup-row">
+                  <span className="ls-popup-label">Start Time</span>
+                  <span className="ls-popup-value">
+                    {(startTime || sessionData?.startTime || sessionData?.start_time)
+                      ? new Date(
+                          startTime || sessionData?.startTime || sessionData?.start_time
+                        ).toLocaleTimeString("en-IN", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: true,
+                        })
+                      : "—"}
+                  </span>
+                </div>
+
+                <div className="ls-popup-row">
+                  <span className="ls-popup-label">Amount Paid</span>
+                  <span className="ls-popup-value">₹{amountPaid}</span>
+                </div>
+
+                <div className="ls-popup-row">
+                  <span className="ls-popup-label">Energy Selected</span>
+                  <span className="ls-popup-value">{energySelected.toFixed(2)} kWh</span>
                 </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* ── STOP CHARGING SLIDER MODAL ── */}
+          {showStopConfirmPopup && (
+            <div className="ls-popup-overlay" onClick={closeStopPopup}>
+              <div className="ls-popup-box ls-stop-modal" onClick={(e) => e.stopPropagation()}>
+                <button
+                  type="button"
+                  className="ls-close-btn"
+                  onClick={closeStopPopup}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+
+
+                <h3 className="ls-stop-title">
+                  {stopSliderSuccess ? "Stopping Session..." : "Stop Charging?"}
+                </h3>
+
+                <p className="ls-stop-desc">
+                  {stopSliderSuccess
+                    ? "Please wait while we safely end your charging session."
+                    : "Slide to confirm and safely stop the current charging session."}
+                </p>
+
+                <div className="ls-slide-shell">
+                  <div className={`ls-slide-label ${stopSliderSuccess ? "success" : ""}`}>
+                    {stopSliderSuccess
+                      ? "Confirmed"
+                      : dragX >= MAX_DRAG * 0.88
+                      ? "Release to stop"
+                      : "Slide to stop charging"}
+                  </div>
+
+                  <div
+                    className={`ls-slide-track ${isDragging ? "dragging" : ""} ${stopSliderSuccess ? "success" : ""}`}
+                    ref={sliderTrackRef}
+                    style={{ width: `${SLIDER_WIDTH}px`, maxWidth: "100%" }}
+                  >
+                    <div
+                      className={`ls-slide-fill ${stopSliderSuccess ? "success" : ""}`}
+                      style={{ width: `${dragX + KNOB_SIZE / 2}px` }}
+                    />
+
+                    {!stopSliderSuccess && (
+                      <div className="ls-slide-hints">
+                        <span>»</span>
+                        <span>»</span>
+                        <span>»</span>
+                      </div>
+                    )}
+
+                    <div
+                      className={`ls-slide-thumb ${isDragging ? "dragging" : ""} ${stopSliderSuccess ? "success" : ""}`}
+                      style={{
+                        transform: `translateX(${dragX}px) scale(${isDragging ? 1.04 : 1})`,
+                        transition: isDragging
+                          ? "none"
+                          : "transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), background 0.2s ease",
+                      }}
+                      onMouseDown={(e) => startDrag(e.clientX)}
+                      onTouchStart={(e) => startDrag(e.touches[0].clientX)}
+                    >
+                      {stopSliderSuccess ? "✓" : "»"}
+                    </div>
+                  </div>
+                </div>
+
+                {!stopSliderSuccess && (
+                  <button type="button" className="ls-cancel-btn" onClick={closeStopPopup}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── PAUSE ALERT MODAL ── */}
+          {showPausePopup && (
+            <div className="ls-popup-overlay" onClick={handleDismissPopup}>
+              <div className="ls-popup-box" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '340px' }}>
+                <button
+                  type="button"
+                  className="ls-close-btn"
+                  onClick={handleDismissPopup}
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+
+                {pausedReason === 'offline' ? (
+                  <div style={{ textAlign: "center", padding: "6px 0" }}>
+                    <h3 style={{ color: '#00776b', marginBottom: 8 }}>Device Offline</h3>
+                    <p style={{ color: '#53757a', fontSize: 13, lineHeight: 1.5, margin: "0 0 10px" }}>
+                      Charger is offline or temporarily disconnected.
+                    </p>
+                    <p style={{ color: '#53757a', fontSize: 12, lineHeight: 1.5, margin: 0 }}>
+                      Session remains active. Wait for reconnection or stop the session manually.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ textAlign: "center", padding: "6px 0" }}>
+                    <h3 style={{ color: '#e06014', marginBottom: 8 }}>Charging Paused</h3>
+                    <p style={{ color: '#53757a', fontSize: 13, lineHeight: 1.5, margin: "0 0 12px" }}>
+                      Charging was paused via the emergency stop button.
+                    </p>
+                    <p style={{ color: '#0e2e33', fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+                      Press the button for 5 seconds to resume, or session ends in{' '}
+                      <strong style={{ color: '#e06014', fontWeight: 800 }}>
+                        {minutes}:{seconds.toString().padStart(2, "0")}
+                      </strong>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
+      {/* ── FOOTER NAV ── */}
       <FooterNav />
     </>
   );

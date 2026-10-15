@@ -1,0 +1,880 @@
+/* =========================================================
+   VIZ APP HEADER (DARK THEME) + MODERN NAVIGATION DRAWER
+   File: src/styles/appHeader.css
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* Brand Accent Tokens */
+  --viz-teal-bright: #00d2b4;
+  --viz-teal-hover: #00bca2;
+  --viz-teal-deep: #008f7f;
+  --viz-teal-ink: #00776b;
+  --viz-teal-pale: #e4faf6;
+  --viz-teal-wash: #f0fcf9;
+
+  /* High-Energy Warm Accent */
+  --viz-sunset: #ff8236;
+  --viz-sunset-deep: #ff521a;
+
+  /* Typography & Surfaces */
+  --viz-text-dark: #0e2e33;
+  --viz-text-muted: #5c7c82;
+  --viz-border-light: #d8f2ed;
+  --viz-border-subtle: #ebf7f5;
+  --viz-surface-white: #ffffff;
+  --viz-drawer-bg: #fcffff;
+
+  /* Header Dark Palette */
+  --viz-header-bg: rgba(3, 18, 22, 0.98);
+  --viz-header-border: rgba(0, 210, 180, 0.2);
+
+  /* Layout Constants */
+  --viz-header-height: 68px;
+  --viz-bottom-nav-clearance: 84px;
+}
+
+/* Global Font & Box Model */
+.app-header,
+.app-header *,
+.app-drawer-backdrop,
+.app-drawer-backdrop * {
+  box-sizing: border-box;
+  font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+/* =========================================================
+   DARK TOP HEADER (WITH CENTRED LOGO)
+   ========================================================= */
+
+/* In src/styles/appHeader.css under .app-header */
+/* In src/styles/appHeader.css */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1100;
+  width: 100vw;
+  max-width: 100vw;
+  height: calc(var(--viz-header-height) + env(safe-area-inset-top, 0px));
+
+  margin-top: 0;
+  margin-left: calc(50% - 50vw);
+  margin-right: 0;
+  margin-bottom: 0;
+  padding-top: env(safe-area-inset-top, 0px);
+
+  background: var(--viz-header-bg);
+  border: none;
+  border-bottom: 1px solid var(--viz-header-border);
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.24);
+
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Only pull up when inside landingHome's padded container */
+.lh-page .app-header {
+  margin-top: calc(-1 * max(8px, env(safe-area-inset-top, 0px)));
+}
+
+@media (max-width: 640px) {
+  .lh-page .app-header {
+    margin-top: calc(-1 * max(5px, env(safe-area-inset-top, 0px)));
+  }
+}
+
+.app-header-inner {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  width: 100%;
+  max-width: 1120px;
+  height: 100%;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.app-header-menu-button,
+.app-header-brand,
+.app-drawer-close {
+  appearance: none;
+  -webkit-appearance: none;
+  border: none;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Header Menu Button (Glows softly on dark surface) */
+.app-header-menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: start;
+
+  width: 42px;
+  height: 42px;
+  padding: 0;
+
+  color: #c4faf2;
+  background: rgba(0, 210, 180, 0.12);
+  border: 1px solid rgba(0, 229, 190, 0.3);
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-header-menu-button:hover {
+  color: #ffffff;
+  background: rgba(0, 210, 180, 0.24);
+  border-color: rgba(0, 229, 190, 0.65);
+  box-shadow: 0 0 16px rgba(0, 210, 180, 0.35);
+  transform: translateY(-1px);
+}
+
+.app-header-menu-button:active {
+  transform: scale(0.95);
+}
+
+.app-header-menu-button.is-open {
+  color: #031418;
+  background: var(--viz-teal-bright);
+  border-color: var(--viz-teal-bright);
+  box-shadow: 0 0 18px rgba(0, 210, 180, 0.5);
+}
+
+/* Header Action Buttons (Menu on Left, Support on Right) */
+.app-header-menu-button,
+.app-header-support-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 42px;
+  height: 42px;
+  padding: 0;
+
+  color: #c4faf2;
+  background: rgba(0, 210, 180, 0.12);
+  border: 1px solid rgba(0, 229, 190, 0.3);
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-header-support-button {
+  justify-self: end;
+}
+
+.app-header-menu-button:hover,
+.app-header-support-button:hover {
+  color: #ffffff;
+  background: rgba(0, 210, 180, 0.24);
+  border-color: rgba(0, 229, 190, 0.65);
+  box-shadow: 0 0 16px rgba(0, 210, 180, 0.35);
+  transform: translateY(-1px);
+}
+
+.app-header-menu-button:active,
+.app-header-support-button:active {
+  transform: scale(0.95);
+}
+
+/* Header Action Buttons (Menu on Left, QR Scanner on Right) */
+.app-header-menu-button,
+.app-header-qr-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 42px;
+  height: 42px;
+  padding: 0;
+
+  color: #c4faf2;
+  background: rgba(0, 210, 180, 0.12);
+  border: 1px solid rgba(0, 229, 190, 0.3);
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-header-qr-button {
+  justify-self: end;
+}
+
+.app-header-menu-button:hover,
+.app-header-qr-button:hover {
+  color: #ffffff;
+  background: rgba(0, 210, 180, 0.24);
+  border-color: rgba(0, 229, 190, 0.65);
+  box-shadow: 0 0 16px rgba(0, 210, 180, 0.35);
+  transform: translateY(-1px);
+}
+
+.app-header-menu-button:active,
+.app-header-qr-button:active {
+  transform: scale(0.95);
+}
+
+.app-header-qr-button svg {
+  display: block;
+  font-size: 22px;
+}
+
+.app-header-support-button svg {
+  display: block;
+  font-size: 22px;
+}
+
+.app-header-support-img {
+  display: block;
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.app-header-menu-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app-header-menu-icon svg {
+  display: block;
+  font-size: 22px;
+}
+
+/* Centred Brand & Medium Logo */
+.app-header-brand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  justify-self: center;
+
+  min-width: 0;
+  height: 100%;
+  padding: 0 6px;
+  cursor: pointer;
+}
+
+.app-header-logo {
+  display: block;
+  width: auto;
+  max-width: 175px;
+  height: 70px;
+  max-height: 70px;
+  object-fit: contain;
+  object-position: center;
+}
+
+/* Spacer ensuring logo remains mathematically centred */
+.app-header-right-space {
+  width: 42px;
+  height: 42px;
+  justify-self: end;
+}
+
+/* =========================================================
+   DRAWER BACKDROP
+   ========================================================= */
+
+.app-drawer-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+
+  display: flex;
+  align-items: stretch;
+  justify-content: flex-start;
+
+  padding: 0;
+  background: rgba(3, 18, 22, 0.52);
+
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+
+  animation: vizBackdropFade 200ms ease-out both;
+  overscroll-behavior: contain;
+}
+
+/* =========================================================
+   DRAWER PANEL
+   ========================================================= */
+
+.app-drawer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+
+  width: min(390px, 88vw);
+  max-width: 100%;
+  height: calc(100vh - var(--viz-bottom-nav-clearance));
+  height: calc(100dvh - var(--viz-bottom-nav-clearance) - env(safe-area-inset-bottom, 0px));
+  min-height: 420px;
+  margin: 0;
+  padding: 0;
+
+  color: var(--viz-text-dark);
+  background: var(--viz-drawer-bg);
+  border: none;
+  border-right: 1px solid var(--viz-border-light);
+  border-radius: 0 24px 24px 0;
+  box-shadow: 18px 0 50px rgba(3, 28, 32, 0.18);
+
+  overflow: hidden;
+  overscroll-behavior: contain;
+  animation: vizDrawerSlide 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Drawer Brand Header */
+.app-drawer-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  min-height: 72px;
+  padding: max(16px, env(safe-area-inset-top, 0px)) 18px 10px;
+
+  /* Matches drawer background seamlessly with no harsh line */
+  background: var(--viz-drawer-bg);
+  border-bottom: 1px solid rgba(0, 210, 180, 0.08);
+}
+
+.app-drawer-brand {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  min-width: 0;
+  padding: 0 !important;
+  margin: 0 !important;
+
+  color: inherit;
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-drawer-brand:focus,
+.app-drawer-brand:focus-visible {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* Soft mint tile so the cyan logo pops cleanly instead of washing out */
+.app-drawer-brand img {
+  display: block;
+  flex: 0 0 auto;
+  width: 70px;
+  height: 60px;
+  padding: 6px;
+  object-fit: contain;
+
+}
+
+.app-drawer-brand-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.app-drawer-brand-copy strong {
+  color: var(--viz-text-dark);
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -0.2px;
+}
+
+.app-drawer-brand-copy small {
+  color: var(--viz-text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+}
+
+.app-drawer-close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+
+  width: 38px;
+  height: 38px;
+  padding: 0;
+
+  color: #4f7377;
+  background: #f1fbf8;
+  border: 1px solid var(--viz-border-light);
+  border-radius: 12px;
+
+  transition: all 160ms ease;
+}
+
+.app-drawer-close:hover {
+  color: var(--viz-teal-deep);
+  background: #e2f8f4;
+  transform: rotate(90deg);
+}
+
+.app-drawer-close svg {
+  font-size: 20px;
+}
+
+/* =========================================================
+   USER PROFILE SUMMARY
+   ========================================================= */
+
+.app-drawer-user {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 13px;
+
+  margin: 16px 16px 14px;
+  padding: 15px 16px;
+
+  background: linear-gradient(135deg, #e5faf5 0%, #f4fdfc 100%);
+  border: 1px solid #cbf0e9;
+  border-radius: 18px;
+}
+
+.app-drawer-avatar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+
+  width: 46px;
+  height: 46px;
+
+  color: #ffffff;
+  background: linear-gradient(135deg, #00d2b4 0%, #008f7f 100%);
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0, 190, 165, 0.28);
+}
+
+.app-drawer-avatar svg {
+  font-size: 24px;
+}
+
+.app-drawer-user-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.app-drawer-user-info > span {
+  color: var(--viz-teal-ink);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+}
+
+.app-drawer-user-info > strong {
+  overflow: hidden;
+  color: var(--viz-text-dark);
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-drawer-user-info > small {
+  overflow: hidden;
+  color: var(--viz-text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* =========================================================
+   NAVIGATION MENU LIST
+   ========================================================= */
+
+.app-drawer-nav {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 6px;
+
+  min-height: 0;
+  padding: 0 14px 12px;
+
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #d1eee8 transparent;
+}
+
+.app-drawer-section-label {
+  flex: 0 0 auto;
+  margin: 6px 8px 8px;
+  padding: 0;
+
+  color: #7a9c9f;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.3px;
+}
+
+.app-drawer-item {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 12px;
+
+  text-align: left;
+  color: var(--viz-text-dark);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 15px;
+  cursor: pointer;
+
+  transition: all 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-drawer-item:hover {
+  background: #edfbf8;
+  border-color: #d4f2ec;
+  transform: translateX(3px);
+}
+
+.app-drawer-item:active {
+  transform: scale(0.985);
+}
+
+.app-drawer-item.active {
+  background: linear-gradient(135deg, #e7faf6 0%, #f4fdfc 100%);
+  border-color: #bceee5;
+  box-shadow: 0 2px 8px rgba(0, 160, 140, 0.05);
+}
+
+.app-drawer-item.active::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 0;
+
+  width: 3.5px;
+  content: "";
+  background: var(--viz-teal-bright);
+  border-radius: 0 4px 4px 0;
+}
+
+.app-drawer-item-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+
+  width: 42px;
+  height: 42px;
+
+  color: var(--viz-teal-ink);
+  background: #eafbf8;
+  border: 1px solid #d4f2ec;
+  border-radius: 13px;
+
+  transition: all 160ms ease;
+}
+
+.app-drawer-item-icon svg {
+  font-size: 21px;
+}
+
+.app-drawer-item.active .app-drawer-item-icon,
+.app-drawer-item:hover .app-drawer-item-icon {
+  color: #00776b;
+  background: #ffffff;
+  border-color: #b7ebe1;
+  box-shadow: 0 3px 8px rgba(0, 160, 140, 0.1);
+}
+
+.app-drawer-item-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.app-drawer-item-copy strong {
+  color: var(--viz-text-dark);
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.app-drawer-item-copy small {
+  color: var(--viz-text-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.app-drawer-item-arrow {
+  flex: 0 0 auto;
+  color: #8daeab;
+  font-size: 18px !important;
+  transition: all 160ms ease;
+}
+
+.app-drawer-item:hover .app-drawer-item-arrow {
+  color: var(--viz-teal-deep);
+  transform: translateX(3px);
+}
+
+/* =========================================================
+   NEED HELP? PANEL (ENTIRE CONTAINER CLICKABLE)
+   ========================================================= */
+
+.app-drawer-support {
+  appearance: none;
+  -webkit-appearance: none;
+  width: calc(100% - 28px);
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  text-align: left;
+  gap: 12px;
+
+  min-height: 76px;
+  margin: 0 14px 14px;
+  padding: 14px 16px;
+
+  background: linear-gradient(135deg, #f2fbf9 0%, #ffffff 100%);
+  border: 1px solid var(--viz-border-light);
+  border-radius: 18px;
+  box-shadow: 0 3px 12px rgba(14, 46, 51, 0.04);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}
+
+.app-drawer-support:hover {
+  transform: translateY(-2px);
+  border-color: #bceee5;
+  box-shadow: 0 6px 18px rgba(0, 160, 140, 0.12);
+}
+
+.app-drawer-support:active {
+  transform: scale(0.985);
+}
+
+.app-drawer-support-icon {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+
+  width: 44px;
+  height: 44px;
+
+  color: var(--viz-teal-ink);
+  background: var(--viz-teal-pale);
+  border: 1px solid #c9ede6;
+  border-radius: 14px;
+}
+
+.app-drawer-support-icon svg {
+  font-size: 24px;
+}
+
+.app-drawer-support-copy {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.app-drawer-support-copy strong {
+  color: var(--viz-text-dark);
+  font-size: 13.5px;
+  font-weight: 750;
+  line-height: 1.3;
+}
+
+.app-drawer-support-copy span {
+  color: var(--viz-text-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+/* WhatsApp Icon Badge */
+.app-drawer-whatsapp-badge {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 10px;
+  transition: transform 180ms ease;
+}
+
+.app-drawer-support:hover .app-drawer-whatsapp-badge {
+  transform: scale(1.1);
+}
+
+.app-drawer-whatsapp-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* =========================================================
+   ANIMATIONS & RESPONSIVE BREAKPOINTS
+   ========================================================= */
+
+@keyframes vizBackdropFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes vizDrawerSlide {
+  from {
+    opacity: 0.8;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (max-width: 600px) {
+  :root {
+    --viz-header-height: 62px;
+    --viz-bottom-nav-clearance: 80px;
+  }
+
+  .app-header {
+    margin-top: calc(-1 * max(5px, env(safe-area-inset-top, 0px)));
+  }
+
+  .app-header-inner {
+    padding: 0 14px;
+    gap: 8px;
+  }
+
+  .app-header-menu-button,
+  .app-header-qr-button{
+    width: 39px;
+    height: 39px;
+    border-radius: 13px;
+  }
+
+  .app-header-logo {
+    max-width: 155px;
+    height: 60px;
+  }
+
+  .app-drawer {
+    width: min(355px, 92vw);
+    border-radius: 0 20px 20px 0;
+  }
+
+  .app-drawer-header {
+    min-height: 70px;
+    padding: 14px 16px;
+  }
+
+  .app-drawer-user {
+    margin: 14px 12px 12px;
+    padding: 13px;
+  }
+
+  .app-drawer-nav {
+    padding: 0 10px 10px;
+  }
+
+  .app-drawer-item {
+    min-height: 60px;
+    padding: 9px 11px;
+  }
+
+  .app-drawer-support {
+    min-height: 74px;
+    margin: 0 10px 12px;
+    padding: 12px 14px;
+  }
+}
+
+@media (max-width: 360px) {
+  :root {
+    --viz-header-height: 58px;
+    --viz-bottom-nav-clearance: 76px;
+  }
+
+  .app-header-menu-button,
+  .app-header-qr-button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .app-header-logo {
+    max-width: 135px;
+    height: 40px;
+  }
+
+  .app-drawer-item-copy small {
+    font-size: 9.5px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-drawer-backdrop,
+  .app-drawer,
+  .app-drawer-item,
+  .app-drawer-support {
+    animation: none !important;
+    transform: none !important;
+  }
+}

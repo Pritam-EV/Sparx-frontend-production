@@ -2,13 +2,14 @@ import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import "../styles/appStyles.css";
-import { Box, IconButton, Tooltip } from "@mui/material";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import MyLocationIcon from "@mui/icons-material/MyLocation";
+import { Box } from "@mui/material";
+import EvStationRoundedIcon from "@mui/icons-material/EvStationRounded";
+import ArrowForwardRoundedIcon from "@mui/icons-material/ArrowForwardRounded";
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker } from 'react-leaflet';
 import L from 'leaflet';
 import FooterNav from "../components/FooterNav";
+import AppHeader from "../components/AppHeader";
 
 const Home = () => {
   const navigate = useNavigate();
@@ -30,6 +31,21 @@ const [showSupportPopup, setShowSupportPopup] = useState(false);
 const [deferredPrompt, setDeferredPrompt] = useState(null);
 const [isVizInstalled, setIsVizInstalled] = useState(false);
 const [showInstallModal, setShowInstallModal] = useState(false);
+// Guest login prompt state
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+
+  useEffect(() => {
+    const isLoggedIn = !!token;
+    if (isLoggedIn) {
+      setShowLoginPrompt(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setShowLoginPrompt(true);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [token]);
 
 // Get user name safely from localStorage (try `user` then `profile`)
 const getUserNameFromLocal = () => {
@@ -638,36 +654,147 @@ function smoothShrinkMarker(marker) {
 
  return (
     <>
-    <div className="top-bar">
-      <img src="/logo.png" alt="VIZ Logo" className="top-bar-logo" />
-    </div>
+
+<style>{`
+        .home-guest-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 9000;
+          background: rgba(6, 38, 43, 0.55);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 20px;
+          animation: homeFade 0.2s ease;
+        }
+
+        .home-guest-modal {
+          width: 100%;
+          max-width: 360px;
+          padding: 24px 20px 20px;
+          text-align: center;
+          position: relative;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 26px;
+          box-shadow: 0 20px 60px rgba(0, 60, 66, 0.18);
+          animation: homeScaleCenter 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+          font-family: 'Plus Jakarta Sans', 'Outfit', sans-serif;
+          box-sizing: border-box;
+        }
+
+        .home-guest-close {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #f1fcf9;
+          border: 1px solid #d4f2ec;
+          color: #53757a;
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          font-size: 14px;
+          transition: all 0.15s ease;
+        }
+        .home-guest-close:hover {
+          background: #e2f7f3;
+          color: #0e2e33;
+        }
+
+        .home-guest-icon-box {
+          width: 58px;
+          height: 58px;
+          border-radius: 20px;
+          background: linear-gradient(135deg, #fff3e6 0%, #ffe3c4 100%);
+          border: 1px solid #ffd4a8;
+          color: #ff8236;
+          display: grid;
+          place-items: center;
+          margin: 0 auto 14px;
+          box-shadow: 0 8px 22px rgba(255, 130, 54, 0.22);
+        }
+
+        .home-guest-title {
+          font-family: 'Outfit', sans-serif;
+          font-size: 19px;
+          font-weight: 800;
+          color: #0e2e33;
+          letter-spacing: -0.2px;
+          margin: 0 0 6px;
+        }
+
+        .home-guest-desc {
+          font-size: 12.5px;
+          color: #53757a;
+          line-height: 1.5;
+          margin: 0 auto 18px;
+          max-width: 280px;
+        }
+
+        .home-guest-perks {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          margin-bottom: 20px;
+          text-align: left;
+        }
+
+        .home-guest-perk-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 12px;
+          background: #f7fdfc;
+          border: 1px solid #e1f5f2;
+          font-size: 12px;
+          font-weight: 700;
+          color: #00776b;
+        }
+
+        .home-btn-guest-login {
+          width: 100%;
+          min-height: 48px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+          color: #ffffff;
+          border: none;
+          font-size: 14px;
+          font-weight: 800;
+          cursor: pointer;
+          box-shadow: 0 4px 16px rgba(255, 82, 26, 0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          transition: all 0.16s ease;
+        }
+        .home-btn-guest-login:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 20px rgba(255, 82, 26, 0.45);
+        }
+        .home-btn-guest-login:active {
+          transform: scale(0.985);
+        }
+
+        @keyframes homeScaleCenter {
+          from { opacity: 0; transform: scale(0.92); }
+          to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes homeFade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
+
+<AppHeader />
     <div className="home-container">
-
-  
-       
-
-  {/* ✅ NEW: Transactions button */}
-
-  <button onClick={() => navigate("/transactions")} className="home-button">
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
-        <rect x="2" y="6" width="20" height="13" rx="2"/>
-        <path d="M2 10h20"/>
-        <path d="M6 14h4"/>
-      </svg>
-      <span style={{ fontFamily: "'Open Sans', sans-serif", fontSize: "9px", marginTop: "4px", color: "#cdebf5" }}>Payments</span>
-    </div>
-  </button>
-
-
-  <button onClick={() => navigate("/profile")} className="home-button">
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="#fff" strokeWidth="1" viewBox="0 0 24 24">
-        <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8V22h19.2v-2.8c0-3.2-6.4-4.8-9.6-4.8z"/>
-      </svg>
-      <span style={{ fontFamily: "'Open Sans', sans-serif", fontSize: "9px", marginTop: "4px", color: "#cdebf5" }}>Profile</span>
-    </div>
-  </button>
 
 
       {/* <button onClick={() => navigate("/qr-scanner")} className="qr-floating-button" style={{
@@ -691,94 +818,7 @@ function smoothShrinkMarker(marker) {
         </svg>
       </button> */}
 
-      {/* SUPPORT floating button — placed below the QR scanner button */}
-{/* SUPPORT floating button — bottom left above footer */}
-<button
-  onClick={handleOpenSupport}
-  className="qr-floating-button support-button support-bottom-left"
-  aria-label="Get Support"
->
-  {/* Exact customer-service-72.svg - inline */}
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    viewBox="0 0 1024 1024"
-    width="40"
-    height="40"
-    fill="#020202"
-  >
-    <path d="M137.09824 453.4016v118.4c0.1024 24.89856 15.80032 46.30016 38.20032 55.30112 25.29792 135.70048 146.80064 223.0016 298.19904 234.90048 6.90176 20.39808 26.90048 35.3024 50.80064 35.3024 29.59872 0 53.60128-22.70208 53.60128-50.69824s-24.00256-50.80064-53.60128-50.80064c-22.70208 0-41.99936 13.39904-49.80224 32.30208-130.80064-10.90048-236.49792-82.80064-262.5024-197.60128 16.19968-3.2 30.19776-12.49792 39.10144-25.29792 22.00064 66.69824 69.80096 122.19904 131.99872 155.49952 0.90112 0.39936 1.69984 0.9984 2.60096 1.39776 0.39936 0.1024 0.70144 0.19968 1.19808 0.19968 0.39936 0 0.79872-0.1024 1.19808-0.19968 0.50176-0.19968 0.9984-0.50176 1.50016-0.70144 1.30048-0.90112 2.29888-2.29888 2.29888-3.99872a4.5568 4.5568 0 0 0-1.39776-3.3024c-0.1024-0.1024-0.19968-0.19968-0.30208-0.19968-61.50144-54.59968-65.30048-108.00128-58.50112-185.90208 5.89824-68.1984 47.0016-132.80256 67.79904-162.00192l1.50016 0.90112a6.77888 6.77888 0 0 1 5.20192-2.60096c3.3024 0 5.80096 2.29888 6.4 5.2992 2.2016 20.1984 6.90176 34.2016 10.19904 41.09824 13.99808 29.59872 36.80256 47.40096 70.2976 53.2992 52.59776 9.29792 104.89856 20.10112 157.50144 29.59872 32.79872 5.89824 60.9024 41.7024 55.3984 78.10048-12.49792 82.80064-70.20032 142.10048-86.20032 153.6 0.90112-0.59904 1.80224-0.9984 2.89792-0.9984 0.9984 0 2.29888 1.1008 3.39968 2.49856 1.60256 2.00192 2.89792 4.39808 3.00032 4.80256 69.00224-29.19936 123.60192-84.70016 150.4-153.40032 11.10016 13.30176 27.8016 21.89824 46.69952 21.89824 33.50016 0 60.60032-26.5984 60.60032-59.40224V463.69792c0-29.19936-21.60128-53.4016-50.00192-58.39872-29.30176-147.2-160.90112-258.49856-319.40096-258.49856-154.30144 0-282.90048 105.4976-316.60032 246.79936-0.50176 0-0.90112-0.1024-1.50016-0.1024-34.3808 0-62.1824 26.8032-62.1824 59.904z m112-35.3024c23.3984-124.8 134.5024-219.40224 268.29824-219.40224 134.4 0 245.89824 95.49824 268.49792 221.19936-2.29888 2.00192-4.59776 4.10112-6.59968 6.4-39.90016-103.10144-141.9008-176.59904-261.80096-176.59904-120.40192 0-222.80192 74.10176-262.2976 177.89952-1.69472-3.39456-3.79392-6.49728-6.09792-9.4976z"/>
-    <path d="M496.70144 738.2016c-37.09952-4.3008-68.70016-29.50144-80.30208-64.19968a5.2992 5.2992 0 0 1 3.00032-6.5024 5.6832 5.6832 0 0 1 6.99904 2.2016c0.19968 0.30208 14.8992 23.3984 72.40192 30.8992 8.6016 1.1008 16.9984 1.69984 24.89856 1.69984 40.29952 0 58.19904-14.80192 58.39872-14.8992 2.00192-1.80224 5.09952-1.80224 7.19872-0.1024s2.60096 4.70016 0.9984 6.90176c-17.50016 27.60192-48.9984 44.6976-82.0992 44.6976-3.79392 0-7.59808-0.29696-11.4944-0.69632z"/>
-  </svg>
-</button>
-
-{/* VIZ INSTALL floating button */}
-<button 
-  onClick={handleInstallViz}
-  className="qr-floating-button viz-install-button viz-download-bottom-left"
-  aria-label="Install VIZ App"
->
-  {/* Download + Mobile Icon */}
-<svg
-  xmlns="http://www.w3.org/2000/svg"
-  viewBox="0 0 24 24"
-  width="30"
-  height="30"
-  fill="none"
->
-  <defs>
-    <filter id="softGlow">
-      <feDropShadow dx="0" dy="0" stdDeviation="1.5" floodColor="#ffffff" floodOpacity="0.8"/>
-    </filter>
-  </defs>
-
-  <g filter="url(#softGlow)">
-    <g>
-      <animateTransform
-        attributeName="transform"
-        type="translate"
-        values="0 0; 0 2; 0 0"
-        dur="1.2s"
-        repeatCount="indefinite"
-      />
-
-      {/* Arrow Shaft */}
-      <line
-        x1="12"
-        y1="4"
-        x2="12"
-        y2="14"
-        stroke="#000000"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-
-      {/* Arrow Head */}
-      <polyline
-        points="8 11 12 15 16 11"
-        stroke="#000000"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </g>
-  </g>
-
-  {/* Bottom Base Line */}
-  <line
-    x1="5"
-    y1="20"
-    x2="19"
-    y2="20"
-    stroke="#000000"
-    strokeWidth="2"
-    strokeLinecap="round"
-    opacity="0.85"
-  />
-</svg>
-</button>
-
-    <Box sx={{ position: "relative", height: `calc(100vh - 56px)`, width: "100%" }}>
+    <Box sx={{ position: "relative", height: "calc(100dvh - 68px)", width: "100%", overflow: "hidden" }}>
 {/* Leaflet MapContainer replaces the old map div */}
             <MapContainer
               center={[18.5204, 73.8567]}
@@ -832,205 +872,57 @@ function smoothShrinkMarker(marker) {
             })}
           </MapContainer>
 
-              <div className="bottom-buttons">
-                <Tooltip title="Refresh Devices">
-                  <IconButton
-                    onClick={handleRefresh}
-                    sx={{
-                      bgcolor: "#04BFBF",
-                      "&:hover": { bgcolor: "rgba(4,191,191,0.1)" },
-                      color: "#121B22",
-                      fontWeight: "bold",
-                      borderRadius: "50%",
-                      boxShadow: "0 0 12px #04BFBF"
-                    }}
-                  >
-                    <RefreshIcon />
-                  </IconButton>
-                </Tooltip>
+            
+         </Box>
 
-                <Tooltip title="Go to My Location">
-                  <IconButton
-                    onClick={handleLocate}
-                    sx={{
-                      bgcolor: "#04BFBF",
-                      "&:hover": { bgcolor: "rgba(4,191,191,0.1)" },
-                      color: "#121B22",
-                      fontWeight: "bold",
-                      boxShadow: "0 0 12px #04BFBF"
-                    }}
-                  >
-                    <MyLocationIcon />
-                  </IconButton>
-                </Tooltip>
+{/* ── GUEST LOGIN PROMPT MODAL ── */}
+      {showLoginPrompt && !token && (
+        <div className="home-guest-overlay" onClick={() => setShowLoginPrompt(false)}>
+          <div className="home-guest-modal" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="home-guest-close"
+              onClick={() => setShowLoginPrompt(false)}
+              aria-label="Dismiss login modal"
+            >
+              ✕
+            </button>
+
+            <div className="home-guest-icon-box">
+              <EvStationRoundedIcon sx={{ fontSize: 30 }} />
+            </div>
+
+            <h3 className="home-guest-title">Ready to start charging?</h3>
+            <p className="home-guest-desc">
+              Sign in to unlock exclusive cashback rewards, wallet top-ups, and live session telemetry.
+            </p>
+
+            <div className="home-guest-perks">
+              <div className="home-guest-perk-item">
+                <span>⚡</span>
+                <span>Real-time charging progress tracking</span>
               </div>
-        </Box>
+              <div className="home-guest-perk-item">
+                <span>💰</span>
+                <span>Instant refunds on unutilized energy</span>
+              </div>
+            </div>
 
-{/* SUPPORT Popup */}
-{showSupportPopup && (
-  <div style={supportStyles.overlay} onClick={handleCloseSupport}>
-    <div style={supportStyles.modal} onClick={(e) => e.stopPropagation()}>
-      <button
-        style={supportStyles.closeButton}
-        onClick={handleCloseSupport}
-        aria-label="Close"
-      >
-        ✕
-      </button>
-
-      <div style={supportStyles.header}>
-        <div style={supportStyles.iconWrap}>
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 1024 1024"
-            width="26"
-            height="26"
-            fill="#041316"
-          >
-            <path d="M137.09824 453.4016v118.4c0.1024 24.89856 15.80032 46.30016 38.20032 55.30112 25.29792 135.70048 146.80064 223.0016 298.19904 234.90048 6.90176 20.39808 26.90048 35.3024 50.80064 35.3024 29.59872 0 53.60128-22.70208 53.60128-50.69824s-24.00256-50.80064-53.60128-50.80064c-22.70208 0-41.99936 13.39904-49.80224 32.30208-130.80064-10.90048-236.49792-82.80064-262.5024-197.60128 16.19968-3.2 30.19776-12.49792 39.10144-25.29792 22.00064 66.69824 69.80096 122.19904 131.99872 155.49952 0.90112 0.39936 1.69984 0.9984 2.60096 1.39776 0.39936 0.1024 0.70144 0.19968 1.19808 0.19968 0.39936 0 0.79872-0.1024 1.19808-0.19968 0.50176-0.19968 0.9984-0.50176 1.50016-0.70144 1.30048-0.90112 2.29888-2.29888 2.29888-3.99872a4.5568 4.5568 0 0 0-1.39776-3.3024c-0.1024-0.1024-0.19968-0.19968-0.30208-0.19968-61.50144-54.59968-65.30048-108.00128-58.50112-185.90208 5.89824-68.1984 47.0016-132.80256 67.79904-162.00192l1.50016 0.90112a6.77888 6.77888 0 0 1 5.20192-2.60096c3.3024 0 5.80096 2.29888 6.4 5.2992 2.2016 20.1984 6.90176 34.2016 10.19904 41.09824 13.99808 29.59872 36.80256 47.40096 70.2976 53.2992 52.59776 9.29792 104.89856 20.10112 157.50144 29.59872 32.79872 5.89824 60.9024 41.7024 55.3984 78.10048-12.49792 82.80064-70.20032 142.10048-86.20032 153.6 0.90112-0.59904 1.80224-0.9984 2.89792-0.9984 0.9984 0 2.29888 1.1008 3.39968 2.49856 1.60256 2.00192 2.89792 4.39808 3.00032 4.80256 69.00224-29.19936 123.60192-84.70016 150.4-153.40032 11.10016 13.30176 27.8016 21.89824 46.69952 21.89824 33.50016 0 60.60032-26.5984 60.60032-59.40224V463.69792c0-29.19936-21.60128-53.4016-50.00192-58.39872-29.30176-147.2-160.90112-258.49856-319.40096-258.49856-154.30144 0-282.90048 105.4976-316.60032 246.79936-0.50176 0-0.90112-0.1024-1.50016-0.1024-34.3808 0-62.1824 26.8032-62.1824 59.904z m112-35.3024c23.3984-124.8 134.5024-219.40224 268.29824-219.40224 134.4 0 245.89824 95.49824 268.49792 221.19936-2.29888 2.00192-4.59776 4.10112-6.59968 6.4-39.90016-103.10144-141.9008-176.59904-261.80096-176.59904-120.40192 0-222.80192 74.10176-262.2976 177.89952-1.69472-3.39456-3.79392-6.49728-6.09792-9.4976z" />
-            <path d="M496.70144 738.2016c-37.09952-4.3008-68.70016-29.50144-80.30208-64.19968a5.2992 5.2992 0 0 1 3.00032-6.5024 5.6832 5.6832 0 0 1 6.99904 2.2016c0.19968 0.30208 14.8992 23.3984 72.40192 30.8992 8.6016 1.1008 16.9984 1.69984 24.89856 1.69984 40.29952 0 58.19904-14.80192 58.39872-14.8992 2.00192-1.80224 5.09952-1.80224 7.19872-0.1024s2.60096 4.70016 0.9984 6.90176c-17.50016 27.60192-48.9984 44.6976-82.0992 44.6976-3.79392 0-7.59808-0.29696-11.4944-0.69632z" />
-          </svg>
-        </div>
-
-        <h3 style={supportStyles.title}>Help & Support</h3>
-        <p style={supportStyles.subtitle}>
-          Reach our team for charging, onboarding, or technical assistance.
-        </p>
-      </div>
-
-      <div style={supportStyles.infoList}>
-        <div style={supportStyles.infoRow}>
-          <span style={supportStyles.infoLabel}>Email</span>
-          <a
-            href="mailto:support@vjratechnologies.com"
-            style={supportStyles.infoValueLink}
-          >
-            support@vjratechnologies.com
-          </a>
-        </div>
-
-        <div style={supportStyles.infoRow}>
-          <span style={supportStyles.infoLabel}>Sales</span>
-          <a href="tel:+919545092266" style={supportStyles.infoValueLink}>
-            +91 9545092266
-          </a>
-        </div>
-
-        <div style={supportStyles.infoRow}>
-          <span style={supportStyles.infoLabel}>Technical</span>
-          <a href="tel:+918855094432" style={supportStyles.infoValueLink}>
-            +91 8855094432
-          </a>
-        </div>
-      </div>
-
-      <a
-        href={getWhatsappUrl()}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={supportStyles.whatsappButton}
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 32 32"
-          width="20"
-          height="20"
-          fill="#ffffff"
-        >
-          <path d="M16 3C9.4 3 4 8.4 4 15c0 2.6.8 5 2.3 7L4 29l7-2.5c1.9 1 4.1 1.6 6 1.6 6.6 0 12-5.4 12-12S22.6 3 16 3zm5.6 18.6c-.3.8-1.7 1.5-2.4 1.6-.6.1-1.6.2-3.2-.5-3.8-1.6-6.3-5.5-6.5-5.8-.2-.3-1.3-1.8-1.3-3.4 0-1.6.9-2.4 1.3-2.8.3-.3.8-.4 1.2-.4.3 0 .6 0 .9 0 .3 0 .6-.1.9-.1.3 0 .6 0 .9.1.3.1 1.1.4 1.3.5.2.1.4.2.6.2.2 0 .4-.1.6-.1.3-.1.6-.2.9-.2.2 0 .4 0 .7.2.3.2 1.2.9 1.4 1.1.2.2.4.5.5.9.1.3 0 .6 0 .9 0 .3-.1.6-.1.9 0 .3-.1.6-.2.9-.1.3-.2.6-.4.9-.1.2-.2.4-.2.5-.1.2-.2.4-.3.5-.1.2-.1.4-.1.7 0 .3.1.7.2 1 .1.3.2.6.4.9.2.3.4.6.6.9.2.3.4.7.4 1.1 0 .4-.4.7-.6 1z" />
-        </svg>
-
-        <span>Chat on WhatsApp</span>
-      </a>
-    </div>
-  </div>
-)}
-
-<FooterNav />
-
-        </div>
-{/* INSTALL HELP / INSTRUCTIONS (shown when beforeinstallprompt not available or the user dismissed) */}
-{showInstallModal && (
-  <div
-    className="install-overlay"
-    onClick={() => setShowInstallModal(false)}
-    style={{
-      position: "fixed",
-      inset: 0,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "rgba(0,0,0,0.5)",
-      zIndex: 4000
-    }}
-  >
-    <div
-      onClick={(e) => e.stopPropagation()}
-      style={{
-        width: "92%",
-        maxWidth: 420,
-        background: "#fff",
-        borderRadius: 12,
-        padding: 18,
-        boxShadow: "0 6px 24px rgba(0,0,0,0.3)",
-        color: "#011F26"
-      }}
-    >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h3 style={{ margin: 0 }}>Add VIZ to your Home Screen</h3>
-        <button onClick={() => setShowInstallModal(false)} style={{ background: "transparent", border: "none", fontSize: 18 }}>✕</button>
-      </div>
-
-      <div style={{ marginTop: 12, fontSize: 14, lineHeight: "1.45" }}>
-        { /* 1) Chrome / Android instructions */ }
-        <div style={{ marginBottom: 10 }}>
-          <strong>Android / Chrome</strong>
-          <div style={{ marginTop: 6 }}>
-            If you see a browser prompt near the address bar, accept it. If not:
-            open the browser menu (⋮) → <strong>Add to Home screen</strong>.
+            <button
+              type="button"
+              className="home-btn-guest-login"
+              onClick={() => navigate("/login")}
+            >
+              <span>Login / Sign Up</span>
+              <ArrowForwardRoundedIcon sx={{ fontSize: 17 }} />
+            </button>
           </div>
         </div>
+      )}
 
-        { /* 2) iOS / Safari instructions */ }
-        <div style={{ marginBottom: 10 }}>
-          <strong>iPhone / iPad (Safari)</strong>
-          <div style={{ marginTop: 6 }}>
-            Tap the <em>Share</em> icon (box with ↑) → scroll → <strong>Add to Home Screen</strong>.
-          </div>
+          <FooterNav />
+
         </div>
-
-        { /* 3) Desktop */ }
-        <div>
-          <strong>Desktop (Chrome/Edge)</strong>
-          <div style={{ marginTop: 6 }}>
-            If install is supported you may see an install icon in the address bar — click it.
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 14 }}>
-        <button
-          onClick={() => setShowInstallModal(false)}
-          style={{
-            padding: "8px 12px",
-            background: "#04BFBF",
-            border: "none",
-            color: "#fff",
-            borderRadius: 8,
-            fontWeight: 600
-          }}
-        >
-          Got it
-        </button>
-      </div>
-    </div>
-
-   
-  </div>
-
-
-  
-)}
 
       </>
   );

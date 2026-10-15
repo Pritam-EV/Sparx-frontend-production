@@ -1,24 +1,29 @@
-import React, { useState, useRef, useEffect } from "react";
+// src/components/Profile.js (or src/pages/Profile.js)
+import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   IconButton,
-  Slider,
-  TextField,
   Button,
   Typography,
   Box,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import LogoutRoundedIcon from "@mui/icons-material/LogoutRounded";
+import SupportAgentRoundedIcon from "@mui/icons-material/SupportAgentRounded";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
+import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
+
 import FooterNav from "../components/FooterNav";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
+import AppHeader from "../components/AppHeader";
 import { getGroupedVehicles } from "../utils/evVehicles";
 
-const PLATE_REGEX = /^[A-Z]{2}[0-9]{2}[A-Z]{1,3}[0-9]{1,4}$|^[0-9]{2}BH[0-9]{4}[A-Z]{1,2}$/;
+const PLATE_REGEX = /^[A-Z0-9]{5,15}$/;
 function validatePlate(raw) {
-  const cleaned = (raw || "").replace(/[\s\-]/g, "").toUpperCase();
+  const cleaned = (raw || "").replace(/[^A-Za-z0-9]/g, "").toUpperCase();
   return PLATE_REGEX.test(cleaned) ? cleaned : null;
 }
 
@@ -29,110 +34,37 @@ const Profile = () => {
   const userData = user && user !== "undefined" ? JSON.parse(user) : null;
 
   const [policyPopup, setPolicyPopup] = useState({ open: false, type: "" });
-
   const openPolicy = (type) => setPolicyPopup({ open: true, type });
   const closePolicy = () => setPolicyPopup({ open: false, type: "" });
 
   const [operatorSuccess, setOperatorSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [popupVisible, setPopupVisible] = useState(false);
   const [operatorOpen, setOperatorOpen] = useState(false);
+  const [queryMessage, setQueryMessage] = useState("");
 
-  const [walletBalance, setWalletBalance] = useState(null);
-
-const [updatedUserData, setUpdatedUserData] = useState({
-  name: userData?.name || "",
-  email: userData?.email || "",
-  mobile: userData?.mobile || "",
-  vehicleType: userData?.vehicleType || "",
-  vehicleModel: userData?.vehicleModel || "",       // ← new
-  vehicleNumber: userData?.vehicleNumber || userData?.vehicleReg || "",
-  gstin: userData?.gstin || "",                      // ← new
-});
-
-  const [operatorForm, setOperatorForm] = useState({
+  const [updatedUserData, setUpdatedUserData] = useState({
     name: userData?.name || "",
-    mobile: userData?.mobile || "",
     email: userData?.email || "",
-    location: "",
-    budget: 1,
+    mobile: userData?.mobile || "",
+    vehicleType: userData?.vehicleType || "",
+    vehicleModel: userData?.vehicleModel || "",
+    vehicleNumber: userData?.vehicleNumber || userData?.vehicleReg || "",
+    gstin: userData?.gstin || "",
   });
 
-  const menuRef = useRef();
-
-  useEffect(() => {}, []);
-
   useEffect(() => {
-    setMenuOpen(false);
     setPopupVisible(false);
     setIsEditing(false);
     setOperatorOpen(false);
   }, [location.pathname]);
-
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuOpen(false);
-      }
-    };
-    if (menuOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [menuOpen]);
-
-  // Inside Profile.js useEffect or as a new one:
-useEffect(() => {
-  const token = localStorage.getItem("token");
-  if (!token) return;
-  fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/wallet/balance`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-    .then(r => r.json())
-    .then(d => { if (typeof d.balance === "number") setWalletBalance(d.balance); })
-    .catch(() => {});
-}, []);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     sessionStorage.removeItem("lastPage");
     navigate("/");
-  };
-
-  const handleDeleteAccount = async () => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete your account? This action is irreversible."
-    );
-    if (!confirmDelete) return;
-
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(
-        `${process.env.REACT_APP_Backend_API_Base_URL}/api/auth/delete`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (response.ok) {
-        alert("Your account has been deleted.");
-        handleLogout();
-      } else {
-        alert("Failed to delete account. Please try again.");
-      }
-    } catch (error) {
-      console.error("Delete Account Error:", error);
-      alert("An error occurred. Please try again later.");
-    }
   };
 
   const handleProfileUpdate = async (e) => {
@@ -167,10 +99,11 @@ useEffect(() => {
         email: updatedUser.user.email,
         mobile: updatedUser.user.mobile,
         vehicleType: updatedUser.user.vehicleType,
+        vehicleModel: updatedUser.user.vehicleModel || "",
         vehicleNumber: updatedUser.user.vehicleNumber || "",
+        gstin: updatedUser.user.gstin || "",
       });
       setIsEditing(false);
-      setMenuOpen(false);
       window.location.href = "/profile";
     } else {
       const err = await response.json().catch(() => ({}));
@@ -178,40 +111,40 @@ useEffect(() => {
     }
   };
 
-const handleGoToDashboard = async () => {
-  if (userData?.role === "admin") {
-    navigate("/admin");
-  } else if (userData?.role === "accountant") {
-    navigate("/ca");
-  } else if (userData?.role === "owner") {
-    // Check if this owner has any charger linked
-    try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${process.env.REACT_APP_Backend_API_Base_URL}/api/owner`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const data = await res.json();
-      const hasCharger = Array.isArray(data) ? data.length > 0
-                       : Array.isArray(data?.chargers) ? data.chargers.length > 0
-                       : false;
-      if (hasCharger) {
+  // Only admin and owner can access the station manager dashboard
+  const handleGoToDashboard = async () => {
+    if (userData?.role === "admin") {
+      navigate("/admin");
+    } else if (userData?.role === "owner") {
+      try {
+        const token = localStorage.getItem("token");
+        const res = await fetch(
+          `${process.env.REACT_APP_Backend_API_Base_URL}/api/owner`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const data = await res.json();
+        const hasCharger = Array.isArray(data)
+          ? data.length > 0
+          : Array.isArray(data?.chargers)
+          ? data.chargers.length > 0
+          : false;
+        if (hasCharger) {
+          navigate("/owner");
+        } else {
+          setPopupVisible(true);
+        }
+      } catch {
         navigate("/owner");
-      } else {
-        setPopupVisible(true); // show "Link / Register Charger" popup
       }
-    } catch {
-      navigate("/owner"); // fallback: go to dashboard anyway
     }
-  }
-  // customers and others → do nothing here; button won't show for them
-};
+  };
 
   const closePopup = () => setPopupVisible(false);
 
+  // Auto-attaches existing profile info in payload
   const handleOperatorSubmit = async () => {
-    if (!operatorForm.name || !operatorForm.mobile) {
-      alert("Please enter your name and mobile number.");
+    if (!queryMessage.trim()) {
+      alert("Please enter your message or query.");
       return;
     }
     if (submitting) return;
@@ -219,6 +152,14 @@ const handleGoToDashboard = async () => {
 
     try {
       const token = localStorage.getItem("token");
+      const payload = {
+        name: userData?.name || "App User",
+        mobile: userData?.mobile || "",
+        email: userData?.email || "",
+        location: queryMessage.trim(),
+        budget: 1,
+      };
+
       const res = await fetch(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/operator/request`,
         {
@@ -227,7 +168,7 @@ const handleGoToDashboard = async () => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(operatorForm),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -245,6 +186,7 @@ const handleGoToDashboard = async () => {
 
       setOperatorOpen(false);
       setOperatorSuccess(true);
+      setQueryMessage("");
     } catch (err) {
       console.error(err);
       alert("Something went wrong. Please try again.");
@@ -253,1008 +195,818 @@ const handleGoToDashboard = async () => {
     }
   };
 
+  const userInitials = (userData?.name || "U")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+
+  const isStationManager = userData?.role === "admin" || userData?.role === "owner";
+
   return (
     <>
+      <AppHeader />
+
       <style>{`
-        .top-bar {
-          position: fixed;
-          top: 0;
-          left: 0;
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+        .pf-viewport {
           width: 100%;
-          height: 42px;
-          background-color: #0e1e1e;
-          box-shadow: 0 2px 12px rgba(1,105,111,0.35);
+          min-height: calc(100dvh - 68px);
+          height: calc(100dvh - 68px);
+          overflow-y: auto;
+          overflow-x: hidden;
+          background:
+            radial-gradient(circle at 100% 0%, rgba(0, 229, 190, 0.08), transparent 26rem),
+            radial-gradient(circle at 0% 45%, rgba(255, 130, 54, 0.05), transparent 24rem),
+            #f3fbfc;
+          color: #0e2e33;
+          font-family: 'Plus Jakarta Sans', 'Outfit', system-ui, sans-serif;
           display: flex;
-          justify-content: center;
+          flex-direction: column;
           align-items: center;
-          z-index: 1002;
+          -webkit-overflow-scrolling: touch;
+          box-sizing: border-box;
         }
-        .top-bar-logo {
-          height: 62px;
-          filter: drop-shadow(0 0 6px rgba(4, 191, 191, 0.8));
-          object-fit: contain;
+
+        .pf-shell {
+          width: 100%;
+          max-width: 480px;
+          margin: 0 auto;
+          padding: 16px 16px calc(110px + env(safe-area-inset-bottom, 0px));
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          box-sizing: border-box;
         }
-        .profile-scroll::-webkit-scrollbar { width: 6px; }
-        .profile-scroll::-webkit-scrollbar-thumb {
-          background: rgba(4, 191, 191, 0.28);
-          border-radius: 999px;
+
+        /* ── HEADER ACTION ROW ── */
+        .pf-top-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 2px 4px;
         }
-        .profile-scroll::-webkit-scrollbar-track { background: transparent; }
+
+        .pf-title {
+          font-family: 'Outfit', sans-serif;
+          font-size: 20px;
+          font-weight: 800;
+          color: #0e2e33;
+          letter-spacing: -0.3px;
+          margin: 0;
+        }
+
+.pf-btn-edit-toggle {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 14px;
+          border-radius: 12px;
+          background: #fff8f3;
+          border: 1px solid #ffd8c7;
+          color: #ff8236;
+          font-size: 12px;
+          font-weight: 750;
+          cursor: pointer;
+          box-shadow: 0 2px 8px rgba(255, 130, 54, 0.08);
+          transition: all 0.16s ease;
+        }
+        .pf-btn-edit-toggle:hover {
+          background: #ffede3;
+          border-color: #ff8236;
+        }
+
+        .pf-avatar-circle {
+          width: 72px;
+          height: 72px;
+          border-radius: 24px;
+          background: linear-gradient(135deg, #00776b 0%, #004d45 100%);
+          color: #ffffff;
+          display: grid;
+          place-items: center;
+          font-family: 'Outfit', sans-serif;
+          font-size: 24px;
+          font-weight: 800;
+          box-shadow: 0 8px 24px rgba(0, 14, 53, 0.32);
+          margin-bottom: 12px;
+        }
+        /* ── CENTERED HERO CARD ── */
+        .pf-hero-centered {
+          width: 100%;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 26px;
+          padding: 24px 20px 20px;
+          box-shadow: 0 6px 24px rgba(0, 160, 145, 0.06);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          box-sizing: border-box;
+        }
+
+        .pf-hero-name {
+          font-family: 'Outfit', sans-serif;
+          font-size: 20px;
+          font-weight: 800;
+          color: #0e2e33;
+          letter-spacing: -0.3px;
+          line-height: 1.25;
+        }
+
+        .pf-hero-sub {
+          font-size: 13px;
+          color: #53757a;
+          margin-top: 4px;
+          font-variant-numeric: tabular-nums;
+        }
+
+        /* ── SECTION GROUPS ── */
+        .pf-group-card {
+          width: 100%;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 22px;
+          padding: 18px;
+          box-shadow: 0 4px 18px rgba(0, 160, 145, 0.05);
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          box-sizing: border-box;
+        }
+
+          .pf-group-title {
+          font-size: 11px;
+          font-weight: 800;
+          color: #ff8236;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .pf-field-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 10px 12px;
+          border-radius: 14px;
+          background: #f7fdfc;
+          border: 1px solid #e1f5f2;
+        }
+
+        .pf-field-label {
+          font-size: 11px;
+          font-weight: 750;
+          color: #53757a;
+          text-transform: uppercase;
+          letter-spacing: 0.4px;
+        }
+
+        .pf-field-val {
+          font-size: 13.5px;
+          font-weight: 750;
+          color: #0e2e33;
+          text-align: right;
+          word-break: break-all;
+        }
+
+          .pf-mono-tag {
+          font-family: monospace;
+
+          padding: 3px 8px;
+          border-radius: 8px;
+          color: #0e2e33;
+
+        }
+
+        /* ── EDIT FORM ── */
+        .pf-edit-card {
+          width: 100%;
+          background: #ffffff;
+          border: 1px solid #d4f0ec;
+          border-radius: 24px;
+          padding: 20px 18px;
+          box-shadow: 0 8px 26px rgba(0, 160, 145, 0.08);
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          box-sizing: border-box;
+        }
+
+        .pf-input-group {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          width: 100%;
+        }
+
+        .pf-input-label {
+          font-size: 11.5px;
+          font-weight: 750;
+          color: #0e2e33;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+        }
+
+        .pf-input {
+          width: 100%;
+          padding: 12px 14px;
+          font-size: 13.5px;
+          font-family: inherit;
+          color: #0e2e33;
+          background: #f4fbfb;
+          border: 1.5px solid #d8f2ee;
+          border-radius: 14px;
+          outline: none;
+          box-sizing: border-box;
+          transition: border-color 0.16s ease;
+        }
+        .pf-input:focus {
+          border-color: #00d2b4;
+          background: #ffffff;
+        }
+        .pf-input:disabled {
+          background: #edf4f5;
+          color: #799ea4;
+          border-color: #dbe8ea;
+          cursor: not-allowed;
+        }
+
+        .pf-vehicle-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 8px;
+        }
+
+        .pf-vehicle-tile {
+          border: 1.5px solid #d8f2ee;
+          background: #f7fdfc;
+          border-radius: 14px;
+          padding: 10px 4px;
+          font-family: inherit;
+          font-size: 11.5px;
+          font-weight: 750;
+          color: #53757a;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          transition: all 0.16s ease;
+        }
+          .pf-vehicle-tile.selected {
+          border-color: #ff8236;
+          background: #fff8f3;
+          color: #e06014;
+          box-shadow: 0 2px 10px rgba(255, 130, 54, 0.2);
+        }
+
+          .pf-btn-save {
+          flex: 1;
+          padding: 12px;
+          border-radius: 14px;
+          background: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+          border: none;
+          color: #ffffff;
+          font-size: 13.5px;
+          font-weight: 750;
+          cursor: pointer;
+          box-shadow: 0 4px 14px rgba(255, 82, 26, 0.35);
+          transition: all 0.16s ease;
+        }
+        .pf-btn-save:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(255, 82, 26, 0.45);
+        }
+
+        .pf-btn-cancel {
+          padding: 12px 18px;
+          border-radius: 14px;
+          background: #f1fcf9;
+          border: 1px solid #d4f0ec;
+          color: #53757a;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        /* ── FOOTER & ACTIONS ── */
+        .pf-actions-block {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-top: 8px;
+        }
+
+        .pf-btn-dashboard {
+          width: 100%;
+          min-height: 48px;
+          background: linear-gradient(135deg, #00776b 0%, #004d45 100%);
+          color: #ffffff;
+          font-weight: 750;
+          border-radius: 16px;
+          text-transform: none;
+          box-shadow: 0 4px 14px rgba(0, 119, 107, 0.25);
+          font-size: 13.5px;
+        }
+
+          .pf-btn-contact {
+          width: 100%;
+          padding: 13px;
+          border-radius: 16px;
+          background: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+          border: none;
+          color: #ffffff;
+          font-size: 13.5px;
+          font-weight: 750;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          box-shadow: 0 4px 14px rgba(255, 82, 26, 0.32);
+          transition: all 0.16s ease;
+        }
+        .pf-btn-contact:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(255, 82, 26, 0.42);
+        }
+
+        .pf-btn-logout {
+          width: 100%;
+          padding: 12px;
+          border-radius: 16px;
+          background: #fff8f8;
+          border: 1.5px solid #ffd8d8;
+          color: #d93b3b;
+          font-size: 13px;
+          font-weight: 750;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          transition: all 0.16s ease;
+        }
+        .pf-btn-logout:hover {
+          background: #fdeeee;
+          border-color: #ffb8b8;
+        }
+
+        .pf-dev-credits {
+          font-size: 11.5px;
+          color: #799ea4;
+          text-align: center;
+          line-height: 1.5;
+          margin-top: 4px;
+        }
+        .pf-dev-credits strong {
+          color: #008f7f;
+        }
+
+        .pf-policy-links {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          font-size: 11.5px;
+          color: #799ea4;
+          margin-top: 2px;
+        }
+        .pf-policy-links a {
+          color: #53757a;
+          text-decoration: none;
+          font-weight: 600;
+        }
+        .pf-policy-links a:hover {
+          color: #008f7f;
+        }
       `}</style>
 
-      <div className="top-bar">
-        <img src="/logo.png" alt="VIZ Logo" className="top-bar-logo" />
-      </div>
+      <div className="pf-viewport">
+        <div className="pf-shell">
 
-      <Box
-        sx={{
-          width: "100vw",
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "flex-start",
-          backgroundColor: "#f5f7f8",
-          backgroundImage: "none",
-          fontFamily:
-            "Poppins, system-ui, -apple-system, Segoe UI, Roboto, 'Helvetica Neue', Arial",
-          color: "#0e1e1e",
-          overflow: "hidden",
-        }}
-      >
-        <Box
-          className="profile-scroll"
-          sx={{
-            flex: 1,
-            width: "100%",
-            maxWidth: 480,
-            mt: "42px",
-            px: 2,
-            pt: 2.2,
-            overflowY: "auto",
-            WebkitOverflowScrolling: "touch",
-            overscrollBehavior: "contain",
-            pb: "110px",
-          }}
-        >
-          <div style={styles.page}>
-            <div style={styles.headerContainer}>
-              <h2 style={styles.title}>My Profile</h2>
+          {/* ── HEADER ACTION ROW ── */}
+          <div className="pf-top-bar">
+            <h1 className="pf-title">Profile</h1>
 
-              <div style={styles.menuWrapper} ref={menuRef}>
-                <button
-                  onClick={() => setMenuOpen(!menuOpen)}
-                  style={styles.menuButton}
-                >
-                  <svg width="24" height="45" fill="#3a5a65" viewBox="0 0 24 45">
-                    <circle cx="5" cy="25" r="2" />
-                    <circle cx="12" cy="25" r="2" />
-                    <circle cx="19" cy="25" r="2" />
-                  </svg>
-                </button>
-
-                {menuOpen && (
-                  <div style={styles.dropdown}>
-                    <button
-                      onClick={() => { setIsEditing(true); setMenuOpen(false); }}
-                      style={styles.dropdownItem}
-                    >
-                      Edit Profile
-                    </button>
-                    <button onClick={handleLogout} style={styles.dropdownItem}>
-                      Logout
-                    </button>
-                    <button
-                      onClick={handleDeleteAccount}
-                      style={{ ...styles.dropdownItem, ...styles.dropdownDanger }}
-                    >
-                      Delete Account
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div style={styles.profileIconContainer}>
-              <div style={styles.profileCircle}>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="50"
-                  height="50"
-                  stroke="#fff"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    fill="#ffffff"
-                    d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8V22h19.2v-2.8c0-3.2-6.4-4.8-9.6-4.8z"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            {userData ? (
-              <>
-                {isEditing ? (
-                  <form onSubmit={handleProfileUpdate} style={styles.form}>
-                    <div style={styles.formCard}>
-                      <div style={styles.inputGroup}>
-                        <label style={styles.label}>Name</label>
-                        <input
-                          type="text"
-                          value={updatedUserData.name}
-                          onChange={(e) =>
-                            setUpdatedUserData({ ...updatedUserData, name: e.target.value })
-                          }
-                          style={styles.input}
-                        />
-                      </div>
-                      <div style={styles.inputGroup}>
-                        <label style={styles.label}>Email</label>
-                        <input
-                          type="email"
-                          value={updatedUserData.email}
-                          onChange={(e) =>
-                            setUpdatedUserData({ ...updatedUserData, email: e.target.value })
-                          }
-                          placeholder="you@example.com"
-                          style={styles.input}
-                          required
-                        />
-                      </div>
-                      <div style={styles.inputGroup}>
-                        <label style={styles.label}>Mobile</label>
-                        <input
-                          type="text"
-                          value={updatedUserData.mobile}
-                          onChange={(e) =>
-                            setUpdatedUserData({ ...updatedUserData, mobile: e.target.value })
-                          }
-                          style={styles.input}
-                        />
-                      </div>
-{/* Vehicle Type tiles */}
-<div style={styles.inputGroup}>
-  <label style={styles.label}>Vehicle Type</label>
-  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 4 }}>
-    {["2 Wheeler", "3 Wheeler", "4 Wheeler"].map((t) => (
-      <button
-        key={t}
-        type="button"
-        onClick={() => setUpdatedUserData({ ...updatedUserData, vehicleType: t, vehicleModel: "" })}
-        style={{
-          padding: "10px 4px", borderRadius: 10, border: "none",
-          background: updatedUserData.vehicleType === t
-            ? "linear-gradient(135deg,rgba(4,191,191,0.2),rgba(2,122,122,0.15))"
-            : "rgba(255,255,255,0.04)",
-          outline: updatedUserData.vehicleType === t ? "2px solid #04bfbf" : "2px solid transparent",
-          color: updatedUserData.vehicleType === t ? "#04bfbf" : "rgba(180,210,220,0.6)",
-          fontFamily: "inherit", fontSize: 11, fontWeight: 600,
-          cursor: "pointer", textAlign: "center", transition: "all 0.2s",
-        }}
-      >
-        <div style={{ fontSize: 18, marginBottom: 3 }}>
-          {t === "2 Wheeler" ? "🛵" : t === "3 Wheeler" ? "🛺" : "🚗"}
-        </div>
-        {t}
-      </button>
-    ))}
-  </div>
-</div>
-
-{/* Vehicle Model */}
-{updatedUserData.vehicleType && (
-  <div style={styles.inputGroup}>
-    <label style={styles.label}>Vehicle Model <span style={{ color: "rgba(180,210,220,0.4)", fontWeight: 400 }}>(optional)</span></label>
-    <select
-      value={updatedUserData.vehicleModel}
-      onChange={(e) => setUpdatedUserData({ ...updatedUserData, vehicleModel: e.target.value })}
-      style={{ ...styles.input, appearance: "none", cursor: "pointer" }}
-    >
-      <option value="">Select model...</option>
-      {Object.entries(getGroupedVehicles(updatedUserData.vehicleType)).map(([brand, models]) => (
-        <optgroup key={brand} label={brand === "Other" ? "── Other ──" : brand}>
-          {models.map((m) => <option key={m} value={m}>{m}</option>)}
-        </optgroup>
-      ))}
-    </select>
-  </div>
-)}
-
-{/* Vehicle Number */}
-<div style={styles.inputGroup}>
-  <label style={styles.label}>Vehicle Number</label>
-  <input
-    type="text"
-    value={updatedUserData.vehicleNumber}
-    onChange={(e) =>
-      setUpdatedUserData({ ...updatedUserData, vehicleNumber: e.target.value.replace(/\s/g, "").toUpperCase() })
-    }
-    placeholder="MH12AB1234"
-    style={{ ...styles.input, fontFamily: "monospace", letterSpacing: "0.1em" }}
-    maxLength={13}
-  />
-  {updatedUserData.vehicleNumber && (
-    <span style={{ fontSize: 11, marginTop: 4, color: validatePlate(updatedUserData.vehicleNumber) ? "#04bfbf" : "#ff6b7a" }}>
-      {validatePlate(updatedUserData.vehicleNumber) ? "✅ Valid Indian plate" : "❌ Invalid — use MH12AB1234 or 22BH1234AB"}
-    </span>
-  )}
-</div>
-
-{/* GSTIN */}
-<div style={styles.inputGroup}>
-  <label style={styles.label}>GSTIN <span style={{ color: "rgba(180,210,220,0.4)", fontWeight: 400 }}>(optional)</span></label>
-  <input
-    type="text"
-    value={updatedUserData.gstin}
-    onChange={(e) => setUpdatedUserData({ ...updatedUserData, gstin: e.target.value.toUpperCase() })}
-    placeholder="22AAAAA0000A1Z5"
-    style={{ ...styles.input, fontFamily: "monospace", letterSpacing: "0.06em" }}
-    maxLength={15}
-  />
-</div>
-
-                      <div style={styles.actionRow}>
-                        <button type="submit" style={styles.updateButton}>
-                          Save Changes
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsEditing(false)}
-                          style={styles.cancelButton}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-                ) : (
-                  <div style={styles.cardContainer}>
-                    <div style={styles.infoCard}>
-                      <div style={styles.infoBlock}>
-                        <span style={styles.cardLabel}>Name</span>
-                        <span style={styles.cardValue}>{userData.name || "-"}</span>
-                      </div>
-                    </div>
-                    <div style={styles.infoCard}>
-                      <div style={styles.infoBlock}>
-                        <span style={styles.cardLabel}>Email</span>
-                        <span style={styles.cardValue}>{userData.email || "Not provided"}</span>
-                      </div>
-                    </div>
-                    <div style={styles.infoCard}>
-                      <div style={styles.infoBlock}>
-                        <span style={styles.cardLabel}>Mobile</span>
-                        <span style={styles.cardValue}>{userData.mobile || "Not provided"}</span>
-                      </div>
-                    </div>
-                    <div style={styles.infoCard}>
-                      <div style={styles.infoBlock}>
-                        <span style={styles.cardLabel}>Vehicle Type</span>
-                        <span style={styles.cardValue}>{userData.vehicleType || "Not provided"}</span>
-                      </div>
-                    </div>
-                    <div style={styles.infoCard}>
-                      <div style={styles.infoBlock}>
-                        <span style={styles.cardLabel}>Vehicle Number</span>
-                        <span style={styles.cardValue}>
-                          {userData.vehicleNumber || userData.vehicleReg || "Not provided"}
-                        </span>
-                      </div>
-                    </div>
-
-                  {userData.vehicleModel && (
-                    <div style={styles.infoCard}>
-                      <div style={styles.infoBlock}>
-                        <span style={styles.cardLabel}>Vehicle Model</span>
-                        <span style={styles.cardValue}>{userData.vehicleModel}</span>
-                      </div>
-                    </div>
-                  )}
-                  {userData.gstin && (
-                    <div style={styles.infoCard}>
-                      <div style={styles.infoBlock}>
-                        <span style={styles.cardLabel}>GSTIN</span>
-                        <span style={{ ...styles.cardValue, fontFamily: "monospace", fontSize: 13, letterSpacing: "0.08em" }}>{userData.gstin}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  </div>
-                )}
-              </>
-            ) : (
-              <p style={styles.noUser}>No user data found</p>
-            )}
-
-<div style={styles.bottomSection}>
-  <div style={styles.separator} />
-
-  {/* Always show Contact Us */}
-  <Button
-    onClick={() => setOperatorOpen(true)}
-    sx={{
-      color: "#01696f",
-      fontWeight: 700,
-      letterSpacing: "0.3px",
-      mb: 1.2,
-      textTransform: "none",
-      borderRadius: "12px",
-      px: 2.5,
-      "&:hover": { background: "rgba(1,105,111,0.07)" },
-    }}
-  >
-    CONTACT US
-  </Button>
-
-  {/* Only show "Go to Dashboard" / "Link Charger" prompt for owner/admin/accountant */}
-  {userData?.role && userData.role !== "customer" && (
-    <>
-      <p style={{ ...styles.linkTextMuted, marginBottom: 8 }}>
-        Already own a charger?
-      </p>
-      <Button
-        onClick={handleGoToDashboard}
-        sx={{
-          mt: 0.5,
-          minWidth: 220,
-          background: "linear-gradient(90deg, #01696f, #0c4e54)",
-          color: "#ffffff",
-          fontWeight: 700,
-          borderRadius: "14px",
-          px: 3,
-          py: 1.2,
-          textTransform: "none",
-          boxShadow: "0 8px 24px rgba(1,105,111,0.20)",
-          "&:hover": { background: "linear-gradient(90deg, #0c4e54, #0f3638)" },
-        }}
-      >
-        Go to dashboard
-      </Button>
-    </>
-  )}
-
-  <div style={styles.developerSection}>
-    <p style={{ ...styles.linkTextMuted, color: "#5a7a85", marginBottom: 4 }}>
-      Designed and Developed by
-    </p>
-    <p style={{ ...styles.linkTextMuted, color: "#04bfbf", fontWeight: 700, marginBottom: 0 }}>
-      Vjra Technologies LLP
-    </p>
-  </div>
-
-  <div style={styles.policyLinksWrap}>
-    <a href="/terms.pdf" target="_blank" rel="noopener noreferrer" style={styles.policyLink}>
-      Terms & Conditions
-    </a>
-    <span style={styles.policyDot}>•</span>
-    <a href="/refund.pdf" target="_blank" rel="noopener noreferrer" style={styles.policyLink}>
-      Refund Policy
-    </a>
-  </div>
-</div>
-
-            {popupVisible && (
-              <div style={styles.popupOverlay} onClick={closePopup}>
-                <div style={styles.popupBox} onClick={(e) => e.stopPropagation()}>
-                  <button onClick={closePopup} style={styles.popupCloseBtn}>✕</button>
-                  <Typography sx={{ fontSize: "18px", fontWeight: 700, marginBottom: "8px", color: "#0e1e1e" }}>
-                    No devices linked
-                  </Typography>
-                  <Typography sx={{ fontSize: "13px", color: "#5a7a85", marginBottom: "20px", lineHeight: 1.5 }}>
-                    You haven't linked any charging stations yet. Link your charger to start managing sessions and earnings.
-                  </Typography>
-                  <Button
-                    fullWidth
-                    onClick={() => { closePopup(); navigate("/onboard-device"); }}
-                    sx={{
-                      background: "linear-gradient(90deg, #04BFBF, #027a7a)",
-                      color: "#011F26",
-                      fontWeight: 700,
-                      borderRadius: "12px",
-                      py: 1.2,
-                      textTransform: "none",
-                      boxShadow: "0 8px 30px rgba(4,191,191,0.35)",
-                      "&:hover": { background: "linear-gradient(90deg, #03a6a6, #026060)" },
-                    }}
-                  >
-                    Link / Register Charger
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {policyPopup.open && (
-              <div style={styles.popupOverlay} onClick={closePolicy}>
-                <div
-                  style={{ ...styles.popupBox, width: "95%", maxWidth: "800px", height: "85vh", padding: "10px" }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button onClick={closePolicy} style={styles.popupCloseBtn}>✕</button>
-                  <iframe
-                    src={policyPopup.type === "terms" ? "/terms.pdf" : "/refund.pdf"}
-                    title="Policy Document"
-                    style={{ width: "100%", height: "100%", border: "none", borderRadius: "10px" }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </Box>
-
-        {/* ── Contact Us Dialog ── */}
-        <Dialog
-          open={operatorOpen}
-          onClose={() => setOperatorOpen(false)}
-          fullWidth
-          maxWidth="sm"
-          PaperProps={{
-            sx: {
-              background: "#ffffff",
-              color: "#0e1e1e",
-              border: "1px solid rgba(1,105,111,0.10)",
-              borderRadius: "24px",
-              boxShadow: "0 24px 60px rgba(0,0,0,0.14)",
-              overflow: "hidden",
-            },
-          }}
-        >
-          {/* Teal accent strip */}
-          <Box sx={{ height: "5px", background: "linear-gradient(90deg, #01696f, #0c4e54)", width: "100%" }} />
-
-          <DialogTitle sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", pt: 2.5, pb: 0.5, px: 3 }}>
-            <Box>
-              <Typography sx={{ fontWeight: 800, fontSize: "17px", color: "#0e1e1e", lineHeight: 1.3, fontFamily: "Poppins, sans-serif" }}>
-                Contact Us
-              </Typography>
-              <Typography sx={{ fontSize: "12px", color: "#7a9aa3", mt: 0.4, fontFamily: "Poppins, sans-serif" }}>
-                Our team will reach out to you shortly
-              </Typography>
-            </Box>
-            <IconButton
-              onClick={() => setOperatorOpen(false)}
-              size="small"
-              sx={{
-                mt: "-2px",
-                color: "#7a9aa3",
-                background: "#f0f4f5",
-                borderRadius: "10px",
-                width: 32, height: 32,
-                "&:hover": { background: "#e2ecee", color: "#01696f" },
-              }}
-            >
-              <CloseIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </DialogTitle>
-
-          <DialogContent sx={{ px: 3, pt: 2, pb: 3 }}>
-
-            {/* Name + Mobile */}
-            <Box sx={{ display: "flex", gap: 1.5, mb: 1.5 }}>
-              <Box sx={{ flex: 1 }}>
-                <Typography sx={dialogLabelSx}>Name</Typography>
-                <input
-                  value={operatorForm.name}
-                  onChange={(e) => setOperatorForm({ ...operatorForm, name: e.target.value })}
-                  placeholder="Your name"
-                  style={dialogInputStyle}
-                  onFocus={(e) => { e.target.style.borderColor = "#01696f"; e.target.style.boxShadow = "0 0 0 3px rgba(1,105,111,0.09)"; }}
-                  onBlur={(e)  => { e.target.style.borderColor = "rgba(0,0,0,0.10)"; e.target.style.boxShadow = "none"; }}
-                />
-              </Box>
-              <Box sx={{ flex: 1 }}>
-                <Typography sx={dialogLabelSx}>Mobile</Typography>
-                <input
-                  value={operatorForm.mobile}
-                  onChange={(e) => setOperatorForm({ ...operatorForm, mobile: e.target.value })}
-                  placeholder="+91 XXXXX"
-                  style={dialogInputStyle}
-                  onFocus={(e) => { e.target.style.borderColor = "#01696f"; e.target.style.boxShadow = "0 0 0 3px rgba(1,105,111,0.09)"; }}
-                  onBlur={(e)  => { e.target.style.borderColor = "rgba(0,0,0,0.10)"; e.target.style.boxShadow = "none"; }}
-                />
-              </Box>
-            </Box>
-
-{/* ── Wallet Balance Widget ── */}
-<Box
- onClick={() => navigate("/transactions")}
-  sx={{
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    mx: 2, mt: 2, p: 2,
-    borderRadius: "16px",
-    background: "linear-gradient(135deg,#0f4c52,#0b3338)",
-    border: "1px solid rgba(4,191,191,0.2)",
-    cursor: "pointer",
-    "&:active": { opacity: 0.8 },
-  }}
->
-  <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-    <AccountBalanceWalletIcon sx={{ color: "#04BFBF", fontSize: 22 }} />
-    <Box>
-      <Typography sx={{ color: "#7de0dd", fontSize: "0.75rem" }}>VIZ Wallet</Typography>
-      <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: "1.1rem" }}>
-        ₹{walletBalance !== null ? Number(walletBalance).toFixed(2) : "—"}
-      </Typography>
-    </Box>
-  </Box>
-  <Typography sx={{ color: "#04BFBF", fontSize: "0.82rem", fontWeight: 600 }}>
-    View →
-  </Typography>
-</Box>
-
-
-            {/* Email */}
-            <Box sx={{ mb: 1.5 }}>
-              <Typography sx={dialogLabelSx}>Email</Typography>
-              <input
-                type="email"
-                value={operatorForm.email}
-                onChange={(e) => setOperatorForm({ ...operatorForm, email: e.target.value })}
-                placeholder="you@example.com"
-                style={dialogInputStyle}
-                onFocus={(e) => { e.target.style.borderColor = "#01696f"; e.target.style.boxShadow = "0 0 0 3px rgba(1,105,111,0.09)"; }}
-                onBlur={(e)  => { e.target.style.borderColor = "rgba(0,0,0,0.10)"; e.target.style.boxShadow = "none"; }}
-              />
-            </Box>
-
-            {/* Location */}
-            <Box sx={{ mb: 2 }}>
-              <Typography sx={dialogLabelSx}>Installation Location</Typography>
-              <input
-                value={operatorForm.location}
-                onChange={(e) => setOperatorForm({ ...operatorForm, location: e.target.value })}
-                placeholder="City / Area"
-                style={dialogInputStyle}
-                onFocus={(e) => { e.target.style.borderColor = "#01696f"; e.target.style.boxShadow = "0 0 0 3px rgba(1,105,111,0.09)"; }}
-                onBlur={(e)  => { e.target.style.borderColor = "rgba(0,0,0,0.10)"; e.target.style.boxShadow = "none"; }}
-              />
-            </Box>
-
-            {/* Budget chips — FIX: only selects budget, does NOT submit */}
-            <Box sx={{ mb: 2.5 }}>
-              <Typography sx={dialogLabelSx}>Estimated Budget</Typography>
-              <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: 0.8 }}>
-                {[
-                  { value: 0, label: "< ₹5k" },
-                  { value: 1, label: "₹5k–₹15k" },
-                  { value: 2, label: "₹15k–₹50k" },
-                  { value: 3, label: "> ₹50k" },
-                ].map((opt) => (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setOperatorForm({ ...operatorForm, budget: opt.value })}
-                    style={{
-                      padding: "7px 14px",
-                      borderRadius: "999px",
-                      border: operatorForm.budget === opt.value
-                        ? "1.5px solid #01696f"
-                        : "1.5px solid rgba(0,0,0,0.10)",
-                      background: operatorForm.budget === opt.value
-                        ? "rgba(1,105,111,0.09)"
-                        : "#f7f9fa",
-                      color: operatorForm.budget === opt.value ? "#01696f" : "#5a7a85",
-                      fontWeight: operatorForm.budget === opt.value ? 700 : 500,
-                      fontSize: "13px",
-                      cursor: "pointer",
-                      fontFamily: "Poppins, sans-serif",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </Box>
-            </Box>
-
-            {/* Submit button — FIX: outside .map(), renders exactly once */}
             <button
               type="button"
-              onClick={handleOperatorSubmit}
-              disabled={submitting}
-              style={{
-                width: "100%",
-                padding: "13px",
-                background: submitting
-                  ? "rgba(3, 207, 218, 0.45)"
-                  : "linear-gradient(90deg, #03b5be, #208d97)",
-                color: "#ffffff",
-                fontWeight: 700,
-                fontSize: "14px",
-                borderRadius: "14px",
-                border: "none",
-                cursor: submitting ? "not-allowed" : "pointer",
-                fontFamily: "Poppins, sans-serif",
-                boxShadow: "0 6px 20px rgba(1,105,111,0.22)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                transition: "background 0.2s",
-              }}
+              className="pf-btn-edit-toggle"
+              onClick={() => setIsEditing(!isEditing)}
             >
-              {submitting ? (
-                "Sending..."
-              ) : (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2.5">
-                    <line x1="22" y1="2" x2="11" y2="13" />
-                    <polygon points="22 2 15 22 11 13 2 9 22 2" />
-                  </svg>
-                  Submit Request
-                </>
+              <EditOutlinedIcon sx={{ fontSize: 16 }} />
+              <span>{isEditing ? "Cancel" : "Edit Profile"}</span>
+            </button>
+          </div>
+
+          {/* ── HERO PROFILE CARD (CENTERED) ── */}
+          <div className="pf-hero-centered">
+            <div className="pf-avatar-circle">
+              {userInitials}
+            </div>
+            <div className="pf-hero-name">{userData?.name || "VIZ EV User"}</div>
+          </div>
+
+          {/* ── BODY: VIEW MODE OR EDIT MODE ── */}
+          {isEditing ? (
+            <form onSubmit={handleProfileUpdate} className="pf-edit-card">
+              <div className="pf-input-group">
+                <label className="pf-input-label">Full Name</label>
+                <input
+                  type="text"
+                  className="pf-input"
+                  value={updatedUserData.name}
+                  onChange={(e) => setUpdatedUserData({ ...updatedUserData, name: e.target.value })}
+                  required
+                />
+              </div>
+
+              {/* Frozen Mobile Field */}
+              <div className="pf-input-group">
+                <div className="pf-input-label">
+                  <span>Registered Mobile Number</span>
+                  <span style={{ fontSize: 11, color: "#799ea4", display: "inline-flex", alignItems: "center", gap: 3 }}>
+                    <LockOutlinedIcon sx={{ fontSize: 12 }} /> Verified
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  className="pf-input"
+                  value={updatedUserData.mobile}
+                  disabled
+                />
+              </div>
+
+              <div className="pf-input-group">
+                <label className="pf-input-label">Email Address</label>
+                <input
+                  type="email"
+                  className="pf-input"
+                  value={updatedUserData.email}
+                  onChange={(e) => setUpdatedUserData({ ...updatedUserData, email: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="pf-input-group">
+                <label className="pf-input-label">Vehicle Type</label>
+                <div className="pf-vehicle-grid">
+                  {["2 Wheeler", "3 Wheeler", "4 Wheeler"].map((type) => (
+                    <button
+                      key={type}
+                      type="button"
+                      className={`pf-vehicle-tile ${updatedUserData.vehicleType === type ? "selected" : ""}`}
+                      onClick={() => setUpdatedUserData({ ...updatedUserData, vehicleType: type, vehicleModel: "" })}
+                    >
+                      <span style={{ fontSize: 18 }}>
+                        {type === "2 Wheeler" ? "🛵" : type === "3 Wheeler" ? "🛺" : "🚗"}
+                      </span>
+                      <span>{type}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {updatedUserData.vehicleType && (
+                <div className="pf-input-group">
+                  <label className="pf-input-label">Vehicle Model (Optional)</label>
+                  <select
+                    className="pf-input"
+                    value={updatedUserData.vehicleModel}
+                    onChange={(e) => setUpdatedUserData({ ...updatedUserData, vehicleModel: e.target.value })}
+                  >
+                    <option value="">Select model…</option>
+                    {Object.entries(getGroupedVehicles(updatedUserData.vehicleType)).map(([brand, models]) => (
+                      <optgroup key={brand} label={brand}>
+                        {models.map((m) => (
+                          <option key={m} value={m}>
+                            {m}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
               )}
+
+              <div className="pf-input-group">
+                <label className="pf-input-label">Registration Number</label>
+                <input
+                  type="text"
+                  className="pf-input"
+                  placeholder="MH12AB1234"
+                  value={updatedUserData.vehicleNumber}
+                  onChange={(e) =>
+                    setUpdatedUserData({
+                      ...updatedUserData,
+                      vehicleNumber: e.target.value.replace(/\s/g, "").toUpperCase(),
+                    })
+                  }
+                  maxLength={13}
+                  style={{ fontFamily: "monospace", letterSpacing: "0.06em" }}
+                />
+                {updatedUserData.vehicleNumber && (
+                  <span
+                    style={{
+                      fontSize: 11,
+                      color: validatePlate(updatedUserData.vehicleNumber) ? "#008764" : "#d93b3b",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {validatePlate(updatedUserData.vehicleNumber)
+                      ? "✓ Valid Indian number plate"
+                      : "✕ Invalid format (e.g. MH12AB1234)"}
+                  </span>
+                )}
+              </div>
+
+              <div className="pf-input-group">
+                <label className="pf-input-label">GSTIN (Optional)</label>
+                <input
+                  type="text"
+                  className="pf-input"
+                  placeholder="22AAAAA0000A1Z5"
+                  value={updatedUserData.gstin}
+                  onChange={(e) => setUpdatedUserData({ ...updatedUserData, gstin: e.target.value.toUpperCase() })}
+                  maxLength={15}
+                  style={{ fontFamily: "monospace", letterSpacing: "0.06em" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 10, marginTop: 6 }}>
+                <button type="submit" className="pf-btn-save">
+                  Save Changes
+                </button>
+                <button type="button" className="pf-btn-cancel" onClick={() => setIsEditing(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              {/* Account Details Group */}
+              <div className="pf-group-card">
+                <span className="pf-group-title">Personal Contact</span>
+
+                <div className="pf-field-row">
+                  <span className="pf-field-label">Email</span>
+                  <span className="pf-field-val">{userData?.email || "Not Provided"}</span>
+                </div>
+
+                <div className="pf-field-row">
+                  <span className="pf-field-label">Mobile</span>
+                  <span className="pf-field-val">{userData?.mobile || "Not Provided"}</span>
+                </div>
+              </div>
+
+              {/* EV Vehicle Group */}
+              <div className="pf-group-card">
+                <span className="pf-group-title">Vehicle & Tax Info</span>
+
+                <div className="pf-field-row">
+                  <span className="pf-field-label">Vehicle Type</span>
+                  <span className="pf-field-val">{userData?.vehicleType || "Not Configured"}</span>
+                </div>
+
+                {userData?.vehicleModel && (
+                  <div className="pf-field-row">
+                    <span className="pf-field-label">Vehicle Model</span>
+                    <span className="pf-field-val">{userData.vehicleModel}</span>
+                  </div>
+                )}
+
+                <div className="pf-field-row">
+                  <span className="pf-field-label">Plate Number</span>
+                  <span className="pf-field-val">
+                    {userData?.vehicleNumber || userData?.vehicleReg ? (
+                      <span className="pf-mono-tag">
+                        {userData?.vehicleNumber || userData?.vehicleReg}
+                      </span>
+                    ) : (
+                      "Not Provided"
+                    )}
+                  </span>
+                </div>
+
+                {userData?.gstin && (
+                  <div className="pf-field-row">
+                    <span className="pf-field-label">GSTIN</span>
+                    <span className="pf-field-val">
+                      <span className="pf-mono-tag">{userData.gstin}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* ── STATION MANAGER DASHBOARD (STRICTLY ADMIN & OWNER) ── */}
+          {isStationManager && (
+            <div className="pf-actions-block">
+              <Button
+                onClick={handleGoToDashboard}
+                className="pf-btn-dashboard"
+              >
+                Admin Dashboard
+              </Button>
+            </div>
+          )}
+
+          {/* ── BOTTOM ACTIONS: CONTACT SUPPORT & LOGOUT ── */}
+          <div className="pf-actions-block">
+            <button
+              type="button"
+              className="pf-btn-contact"
+              onClick={() => setOperatorOpen(true)}
+            >
+              <SupportAgentRoundedIcon sx={{ fontSize: 18 }} />
+              <span>Contact VIZ </span>
             </button>
 
-          </DialogContent>
-        </Dialog>
-
-      </Box>
-
-      {/* Success popup */}
-      {operatorSuccess && (
-        <div style={styles.popupOverlay} onClick={() => setOperatorSuccess(false)}>
-          <div
-            style={{ ...styles.popupBox, maxWidth: 320, textAlign: "center" }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{
-              width: 64, height: 64, borderRadius: "50%",
-              background: "rgba(1,105,111,0.09)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 16px",
-            }}>
-              <svg width="30" height="30" viewBox="0 0 24 24" fill="none"
-                stroke="#01696f" strokeWidth="2.5">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
-            </div>
-            <p style={{
-              fontSize: "17px", fontWeight: 800,
-              color: "#04bfbf", marginBottom: 8,
-              fontFamily: "Poppins, sans-serif",
-            }}>
-              Query Registered!
-            </p>
-            <p style={{
-              fontSize: "13px", color: "#5a7a85",
-              lineHeight: 1.6, marginBottom: 22,
-              fontFamily: "Poppins, sans-serif",
-            }}>
-              Your query has been registered successfully. You will receive a
-              callback from our team shortly. 🙌
-            </p>
             <button
+              type="button"
+              className="pf-btn-logout"
+              onClick={handleLogout}
+            >
+              <LogoutRoundedIcon sx={{ fontSize: 17 }} />
+              <span>Sign Out</span>
+            </button>
+
+            <div className="pf-dev-credits">
+              <span>Platform Engineered by </span>
+              <strong>Vjra Technologies LLP</strong>
+            </div>
+
+            <div className="pf-policy-links">
+              <a href="/terms.pdf" target="_blank" rel="noopener noreferrer">
+                Terms of Service
+              </a>
+              <span>•</span>
+              <a href="/refund.pdf" target="_blank" rel="noopener noreferrer">
+                Refund Policy
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── MINIMAL INQUIRY MODAL (AUTO-FILLS EXISTING USER CONTACTS) ── */}
+      <Dialog
+        open={operatorOpen}
+        onClose={() => setOperatorOpen(false)}
+        fullWidth
+        maxWidth="xs"
+        PaperProps={{
+          sx: {
+            background: "#ffffff",
+            borderRadius: "24px",
+            border: "1px solid #d4f0ec",
+            boxShadow: "0 20px 60px rgba(0, 60, 66, 0.16)",
+            p: 1,
+          },
+        }}
+      >
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", pb: 0 }}>
+          <Box>
+            <Typography sx={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: "18px", color: "#0e2e33" }}>
+              Contact Support
+            </Typography>
+            <Typography sx={{ fontSize: "12px", color: "#53757a", mt: 0.2 }}>
+              Have questions or want to host a VIZ charging point?
+            </Typography>
+          </Box>
+          <IconButton onClick={() => setOperatorOpen(false)} size="small">
+            <CloseIcon sx={{ fontSize: 18, color: "#799ea4" }} />
+          </IconButton>
+        </DialogTitle>
+
+        <DialogContent sx={{ display: "flex", flexDirection: "column", gap: 1.5, pt: "16px !important" }}>
+          <Box sx={{ background: "#f4fbfb", p: 1.5, borderRadius: "14px", border: "1px solid #d4f0ec" }}>
+            <Typography sx={{ fontSize: "11px", color: "#53757a", fontWeight: 600 }}>
+              Sending as: <strong style={{ color: "#00776b" }}>{userData?.name}</strong> ({userData?.mobile})
+            </Typography>
+          </Box>
+
+          <Box>
+            <Typography sx={{ fontSize: "11px", fontWeight: 750, color: "#00776b", textTransform: "uppercase", mb: 0.5 }}>
+              How can we help?
+            </Typography>
+            <textarea
+              className="pf-input"
+              rows={4}
+              placeholder="Tell us your query or charger installation address…"
+              value={queryMessage}
+              onChange={(e) => setQueryMessage(e.target.value)}
+              style={{ resize: "none", lineHeight: 1.45 }}
+            />
+          </Box>
+
+          <Button
+            onClick={handleOperatorSubmit}
+            disabled={submitting || !queryMessage.trim()}
+            sx={{
+              mt: 0.5,
+              minHeight: 46,
+              borderRadius: "14px",
+              background: "linear-gradient(135deg, #00d2b4 0%, #009e8f 100%)",
+              color: "#ffffff",
+              fontWeight: 750,
+              fontSize: "13.5px",
+              textTransform: "none",
+              boxShadow: "0 4px 14px rgba(0, 190, 165, 0.28)",
+              "&:hover": { background: "#00a896" },
+              "&:disabled": { background: "#cad4d6", color: "#8c9fa3" },
+            }}
+          >
+            {submitting ? "Sending…" : "Send Message"}
+          </Button>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── SUCCESS NOTICE POPUP ── */}
+      {operatorSuccess && (
+        <Dialog open={true} onClose={() => setOperatorSuccess(false)}>
+          <Box sx={{ p: 3, textAlign: "center", maxWidth: 320 }}>
+            <Box
+              sx={{
+                width: 52,
+                height: 52,
+                borderRadius: "50%",
+                background: "#dbfaf0",
+                color: "#008764",
+                display: "grid",
+                placeItems: "center",
+                fontSize: 24,
+                mx: "auto",
+                mb: 1.5,
+              }}
+            >
+              ✓
+            </Box>
+            <Typography sx={{ fontFamily: "'Outfit', sans-serif", fontWeight: 800, fontSize: "18px", mb: 1, color: "#0e2e33" }}>
+              Message Received!
+            </Typography>
+            <Typography sx={{ fontSize: "12.5px", color: "#53757a", mb: 2.5, lineHeight: 1.5 }}>
+              Our operations team will reach out to your registered phone number shortly.
+            </Typography>
+            <Button
+              fullWidth
               onClick={() => setOperatorSuccess(false)}
-              style={{
-                width: "100%",
-                padding: "12px",
-                background: "linear-gradient(90deg, #01696f, #0c4e54)",
-                color: "#fff",
-                fontWeight: 700,
-                fontSize: "14px",
-                borderRadius: "14px",
-                border: "none",
-                cursor: "pointer",
-                fontFamily: "Poppins, sans-serif",
-                boxShadow: "0 6px 18px rgba(1,105,111,0.20)",
+              sx={{
+                background: "#00d2b4",
+                color: "#ffffff",
+                fontWeight: 750,
+                borderRadius: "12px",
+                textTransform: "none",
               }}
             >
               Done
-            </button>
-          </div>
-        </div>
+            </Button>
+          </Box>
+        </Dialog>
+      )}
+
+      {/* ── ONBOARD DEVICE NOTICE MODAL ── */}
+      {popupVisible && (
+        <Dialog open={true} onClose={closePopup}>
+          <Box sx={{ p: 3, textAlign: "center", maxWidth: 340 }}>
+            <Typography sx={{ fontWeight: 800, fontSize: "17px", color: "#0e2e33", mb: 1 }}>
+              No Charger Linked
+            </Typography>
+            <Typography sx={{ fontSize: "12.5px", color: "#53757a", mb: 2.5, lineHeight: 1.5 }}>
+              Connect your VIZ charging station to monitor telemetry and manage customer sessions.
+            </Typography>
+            <Button
+              fullWidth
+              onClick={() => {
+                closePopup();
+                navigate("/onboard-device");
+              }}
+              sx={{
+                background: "linear-gradient(135deg, #00d2b4 0%, #009e8f 100%)",
+                color: "#ffffff",
+                fontWeight: 750,
+                borderRadius: "12px",
+                textTransform: "none",
+              }}
+            >
+              Link / Register Charger
+            </Button>
+          </Box>
+        </Dialog>
       )}
 
       <FooterNav currentPage={location.pathname} />
     </>
   );
-};
-
-
-const dialogLabelSx = {
-  fontSize: "11px",
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: "0.6px",
-  color: "#3a6a75",
-  mb: 0.6,
-  fontFamily: "Poppins, sans-serif",
-};
-
-const dialogInputStyle = {
-  width: "100%",
-  padding: "10px 13px",
-  fontSize: "13px",
-  fontWeight: 500,
-  borderRadius: "11px",
-  background: "#f7f9fa",
-  color: "#0e1e1e",
-  border: "1.5px solid rgba(0,0,0,0.10)",
-  fontFamily: "Poppins, sans-serif",
-  outline: "none",
-  transition: "border-color 0.18s, box-shadow 0.18s",
-  boxSizing: "border-box",
-  display: "block",
-};
-
-const styles = {
-  page: {
-    background: "#ffffff",
-    border: "1px solid rgba(0,0,0,0.07)",
-    borderRadius: "22px",
-    boxShadow: "0 4px 32px rgba(0,0,0,0.07)",
-    padding: "22px 16px 28px 16px",
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
-    color: "#1a2e35",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    width: "100%",
-    boxSizing: "border-box",
-    maxWidth: 420,
-    margin: "0 auto",
-  },
-  headerContainer: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    position: "relative",
-    width: "100%",
-    marginBottom: "8px",
-    marginTop: "2px",
-    minHeight: "34px",
-  },
-  title: {
-    color: "#0e1e1e",
-    textAlign: "center",
-    fontSize: "22px",
-    fontWeight: 700,
-    letterSpacing: "0.4px",
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
-    margin: 0,
-  },
-  menuWrapper: {
-    position: "absolute",
-    right: "2px",
-    top: "-3px",
-  },
-  menuButton: {
-    background: "transparent",
-    border: "none",
-    cursor: "pointer",
-    padding: "2px 4px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  dropdown: {
-    position: "absolute",
-    right: "0",
-    top: "34px",
-    background: "#ffffff",
-    borderRadius: "14px",
-    boxShadow: "0 8px 28px rgba(0,0,0,0.12)",
-    zIndex: 20,
-    minWidth: "160px",
-    overflow: "hidden",
-    border: "1px solid rgba(0,0,0,0.07)",
-  },
-  dropdownItem: {
-    padding: "11px 16px",
-    width: "100%",
-    textAlign: "left",
-    background: "transparent",
-    border: "none",
-    cursor: "pointer",
-    fontSize: "14px",
-    color: "#1a2e35",
-    borderBottom: "1px solid rgba(0,0,0,0.05)",
-  },
-  dropdownDanger: {
-    color: "#d93025",
-    borderBottom: "none",
-  },
-  profileIconContainer: {
-    marginTop: "6px",
-    marginBottom: "22px",
-  },
-  profileCircle: {
-    width: "92px", height: "92px", borderRadius: "50%",
-    background: "linear-gradient(135deg, #04bfbf 0%, #029a9a 100%)",
-    display: "flex", justifyContent: "center", alignItems: "center",
-    boxShadow: "0 8px 28px rgba(4,191,191,0.30)",
-    border: "3px solid rgba(4,191,191,0.18)",
-  },
-  cardContainer: {
-    width: "100%", maxWidth: "420px",
-    display: "flex", flexDirection: "column",
-    gap: "10px", boxSizing: "border-box",
-  },
-  infoCard: {
-    width: "100%",
-    background: "rgba(4,191,191,0.05)",
-    borderRadius: "14px", padding: "14px 16px",
-    boxShadow: "0 2px 10px rgba(4,191,191,0.08)",
-    display: "flex", alignItems: "center",
-    border: "1px solid rgba(4,191,191,0.14)",
-    boxSizing: "border-box",
-  },
-  infoBlock: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-    width: "100%",
-    minWidth: 0,
-  },
-  cardLabel: {
-    color: "#7a9aa3",
-    fontSize: "11px",
-    letterSpacing: "0.8px",
-    textTransform: "uppercase",
-    lineHeight: 1.2,
-  },
-  cardValue: {
-    color: "#0e1e1e",
-    fontSize: "14px",
-    fontWeight: 600,
-    lineHeight: 1.45,
-    wordBreak: "break-word",
-  },
-  form: {
-    width: "100%",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-  },
-  formCard: {
-    width: "100%",
-    background: "#f7f9fa",
-    borderRadius: "16px",
-    padding: "16px",
-    border: "1px solid rgba(0,0,0,0.07)",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.05)",
-    boxSizing: "border-box",
-  },
-  inputGroup: {
-    marginBottom: "14px",
-    width: "100%",
-  },
-  label: {
-    display: "block",
-    color: "#5a7a85",
-    fontWeight: 500,
-    fontSize: "13px",
-    marginBottom: "6px",
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
-  },
-  input: {
-    width: "100%",
-    padding: "12px 13px",
-    fontSize: "13px",
-    borderRadius: "12px",
-    background: "#ffffff",
-    color: "#0e1e1e",
-    border: "1px solid rgba(0,0,0,0.10)",
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
-    outline: "none",
-    transition: "border-color 0.2s, box-shadow 0.2s",
-    boxSizing: "border-box",
-  },
-  actionRow: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "10px",
-    marginTop: "8px",
-  },
-  updateButton: {
-    width: "100%",
-    padding: "12px 14px",
-    fontSize: "14px",
-    borderRadius: "12px",
-    fontWeight: 700,
-    textTransform: "none",
-    background: "linear-gradient(90deg, #01696f, #0c4e54)",
-    color: "#ffffff",
-    border: "none",
-    cursor: "pointer",
-    boxShadow: "0 6px 20px rgba(1,105,111,0.22)",
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
-  },
-  cancelButton: {
-    width: "100%",
-    padding: "12px 14px",
-    fontSize: "14px",
-    borderRadius: "12px",
-    fontWeight: 600,
-    background: "#f0f4f5",
-    color: "#3a5a65",
-    border: "1px solid rgba(0,0,0,0.08)",
-    cursor: "pointer",
-    fontFamily: "Poppins, system-ui, -apple-system, Segoe UI, Roboto, Helvetica Neue, Arial",
-  },
-  noUser: {
-    color: "#aaa",
-    textAlign: "center",
-    fontSize: "14px",
-    marginTop: "6px",
-  },
-  bottomSection: {
-    marginTop: 30,
-    paddingBottom: 14,
-    width: "100%",
-    maxWidth: 420,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    textAlign: "center",
-  },
-  separator: {
-    width: "100%", height: "1px",
-    background: "linear-gradient(90deg, transparent, rgba(4,191,191,0.35), transparent)",
-    marginBottom: "14px",
-  },
-  developerSection: {
-    marginTop: "30px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "2px",
-  },
-  linkTextMuted: {
-    fontFamily: "'Open Sans', sans-serif",
-    fontSize: "14px",
-    color: "#7a9aa3",
-    margin: 0,
-    lineHeight: 1.5,
-  },
-  policyLinksWrap: {
-    marginTop: 24,
-    paddingBottom: 12,
-    display: "flex",
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    flexWrap: "wrap",
-    gap: "8px",
-  },
-  policyLink: {
-    fontFamily: "'Open Sans', sans-serif",
-    fontSize: "12px",
-    color: "#7a9aa3",
-    textDecoration: "none",
-    cursor: "pointer",
-    lineHeight: 1.4,
-    transition: "color 0.2s ease, opacity 0.2s ease",
-    opacity: 0.9,
-  },
-  policyDot: {
-    fontSize: "11px",
-    color: "#b0c4ca",
-    lineHeight: 1,
-  },
-  popupOverlay: {
-    position: "fixed", top: 0, left: 0,
-    width: "100vw", height: "100vh",
-    backdropFilter: "blur(8px)",
-    backgroundColor: "rgba(4,30,30,0.55)",
-    display: "flex", justifyContent: "center", alignItems: "center",
-    zIndex: 1000, padding: "18px", boxSizing: "border-box",
-  },
-  popupBox: {
-    background: "#ffffff",
-    border: "1px solid rgba(4,191,191,0.16)",
-    borderRadius: "20px",
-    boxShadow: "0 20px 60px rgba(4,191,191,0.14)",
-    width: "90%", maxWidth: "360px",
-    padding: "28px 24px", color: "#0e1e1e",
-    position: "relative", textAlign: "center", boxSizing: "border-box",
-  },
-  popupCloseBtn: {
-    position: "absolute", top: "10px", right: "16px",
-    background: "transparent", border: "none",
-    fontSize: "22px", color: "#04bfbf", cursor: "pointer",
-  },
 };
 
 export default Profile;
