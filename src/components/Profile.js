@@ -282,7 +282,7 @@ const Profile = () => {
           width: 72px;
           height: 72px;
           border-radius: 24px;
-          background: linear-gradient(135deg, #00776b 0%, #004d45 100%);
+          background: linear-gradient(135deg, #00d2b4 0%, #009e8f 100%);
           color: #ffffff;
           display: grid;
           place-items: center;
@@ -507,7 +507,7 @@ const Profile = () => {
         .pf-btn-dashboard {
           width: 100%;
           min-height: 48px;
-          background: linear-gradient(135deg, #00776b 0%, #004d45 100%);
+          background: linear-gradient(135deg, #00d2b4 0%, #009e8f 100%);
           color: #ffffff;
           font-weight: 750;
           border-radius: 16px;

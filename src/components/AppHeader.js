@@ -4,11 +4,13 @@ import {
   ArrowForwardRounded,
   BoltRounded,
   CloseRounded,
+  LanguageRounded,
   MapOutlined,
   MenuRounded,
+  OpenInNewRounded,
   PersonOutlineRounded,
-  QrCodeScannerRounded,
   ReceiptLongRounded,
+  QrCodeScannerRounded,
   SupportAgentRounded,
 } from "@mui/icons-material";
 
@@ -135,16 +137,15 @@ const AppHeader = () => {
             />
           </button>
 
-          {/* Symmetrical placeholder keeps the medium logo centred */}
-{/* Top-Right QR Code Scanner Button */}
-          <button
-            type="button"
-            className="app-header-qr-button"
-            aria-label="Scan QR Code"
-            onClick={() => goTo("/qr-scanner")}
-          >
-            <QrCodeScannerRounded />
-          </button>
+        {/* Top-Right Profile Button */}
+                  <button
+                    type="button"
+                    className="app-header-profile-button"
+                    aria-label="My Profile"
+                    onClick={() => goTo("/profile")}
+                  >
+                    <PersonOutlineRounded />
+                  </button>
         </div>
       </header>
 
@@ -234,7 +235,7 @@ const AppHeader = () => {
               })}
             </nav>
 
-{/* Need Help WhatsApp Support Block (Full Card Clickable) */}
+{/* Need Help WhatsApp Support Block */}
             <button
               type="button"
               className="app-drawer-support"
@@ -265,6 +266,27 @@ const AppHeader = () => {
                 />
               </div>
             </button>
+
+            {/* ── Official Website Link ── */}
+            <a
+              href="https://eviz.in"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="app-drawer-website-link"
+              onClick={closeMenu}
+              aria-label="Visit eviz.in website"
+            >
+              <div className="app-drawer-website-icon">
+                <LanguageRounded />
+              </div>
+
+              <div className="app-drawer-website-copy">
+                <span>To know more about us, visit</span>
+                <strong>eviz.in</strong>
+              </div>
+
+              <OpenInNewRounded className="app-drawer-website-arrow" />
+            </a>
           </aside>
         </div>
       )}

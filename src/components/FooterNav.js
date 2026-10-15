@@ -6,14 +6,14 @@ import {
   BoltRounded,
   MapOutlined,
   ReceiptLongRounded,
-  PersonOutlineRounded,
+  QrCodeScannerRounded,
 } from "@mui/icons-material";
 
 const FooterNav = ({ homePath = "/landing-home", variant = "light" } = {}) => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const navItems = [
+const navItems = [
     {
       path: homePath,
       label: "Home",
@@ -25,19 +25,19 @@ const FooterNav = ({ homePath = "/landing-home", variant = "light" } = {}) => {
       icon: <BoltRounded />,
     },
     {
+      path: "/qr-scanner",
+      label: "Scanner",
+      icon: <QrCodeScannerRounded />,
+    },
+    {
       path: "/home",
-      label: "Map",
+      label: "Maps",
       icon: <MapOutlined />,
     },
     {
       path: "/transactions",
       label: "Payments",
       icon: <ReceiptLongRounded />,
-    },
-    {
-      path: "/profile",
-      label: "Profile",
-      icon: <PersonOutlineRounded />,
     },
   ];
 
@@ -49,9 +49,9 @@ const FooterNav = ({ homePath = "/landing-home", variant = "light" } = {}) => {
       );
     }
 
-    if (label === "Map") {
-      return location.pathname === "/home";
-    }
+    if (label === "Maps" || label === "Map") {
+          return location.pathname === "/home";
+        }
 
     return (
       location.pathname === path ||

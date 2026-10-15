@@ -17,7 +17,6 @@ import QrCodeScannerRoundedIcon from "@mui/icons-material/QrCodeScannerRounded";
 import KeyboardAltOutlinedIcon from "@mui/icons-material/KeyboardAltOutlined";
 import ErrorOutlineRoundedIcon from "@mui/icons-material/ErrorOutlineRounded";
 
-import AppHeader from "../components/AppHeader";
 import FooterNav from "../components/FooterNav";
 
 const extractId = (raw) => {
@@ -98,8 +97,7 @@ const QRScanner = () => {
 
   return (
     <>
-      {/* ── TOP APP HEADER ── */}
-      <AppHeader />
+
 
       <Box
         sx={{

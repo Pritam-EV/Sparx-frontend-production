@@ -111,7 +111,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Header Menu Button (Glows softly on dark surface) */
+/* Header Menu Button (Bare icon without outer circle/border) */
 .app-header-menu-button {
   display: inline-flex;
   align-items: center;
@@ -123,31 +123,32 @@
   padding: 0;
 
   color: #c4faf2;
-  background: rgba(0, 210, 180, 0.12);
-  border: 1px solid rgba(0, 229, 190, 0.3);
-  border-radius: 14px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 
-  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: color 180ms ease, transform 180ms ease;
 }
 
 .app-header-menu-button:hover {
-  color: #ffffff;
-  background: rgba(0, 210, 180, 0.24);
-  border-color: rgba(0, 229, 190, 0.65);
-  box-shadow: 0 0 16px rgba(0, 210, 180, 0.35);
-  transform: translateY(-1px);
+  color: #00d2b4;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform: scale(1.08);
 }
 
 .app-header-menu-button:active {
-  transform: scale(0.95);
+  color: #ffffff;
+  transform: scale(0.92);
 }
 
 .app-header-menu-button.is-open {
-  color: #031418;
-  background: var(--viz-teal-bright);
-  border-color: var(--viz-teal-bright);
-  box-shadow: 0 0 18px rgba(0, 210, 180, 0.5);
+  color: #00d2b4;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
 }
 
 /* Header Action Buttons (Menu on Left, Support on Right) */
@@ -190,49 +191,44 @@
   transform: scale(0.95);
 }
 
-/* Header Action Buttons (Menu on Left, QR Scanner on Right) */
-.app-header-menu-button,
-.app-header-qr-button {
+/* Header Right Profile Button (Bare icon without outer circle/border) */
+.app-header-profile-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  justify-self: end;
 
   width: 42px;
   height: 42px;
   padding: 0;
 
   color: #c4faf2;
-  background: rgba(0, 210, 180, 0.12);
-  border: 1px solid rgba(0, 229, 190, 0.3);
-  border-radius: 14px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
   cursor: pointer;
 
-  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: color 180ms ease, transform 180ms ease;
   -webkit-tap-highlight-color: transparent;
 }
 
-.app-header-qr-button {
-  justify-self: end;
+.app-header-profile-button:hover {
+  color: #00d2b4;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  transform: scale(1.08);
 }
 
-.app-header-menu-button:hover,
-.app-header-qr-button:hover {
+.app-header-profile-button:active {
   color: #ffffff;
-  background: rgba(0, 210, 180, 0.24);
-  border-color: rgba(0, 229, 190, 0.65);
-  box-shadow: 0 0 16px rgba(0, 210, 180, 0.35);
-  transform: translateY(-1px);
+  transform: scale(0.92);
 }
 
-.app-header-menu-button:active,
-.app-header-qr-button:active {
-  transform: scale(0.95);
-}
-
-.app-header-qr-button svg {
+.app-header-profile-button svg {
   display: block;
-  font-size: 22px;
+  font-size: 26px;
 }
 
 .app-header-support-button svg {
@@ -323,8 +319,8 @@
 
   width: min(390px, 88vw);
   max-width: 100%;
-  height: calc(100vh - var(--viz-bottom-nav-clearance));
-  height: calc(100dvh - var(--viz-bottom-nav-clearance) - env(safe-area-inset-bottom, 0px));
+  height: 100vh;
+  height: 100dvh;
   min-height: 420px;
   margin: 0;
   padding: 0;
@@ -333,7 +329,7 @@
   background: var(--viz-drawer-bg);
   border: none;
   border-right: 1px solid var(--viz-border-light);
-  border-radius: 0 24px 24px 0;
+  border-radius: 0 24px 0 0;
   box-shadow: 18px 0 50px rgba(3, 28, 32, 0.18);
 
   overflow: hidden;
@@ -476,9 +472,9 @@
   height: 46px;
 
   color: #ffffff;
-  background: linear-gradient(135deg, #00d2b4 0%, #008f7f 100%);
+  background: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
   border-radius: 15px;
-  box-shadow: 0 4px 12px rgba(0, 190, 165, 0.28);
+  box-shadow: 0 4px 14px rgba(255, 82, 26, 0.32);
 }
 
 .app-drawer-avatar svg {
@@ -494,7 +490,7 @@
 }
 
 .app-drawer-user-info > span {
-  color: var(--viz-teal-ink);
+  color: #e06014;
   font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 1.1px;
@@ -528,7 +524,7 @@
 
 .app-drawer-nav {
   display: flex;
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   flex-direction: column;
   gap: 6px;
 
@@ -805,11 +801,13 @@
   }
 
   .app-header-menu-button,
-  .app-header-qr-button{
-    width: 39px;
-    height: 39px;
-    border-radius: 13px;
-  }
+    .app-header-profile-button {
+      width: 39px;
+      height: 39px;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
 
   .app-header-logo {
     max-width: 155px;
@@ -818,7 +816,7 @@
 
   .app-drawer {
     width: min(355px, 92vw);
-    border-radius: 0 20px 20px 0;
+    border-radius: 0 20px 0 0;
   }
 
   .app-drawer-header {
@@ -854,10 +852,10 @@
   }
 
   .app-header-menu-button,
-  .app-header-qr-button {
-    width: 36px;
-    height: 36px;
-  }
+    .app-header-profile-button {
+      width: 36px;
+      height: 36px;
+    }
 
   .app-header-logo {
     max-width: 135px;
@@ -877,4 +875,88 @@
     animation: none !important;
     transform: none !important;
   }
+}
+
+/* =========================================================
+   OFFICIAL WEBSITE CARD (EVIZ.IN)
+   ========================================================= */
+
+.app-drawer-website-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% - 28px);
+  margin: 0 14px max(16px, env(safe-area-inset-bottom, 12px));
+  padding: 11px 14px;
+  text-decoration: none;
+  background: linear-gradient(135deg, #fffaf5 0%, #ffffff 100%);
+  border: 1px solid #ffd8c7;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(255, 130, 54, 0.05);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+  -webkit-tap-highlight-color: transparent;
+  flex-shrink: 0;
+}
+
+.app-drawer-website-link:hover {
+  transform: translateY(-1.5px);
+  border-color: #ff8236;
+  box-shadow: 0 4px 14px rgba(255, 82, 26, 0.16);
+  background: #fff4ec;
+}
+
+.app-drawer-website-link:active {
+  transform: scale(0.985);
+}
+
+.app-drawer-website-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: #fff1e6;
+  color: #ff8236;
+  border: 1px solid #ffd4b8;
+  flex-shrink: 0;
+}
+
+.app-drawer-website-icon svg {
+  font-size: 20px;
+}
+
+.app-drawer-website-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-drawer-website-copy span {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--viz-text-muted);
+  line-height: 1.3;
+}
+
+.app-drawer-website-copy strong {
+  font-family: 'Outfit', sans-serif;
+  font-size: 13.5px;
+  font-weight: 750;
+  color: #e06014;
+  letter-spacing: -0.1px;
+}
+
+.app-drawer-website-arrow {
+  color: #c49a88;
+  font-size: 16px !important;
+  flex-shrink: 0;
+  transition: transform 160ms ease, color 160ms ease;
+}
+
+.app-drawer-website-link:hover .app-drawer-website-arrow {
+  color: #ff8236;
+  transform: translate(2px, -2px);
 }

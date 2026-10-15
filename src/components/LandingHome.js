@@ -468,7 +468,6 @@ const LandingHome = () => {
               </div>
 
               <div className="lh-start-copy">
-                <p className="lh-primary-kicker">YOUR NEXT CHARGE</p>
                 <h2>Good to go?</h2>
                 <p>
                   Find a nearby VIZ charging point or scan its QR code to
