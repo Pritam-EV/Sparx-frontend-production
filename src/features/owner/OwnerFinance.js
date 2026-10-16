@@ -153,17 +153,20 @@ function ProjectBillCard({ project, month, onPay }) {
         ) : (
           <>
             <Divider sx={{ my: 1.5, borderColor: C.border }} />
-            <AmountRow label="Taxable revenue" value={project.taxableAmount} />
-            <AmountRow label="VJRA margin" value={project.vjraMarginAmount} />
-            <AmountRow label="VJRA-borne Energy Charges" value={project.energyCharges} note="From ElectricityBill for this month" />
-            <Divider sx={{ borderColor: C.border }} />
-            <AmountRow label="Gross Owner Payout" value={project.grossOwnerPayout} bold accent />
-            <AmountRow label="Fixed Electricity Charges" value={project.fixedElectricityCharges} note="ElectricityBill.totalOwnerPayable" />
-            <Divider sx={{ borderColor: C.border }} />
-            <AmountRow label="Net Settlement" value={project.netSettlement} bold accent />
+            <AmountRow
+              label="VJRA-borne Energy Charges"
+              value={project.energyCharges}
+              note="ElectricityBill.charges.energyCharges.amount"
+            />
+            <AmountRow
+              label="Fixed Electricity Charges"
+              value={project.fixedElectricityCharges}
+              note="ElectricityBill.totalOwnerPayable"
+            />
+            <AmountRow label="Total MSEB Bill" value={project.totalMsebBill} />
             <Stack direction={{ xs: "column", sm: "row" }} spacing={1} alignItems={{ sm: "center" }} justifyContent="space-between" sx={{ mt: 1.5 }}>
               <Typography sx={{ color: C.muted, fontFamily: FONT, fontSize: 11, lineHeight: 1.5 }}>
-                Total MSEB bill: <b>{money(project.totalMsebBill)}</b>
+                Bill month: <b>{monthLabel(month)}</b>
               </Typography>
               {project.canPay && (
                 <Button
@@ -295,7 +298,7 @@ export default function OwnerFinance() {
 
             {electricity.applicable && (
               <Box sx={{ mb: 3 }}>
-                <SectionTitle title="VJRA-borne Electricity · Owner Settlement" subtitle="For each VJRA-borne project, the payout is calculated only when an ElectricityBill entry exists for the selected month." />
+                <SectionTitle title="VJRA-borne Electricity · Owner Settlement" subtitle="The consolidated payout uses the same Taxable Amount and VJRA Margin shown above, less the bill energy charges and fixed electricity charges for all VJRA-borne projects. Payout figures are shown only after every applicable project bill exists." />
 
                 {showVjraTotals ? (
                   <Grid container spacing={1.5} sx={{ mb: 2 }}>
@@ -303,7 +306,10 @@ export default function OwnerFinance() {
                       <Card sx={{ height: "100%", borderRadius: "16px", border: `1px solid ${C.border}` }}><CardContent sx={{ p: 2.25 }}>
                         <Typography sx={{ fontFamily: FONT, fontSize: 12, color: C.textMid, fontWeight: 700 }}>Gross Owner Payout</Typography>
                         <Typography sx={{ fontFamily: FONT, color: C.text, fontSize: 25, fontWeight: 900, mt: 0.75 }}>{money(electricity.totals.grossOwnerPayout)}</Typography>
-                        <Typography sx={{ fontFamily: FONT, fontSize: 11, color: C.muted, mt: 0.7 }}>Taxable amount − VJRA margin − Energy Charges</Typography>
+                        <Typography sx={{ fontFamily: FONT, fontSize: 11, color: C.muted, mt: 0.7, lineHeight: 1.5 }}>
+                          {money(totals.taxableAmount)} − {money(totals.vjraMarginAmount)} − {money(electricity.totals.energyCharges)}
+                        </Typography>
+                        <Typography sx={{ fontFamily: FONT, fontSize: 10, color: C.muted, mt: 0.3 }}>Uses the same Taxable Amount and VJRA Margin as the top summary cards.</Typography>
                       </CardContent></Card>
                     </Grid>
                     <Grid item xs={12} md={4}>
