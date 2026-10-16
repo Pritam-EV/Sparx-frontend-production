@@ -68,39 +68,96 @@ const SessionSummary = () => {
   };
 
   /* ── Fetch session + receipt ── */
-  useEffect(() => {
-    if (!sessionId) { setLoading(false); return; }
-    (async () => {
-      try {
-        const token   = localStorage.getItem("token");
-        const headers = { Authorization: `Bearer ${token}` };
+/* ── Fetch minimal session summary + receipt ── */
+useEffect(() => {
+  if (!sessionId) {
+    setLoading(false);
+    return;
+  }
 
-        const sRes = await fetch(`${API}/api/sessions/${sessionId}`, { headers });
-        if (!sRes.ok) throw new Error();
-        setSession(await sRes.json());
+  let cancelled = false;
 
-        const fetchReceipt = async () => {
-          for (let i = 0; i < 6; i++) {
-            const r = await fetch(`${API}/api/receipts/${sessionId}`, { headers });
-            if (r.ok) return await r.json();
-            await new Promise((res) => setTimeout(res, 1000));
+  const loadSummary = async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("Please log in to view this receipt.");
+      }
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+      };
+
+      let summary = null;
+
+      // Retry while receipt generation is still pending.
+      // One request retrieves both the session summary and receipt.
+      for (let attempt = 0; attempt < 6; attempt++) {
+        const response = await fetch(
+          `${API}/api/sessions/summary/${encodeURIComponent(sessionId)}`,
+          { headers }
+        );
+
+        const data = await response.json().catch(() => ({}));
+
+        if (response.status === 202 && data.receiptStatus === "pending") {
+          if (attempt < 5) {
+            await new Promise((resolve) => setTimeout(resolve, 1000));
           }
-          return null;
-        };
-        const rec = await fetchReceipt();
-        if (rec) {
-          setReceipt(rec);
-          setRating(rec.rating || 0);
-          setSuggestion(rec.suggestion || "");
-          setFeedbackSubmitted(!!rec.rating);
+
+          continue;
         }
-      } catch {
-        setError("Could not load session summary.");
-      } finally {
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || data.message || "Could not load session summary."
+          );
+        }
+
+        if (data.receipt) {
+          summary = data;
+          break;
+        }
+
+        if (attempt < 5) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+
+      if (!summary?.receipt) {
+        throw new Error(
+          "The receipt is still being generated. Please retry."
+        );
+      }
+
+      if (cancelled) return;
+
+      setSession(summary.session || null);
+      setReceipt(summary.receipt);
+
+      setRating(summary.receipt.rating || 0);
+      setSuggestion(summary.receipt.suggestion || "");
+      setFeedbackSubmitted(!!summary.receipt.rating);
+    } catch (err) {
+      if (!cancelled) {
+        setError(
+          err.message || "Could not load session summary."
+        );
+      }
+    } finally {
+      if (!cancelled) {
         setLoading(false);
       }
-    })();
-  }, [sessionId]);
+    }
+  };
+
+  loadSummary();
+
+  return () => {
+    cancelled = true;
+  };
+}, [sessionId, API]);
 
   /* ── Refund via WhatsApp ── */
   const handleRefund = () => {

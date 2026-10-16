@@ -1,6 +1,6 @@
 // src/components/SessionPage.js (or src/pages/SessionPage.js)
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import axios from "axios";
+import { api } from "../api";
 import { CircularProgress } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import FooterNav from "../components/FooterNav";
@@ -276,24 +276,48 @@ const SessionPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const fetchSessions = async () => {
-    setLoading(true);
-    const token = localStorage.getItem("token");
-    if (!token) return navigate("/login");
+const fetchSessions = async () => {
+  setLoading(true);
 
-    try {
-      const res = await axios.get(
-        `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/user-sessions`,
-        { headers: { Authorization: `Bearer ${token}` } }
+  const token = localStorage.getItem("token");
+
+  if (!token) {
+    navigate("/login");
+    return;
+  }
+
+  try {
+    // Fetch the minimal session data required by this page.
+    const res = await api.get(
+      "/api/sessions/user-sessions-summary"
+    );
+
+    const data = res.data || {};
+
+    setActiveSessions(
+      Array.isArray(data.activeSessions)
+        ? data.activeSessions
+        : []
+    );
+
+    setPastSessions(
+      Array.isArray(data.pastSessions)
+        ? data.pastSessions
+        : []
+    );
+  } catch (err) {
+    if (err.response?.status === 401) {
+      navigate("/login");
+    } else {
+      console.error(
+        "Error fetching session summary:",
+        err
       );
-      setActiveSessions(res.data.activeSessions || []);
-      setPastSessions(res.data.pastSessions || []);
-    } catch (err) {
-      if (err.response?.status === 401) navigate("/login");
-    } finally {
-      setLoading(false);
     }
-  };
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchSessions();
@@ -962,7 +986,7 @@ const SessionPage = () => {
                 </div>
               ) : (
                 activeSessions.map((s) => (
-                  <ActiveCard key={s._id || s.sessionId} s={s} navigate={navigate} />
+                  <ActiveCard key={s.sessionId} s={s} navigate={navigate} />
                 ))
               )
             ) : pastSessions.length === 0 ? (
@@ -979,7 +1003,7 @@ const SessionPage = () => {
               <>
                 {/* Paginated Past Sessions */}
                 {paginatedPastSessions.map((s) => (
-                  <PastCard key={s._id || s.sessionId} s={s} navigate={navigate} />
+                  <PastCard key={s.sessionId} s={s} navigate={navigate} />
                 ))}
 
                 {/* Pagination Navigation Bar */}

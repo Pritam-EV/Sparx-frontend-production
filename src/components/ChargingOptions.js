@@ -134,7 +134,7 @@ function ChargingOptions() {
       try {
         const token = localStorage.getItem("token");
         const resp = await fetch(
-          `${process.env.REACT_APP_Backend_API_Base_URL}/api/devices/public/${deviceId}`,
+          `${process.env.REACT_APP_Backend_API_Base_URL}/api/devices/charging-options/${deviceId}`,
           {
             method: "GET",
             headers: {
@@ -171,13 +171,12 @@ function ChargingOptions() {
       try {
         const token = localStorage.getItem('token');
         const resp = await fetch(
-          `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/device-eta/${deviceId}`,
+          `${process.env.REACT_APP_Backend_API_Base_URL}/api/sessions/device-eta-summary/${deviceId}`,
           { headers: { Authorization: token ? `Bearer ${token}` : '' } }
         );
         if (!resp.ok) { setOccupiedEta(null); return; }
         const data = await resp.json();
         setOccupiedEta(data.estimatedEndTime || null);
-        setEtaDisplay(prev => ({ ...prev, progress: data.energyProgressPercent || 0 }));
       } catch (e) {
         console.error('ETA fetch error:', e);
         setOccupiedEta(null);
@@ -305,7 +304,9 @@ function ChargingOptions() {
       }
 
       setCouponApplied(true);
-      setAppliedCouponObj({ ...data.coupon, code: data.coupon.code });
+      setAppliedCouponObj({
+        code: data.coupon.code,
+      });
       setDiscountedPrice(data.newAmount);
       showToast(`Coupon applied! Payable: ₹${data.newAmount.toFixed(2)}`, "success");
       setApplyingCoupon(false);
@@ -456,6 +457,7 @@ function ChargingOptions() {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
           body: JSON.stringify({
+            deviceId,
             amount: payableNum,
             returnUrl: `${window.location.origin}/charging-options/${deviceId}`,
             gateway: "Cashfree",
@@ -479,9 +481,8 @@ function ChargingOptions() {
         return;
       }
 
-      const paymentSessionId =
-        orderData?.paymentSessionId || orderData?.order?.payment_session_id;
-      const orderId = orderData?.orderId || orderData?.order?.order_id;
+        const paymentSessionId = orderData?.paymentSessionId;
+        const orderId = orderData?.orderId;
 
       if (!paymentSessionId || !orderId) {
         showToast("Invalid response from payment server.", "error");

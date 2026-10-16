@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import axios from "axios";
+import { api } from "../api";
 import { useNavigate } from "react-router-dom";
 import "../styles/appStyles.css";
 import { Box } from "@mui/material";
@@ -372,30 +372,36 @@ useEffect(() => {
 
 
 useEffect(() => {
+  let cancelled = false;
+
   const fetchDevices = async () => {
     try {
-      const token = localStorage.getItem("token");
-      const url = `${process.env.REACT_APP_Backend_API_Base_URL}/api/devices`;
+      // Request the map-specific, minimal-data endpoint.
+      const response = await api.get("/api/devices/map");
 
-      const config = token
-        ? { headers: { Authorization: `Bearer ${token}` } }
-        : {};
-
-      const response = await axios.get(url, config);
+      if (cancelled) return;
 
       const devicesData = Array.isArray(response.data)
         ? response.data
-        : response.data.devices || response.data;
+        : [];
 
       setDevices(devicesData);
     } catch (error) {
-      console.error("Error fetching devices:", error);
+      if (cancelled) return;
+
+      console.error("Error fetching map devices:", error);
     }
   };
 
   fetchDevices();
-  const interval = setInterval(fetchDevices, 10000); // 🔥 every 10 seconds
-  return () => clearInterval(interval);
+
+  // Keep the existing 10-second map refresh.
+  const interval = window.setInterval(fetchDevices, 10000);
+
+  return () => {
+    cancelled = true;
+    window.clearInterval(interval);
+  };
 }, [reloadToggle]);
 
 
@@ -863,7 +869,7 @@ function smoothShrinkMarker(marker) {
 
               return (
                 <Marker
-                  key={device.id || idx}
+                  key={device.device_id || idx}
                   position={[device.lat, device.lng]}
                   icon={icon}
                   eventHandlers={{ click: (e) => handleMarkerClick(e, device) }}

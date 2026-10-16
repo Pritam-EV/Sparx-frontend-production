@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+} from "react";
+
 import {
   BrowserRouter,
   Routes,
@@ -27,7 +33,8 @@ import PaymentSuccess from "./components/PaymentSuccess";
 import TransactionHistory from "./components/TransactionHistory";
 import WalletTopupSuccess from "./components/WalletTopupSuccess";
 import WalletTopup from "./components/WalletTopup";
-import { usePageTracking } from './hooks/usePageTracking';
+
+import { usePageTracking } from "./hooks/usePageTracking";
 
 import AdminAnalytics from "./features/admin/AdminAnalytics";
 import AdminDashboard from "./features/admin/AdminDashboard";
@@ -36,21 +43,24 @@ import LiveMonitoring from "./features/admin/LiveMonitoring";
 import UsersManagement from "./features/admin/UsersManagement";
 import SessionsOverview from "./features/admin/SessionsOverview";
 import Analytics from "./features/admin/Analytics";
-import EBManagement  from "./features/admin/EBManagement";
+import EBManagement from "./features/admin/EBManagement";
 import ReceiptsOverview from "./features/admin/ReceiptsOverview.js";
-import UserActivity from './features/admin/UserActivity';
+import UserActivity from "./features/admin/UserActivity";
 import TransactionsOverview from "./features/admin/TransactionsOverview";
 import Production from "./features/admin/Production";
 import AdminStartSession from "./features/admin/AdminStartSession";
+
 import AccountantDashboard from "./features/accountant/AccountantDashboard";
 
 import OwnerDashboard from "./features/owner/OwnerDashboard";
+import OwnerOverview from "./features/owner/OwnerOverview";
 import MyDevices from "./features/owner/MyDevices";
 import OwnerAnalytics from "./features/owner/OwnerAnalytics";
 import LiveCharging from "./features/owner/LiveCharging";
 import PastSessions from "./features/owner/PastSessions";
-import ConfigureWifi from "./features/owner/ConfigureWifi";
-import OwnerReports  from "./features/owner/OwnerReports";  
+import OwnerReports from "./features/owner/OwnerReports";
+import OwnerSessions from "./features/owner/OwnerSessions";
+import OwnerFinance from "./features/owner/OwnerFinance";
 
 import UserList from "./pages/users/UserList";
 import UserCreate from "./pages/users/UserCreate";
@@ -60,44 +70,48 @@ import DeviceList from "./pages/devices/DeviceList";
 import DeviceCreate from "./pages/devices/DeviceCreate";
 import DeviceEdit from "./pages/devices/DeviceEdit";
 
-import DeviceOnboarding from './components/DeviceOnboarding';
+import DeviceOnboarding from "./components/DeviceOnboarding";
 
-import { api } from './api';
-import { getAuthState } from "./utils/auth"; 
+import { api } from "./api";
+import { getAuthState } from "./utils/auth";
 
-// AppContent component handles splash + auth + all routes.
+// AppContent component handles splash, authentication and routes.
 const AppContent = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [isInitialized, setIsInitialized] = useState(false);
+
   const location = useLocation();
   const navigate = useNavigate();
+
   const initialUrlRef = useRef(null);
   const hasNavigatedRef = useRef(false);
   const firstLoadRef = useRef(true);
 
-  // Get authentication status from unified helper (user + token)
   const { isAuthenticated } = getAuthState();
-  
-    // 1) Capture initial URL exactly once
+
+  // Capture the initial URL exactly once.
   useEffect(() => {
     initialUrlRef.current =
       window.location.pathname +
       window.location.search +
       window.location.hash;
-    // console.log("Initial URL:", initialUrlRef.current);
   }, []);
 
-  // 2) Run splash timer once on mount
+  // Splash screen and initial navigation.
   useEffect(() => {
-    if (!firstLoadRef.current) return;
+    if (!firstLoadRef.current) return undefined;
+
     const timer = setTimeout(() => {
       setShowSplash(false);
+
       const target = initialUrlRef.current;
 
-      // 3a) If it’s a deep link (not root/home/welcome/login/signup), go there
-// 3a) Check for deep link bypass (payment returns)
-      const isPaymentSuccess = target?.startsWith("/payment-success");
-      const isWalletReturn   = target?.startsWith("/wallet/topup-success");
+      // Keep payment return/deep links working.
+      const isPaymentSuccess =
+        target?.startsWith("/payment-success");
+
+      const isWalletReturn =
+        target?.startsWith("/wallet/topup-success");
 
       if (isPaymentSuccess || isWalletReturn) {
         navigate(target, { replace: true });
@@ -105,61 +119,71 @@ const AppContent = () => {
         return;
       }
 
-      // Check if it's a specific deep link
       const deepLink =
         target &&
-        !["/", "/landing-home", "/home", "/welcome", "/login", "/signup"].includes(target);
+        ![
+          "/",
+          "/landing-home",
+          "/home",
+          "/welcome",
+          "/login",
+          "/signup",
+        ].includes(target);
 
       if (deepLink) {
         navigate(target, { replace: true });
+      } else if (isAuthenticated) {
+        navigate("/landing-home", { replace: true });
       } else {
-        // 3b) Normal launch: Authenticated goes to /landing-home, Guest goes to /home (map)
-        if (isAuthenticated) {
-          navigate("/landing-home", { replace: true });
-        } else {
-          navigate("/home", { replace: true });
-        }
+        navigate("/home", { replace: true });
       }
+
       firstLoadRef.current = false;
     }, 2000);
 
     return () => clearTimeout(timer);
   }, [navigate, isAuthenticated]);
 
+  // Backend ping to help detect cold starts.
+  useEffect(() => {
+    const pingBackend = async () => {
+      try {
+        await api.get("/ping");
+      } catch (error) {
+        console.warn(
+          "Backend ping failed (possibly a cold start):",
+          error.message
+        );
+      }
+    };
 
+    pingBackend();
 
-  // Inside AppContent function, after existing useEffects:
-useEffect(() => {
-  const pingBackend = async () => {
-    try {
-      await api.get('/ping'); // Uses your REACT_APP_APIBASE + /ping
-      // console.log('✅ BE ping OK');
-    } catch (error) {
-      console.warn('⚠️ BE ping failed (likely cold start):', error.message);
-      // No UI impact - just log
-    }
-  };
+    const intervalId = setInterval(
+      pingBackend,
+      10 * 60 * 1000
+    );
 
-  // Ping now
-  pingBackend();
+    return () => clearInterval(intervalId);
+  }, []);
 
-  // Every 10 minutes
-  const intervalId = setInterval(pingBackend, 10 * 60 * 1000);
+  usePageTracking();
 
-  return () => clearInterval(intervalId);
-}, []); // empty deps = runs once forever
-  
-usePageTracking();  // ← always called, every render
-if (showSplash) return <SplashScreen />;
-  // Show main app
+  if (showSplash) {
+    return <SplashScreen />;
+  }
+
   return (
     <div className="app-container">
       <Routes>
         {/* Public routes */}
-        <Route path="/" element={<Navigate to="/landing-home" replace />} />
+        <Route
+          path="/"
+          element={<Navigate to="/landing-home" replace />}
+        />
+
         <Route path="/home" element={<Home />} />
         <Route path="/welcome" element={<WelcomeScreen />} />
-        
 
         {/* Admin protected routes */}
         <Route
@@ -170,27 +194,62 @@ if (showSplash) return <SplashScreen />;
             </PrivateRoute>
           }
         >
-          <Route index element={<Navigate to="devices" replace />} />
+          <Route
+            index
+            element={<Navigate to="devices" replace />}
+          />
+
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="devices" element={<DevicesOverview />} />
-          <Route path="LiveMonitoring" element={<LiveMonitoring />} />
+          <Route
+            path="LiveMonitoring"
+            element={<LiveMonitoring />}
+          />
           <Route path="users" element={<UsersManagement />} />
           <Route path="sessions" element={<SessionsOverview />} />
           <Route path="receipts" element={<ReceiptsOverview />} />
-          <Route path="eb-management"  element={<EBManagement />} />
+          <Route
+            path="eb-management"
+            element={<EBManagement />}
+          />
+
           <Route path="crud/users" element={<UserList />} />
-          <Route path="crud/users/create" element={<UserCreate />} />
-          <Route path="crud/users/edit/:id" element={<UserEdit />} />
+          <Route
+            path="crud/users/create"
+            element={<UserCreate />}
+          />
+          <Route
+            path="crud/users/edit/:id"
+            element={<UserEdit />}
+          />
+
           <Route path="crud/devices" element={<DeviceList />} />
-          <Route path="crud/devices/create" element={<DeviceCreate />} />
-          <Route path="crud/devices/edit/:id" element={<DeviceEdit />} />
-          <Route path="user-activity" element={<UserActivity />} />
-          <Route path="transactions" element={<TransactionsOverview />} />
+          <Route
+            path="crud/devices/create"
+            element={<DeviceCreate />}
+          />
+          <Route
+            path="crud/devices/edit/:id"
+            element={<DeviceEdit />}
+          />
+
+          <Route
+            path="user-activity"
+            element={<UserActivity />}
+          />
+          <Route
+            path="transactions"
+            element={<TransactionsOverview />}
+          />
           <Route path="Production" element={<Production />} />
-          <Route path="start-session" element={<AdminStartSession />} />
+          <Route
+            path="start-session"
+            element={<AdminStartSession />}
+          />
         </Route>
 
-                <Route
+        {/* Accountant protected route */}
+        <Route
           path="/ca"
           element={
             <PrivateRoute allowedRoles={["admin", "accountant"]}>
@@ -199,16 +258,47 @@ if (showSplash) return <SplashScreen />;
           }
         />
 
-        {/* Owner routes */}
-        <Route element={<PrivateRoute allowedRoles={['owner']} />}>
+        {/* Owner protected routes */}
+        <Route
+          element={<PrivateRoute allowedRoles={["owner"]} />}
+        >
           <Route path="/owner" element={<OwnerDashboard />}>
-            <Route index element={<MyDevices />} />
-            <Route path="devices" element={<MyDevices />} />
-            <Route path="analytics" element={<OwnerAnalytics />} />
-            <Route path="reports"        element={<OwnerReports />} /> 
-            <Route path="live-charging" element={<LiveCharging />} />
-            <Route path="past-sessions" element={<PastSessions />} />
-            <Route path="/owner/devices/:deviceId/configure-wifi" element={<ConfigureWifi />}/>
+            <Route index element={<OwnerOverview />} />
+
+            <Route
+              path="devices"
+              element={<MyDevices />}
+            />
+
+            <Route
+              path="analytics"
+              element={<OwnerAnalytics />}
+            />
+
+            <Route
+              path="reports"
+              element={<OwnerReports />}
+            />
+
+            <Route
+              path="live-charging"
+              element={<LiveCharging />}
+            />
+
+            <Route
+              path="past-sessions"
+              element={<PastSessions />}
+            />
+            <Route
+            path="sessions"
+            element={<OwnerSessions />}
+          />
+
+          <Route
+            path="finance"
+            element={<OwnerFinance />}
+          />
+
           </Route>
         </Route>
 
@@ -216,17 +306,22 @@ if (showSplash) return <SplashScreen />;
         <Route
           path="/login"
           element={
-            isAuthenticated ? <Navigate to="/landing-home" replace /> : <Login />
-          }
-        />
-        <Route
-          path="/signup"
-          element={
-            isAuthenticated ? <Navigate to="/landing-home" replace /> : <SignUp />
+            isAuthenticated
+              ? <Navigate to="/landing-home" replace />
+              : <Login />
           }
         />
 
-        {/* Private routes */}
+        <Route
+          path="/signup"
+          element={
+            isAuthenticated
+              ? <Navigate to="/landing-home" replace />
+              : <SignUp />
+          }
+        />
+
+        {/* Private customer routes */}
         <Route
           path="/profile"
           element={
@@ -235,6 +330,7 @@ if (showSplash) return <SplashScreen />;
             </PrivateRoute>
           }
         />
+
         <Route
           path="/sessions"
           element={
@@ -243,27 +339,39 @@ if (showSplash) return <SplashScreen />;
             </PrivateRoute>
           }
         />
-{/* Landing Home Route (Redirects to /home if not logged in) */}
+
+        {/* Landing home */}
         <Route
           path="/landing-home"
           element={
-            isAuthenticated ? (
-              <LandingHome />
-            ) : (
-              <Navigate to="/home" replace />
-            )
+            isAuthenticated
+              ? <LandingHome />
+              : <Navigate to="/home" replace />
           }
         />
-        <Route path="/transactions" element={ <PrivateRoute> <TransactionHistory /> </PrivateRoute> } />
+
+        <Route
+          path="/transactions"
+          element={
+            <PrivateRoute>
+              <TransactionHistory />
+            </PrivateRoute>
+          }
+        />
+
         <Route path="/qr-scanner" element={<QRScanner />} />
-        
-        {/* IMPORTANT: Deep link route for charging options */}
+
+        {/* Charging routes */}
         <Route
           path="/charging-options/:device_id"
           element={<ChargingOptions />}
         />
-        
-        <Route path="/session-summary" element={<SessionSummary />} />
+
+        <Route
+          path="/session-summary"
+          element={<SessionSummary />}
+        />
+
         <Route
           path="/session-start/:transactionId"
           element={
@@ -272,6 +380,7 @@ if (showSplash) return <SplashScreen />;
             </PrivateRoute>
           }
         />
+
         <Route
           path="/live-session/:sessionId"
           element={
@@ -280,6 +389,7 @@ if (showSplash) return <SplashScreen />;
             </PrivateRoute>
           }
         />
+
         <Route
           path="/session-start/:deviceId/:transactionId"
           element={
@@ -288,14 +398,46 @@ if (showSplash) return <SplashScreen />;
             </PrivateRoute>
           }
         />
-        <Route path="/devices/create" element={<DeviceCreate />} />
-        <Route path="/payment-success" element={<PaymentSuccess />} />
-        <Route path="/wallet/topup-success" element={<PrivateRoute><WalletTopupSuccess /></PrivateRoute>} />
-        <Route path="/wallet/topup" element={<PrivateRoute><WalletTopup /></PrivateRoute>} />
-        <Route path="/onboard-device" element={<DeviceOnboarding />} />
+
+        <Route
+          path="/devices/create"
+          element={<DeviceCreate />}
+        />
+
+        <Route
+          path="/payment-success"
+          element={<PaymentSuccess />}
+        />
+
+        <Route
+          path="/wallet/topup-success"
+          element={
+            <PrivateRoute>
+              <WalletTopupSuccess />
+            </PrivateRoute>
+          }
+        />
+
+        <Route
+          path="/wallet/topup"
+          element={
+            <PrivateRoute>
+              <WalletTopup />
+            </PrivateRoute>
+          }
+        />
+
+        {/* Charger onboarding remains enabled */}
+        <Route
+          path="/onboard-device"
+          element={<DeviceOnboarding />}
+        />
 
         {/* Catch-all */}
-        <Route path="*" element={<Navigate to="/home" replace />} />
+        <Route
+          path="*"
+          element={<Navigate to="/home" replace />}
+        />
       </Routes>
     </div>
   );

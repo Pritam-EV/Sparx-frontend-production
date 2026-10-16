@@ -1,96 +1,137 @@
-// features/owner/OwnerDashboard.js
+// src/features/owner/OwnerDashboard.js
+
 import React, { useState } from "react";
-import OwnerSidebar from "./OwnerSidebar";
 import { Outlet } from "react-router-dom";
-import { IconButton } from "@mui/material";
+
+import {
+  Box,
+  IconButton,
+  Typography,
+} from "@mui/material";
+
 import MenuIcon from "@mui/icons-material/Menu";
+
+import OwnerSidebar from "./OwnerSidebar";
+
+const COLORS = {
+  background: "#F5F8FA",
+  darkTeal: "#01313A",
+  border: "#E2E8F0",
+};
 
 const OwnerDashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const toggleSidebar = () => {
+    setSidebarOpen((previous) => !previous);
+  };
+
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+  };
 
   return (
-    <div style={styles.container}>
-      {/* Mobile Header with Drawer Toggle */}
-      <div style={styles.mobileHeader}>
-        <IconButton 
+    <Box
+      sx={{
+        display: "flex",
+        width: "100%",
+        minHeight: "100dvh",
+        backgroundColor: COLORS.background,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      {/* MOBILE TOP BAR */}
+      <Box
+        component="header"
+        sx={{
+          display: { xs: "flex", md: "none" },
+          alignItems: "center",
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 56,
+          boxSizing: "border-box",
+          px: 1.5,
+          backgroundColor: "#FFFFFF",
+          borderBottom: `1px solid ${COLORS.border}`,
+          zIndex: 1100,
+        }}
+      >
+        <IconButton
           onClick={toggleSidebar}
-          style={styles.menuButton}
-          size="large"
+          aria-label="Open navigation"
+          sx={{ color: COLORS.darkTeal, mr: 1 }}
         >
-          <MenuIcon style={{ color: '#fff' }} />
+          <MenuIcon />
         </IconButton>
-        <span style={styles.headerTitle}>Dashboard</span>
-      </div>
 
-      {/* Sidebar Overlay for Mobile */}
-      {sidebarOpen && <div style={styles.overlay} onClick={toggleSidebar} />}
-      
-      {/* Sidebar */}
-      <OwnerSidebar isOpen={sidebarOpen} onClose={toggleSidebar} />
-      
-      {/* Main Content */}
-      <main style={styles.main}>
-        <div style={styles.scrollContainer}>
+        <Typography
+          sx={{
+            fontSize: 15,
+            fontWeight: 800,
+            color: COLORS.darkTeal,
+          }}
+        >
+          VIZ Owner Hub
+        </Typography>
+      </Box>
+
+      {/* MOBILE SIDEBAR OVERLAY */}
+      {sidebarOpen && (
+        <Box
+          onClick={closeSidebar}
+          aria-hidden="true"
+          sx={{
+            display: { xs: "block", md: "none" },
+            position: "fixed",
+            inset: 0,
+            background: "rgba(1, 31, 38, 0.32)",
+            zIndex: 1200,
+          }}
+        />
+      )}
+
+      <OwnerSidebar
+        isOpen={sidebarOpen}
+        onClose={closeSidebar}
+      />
+
+      {/* MAIN CONTENT */}
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          minWidth: 0,
+          height: "100dvh",
+          backgroundColor: COLORS.background,
+          boxSizing: "border-box",
+          pt: { xs: "56px", md: 0 },
+        }}
+      >
+        <Box
+          sx={{
+            boxSizing: "border-box",
+            height: {
+              xs: "calc(100dvh - 56px)",
+              md: "100dvh",
+            },
+            overflowY: "auto",
+            overflowX: "hidden",
+            p: {
+              xs: 1.5,
+              sm: 2.5,
+              lg: 3.5,
+            },
+            scrollBehavior: "smooth",
+          }}
+        >
           <Outlet />
-        </div>
-      </main>
-    </div>
+        </Box>
+      </Box>
+    </Box>
   );
-};
-
-const styles = {
-  container: {
-    display: "flex",
-    minHeight: "100vh",
-    background: "#000",
-    position: "relative"
-  },
-  mobileHeader: {
-    display: "flex",
-    alignItems: "center",
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    height: "56px",
-    background: "#1a1a1a",
-    zIndex: 1100,
-    padding: "0 16px",
-    borderBottom: "1px solid #333"
-  },
-  menuButton: {
-    marginRight: "12px",
-    padding: "8px"
-  },
-  headerTitle: {
-    color: "#fff",
-    fontSize: "18px",
-    fontWeight: "600"
-  },
-  overlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    background: "rgba(0, 0, 0, 0.5)",
-    zIndex: 1200,
-    display: "block"
-  },
-  main: {
-    flex: 1,
-    background: "#000",
-    height: "100vh",
-    paddingTop: "56px" // Space for fixed header
-  },
-  scrollContainer: {
-    height: "calc(100vh - 56px)",
-    overflowY: "auto",
-    overflowX: "hidden",
-    padding: "16px"
-  }
 };
 
 export default OwnerDashboard;

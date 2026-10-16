@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { Button, Box, Typography } from '@mui/material';
 import { useNavigate } from "react-router-dom";
+import { api } from "../../api";
 
 const UserList = () => {
   const [users, setUsers] = useState([]);
@@ -11,19 +12,28 @@ const UserList = () => {
 
   useEffect(() => { fetchUsers(); }, []);
 
-  const fetchUsers = async () => {
-    try {
-      // Replace with your real API URL
-      const response = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/users`);
-      const data = await response.json();
-      // Adjust 'id' key as required if your backend returns '_id'
-      setUsers(data.map(u => ({ ...u, id: u.id || u._id })));
-    } catch (error) {
-      console.error('Error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchUsers = async () => {
+  try {
+    const response = await api.get("/api/users");
+    const data = response.data;
+
+    setUsers(
+      Array.isArray(data)
+        ? data.map((user) => ({
+            ...user,
+            id: user._id,
+          }))
+        : []
+    );
+  } catch (error) {
+    console.error(
+      "Error fetching users:",
+      error.response?.data || error.message
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   const columns = [
     { field: 'id', headerName: 'ID', width: 100 },

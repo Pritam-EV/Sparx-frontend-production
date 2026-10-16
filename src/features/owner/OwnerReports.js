@@ -1,6 +1,7 @@
 // src/features/owner/OwnerReports.js
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Alert,
   Box,
@@ -309,8 +310,17 @@ function DlButton({ label, icon, color, hoverBg, onClick, loading }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function OwnerReports() {
-  const [month, setMonth] = useState(new Date().getMonth() + 1);
-  const [year,  setYear]  = useState(CURRENT_YEAR);
+  const [searchParams] = useSearchParams();
+const requestedMonth = searchParams.get("month") || "";
+const requestedProject = searchParams.get("project") || null;
+const requestedMonthMatch = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(requestedMonth);
+
+const [month, setMonth] = useState(() =>
+  requestedMonthMatch ? Number(requestedMonthMatch[2]) : new Date().getMonth() + 1
+);
+const [year, setYear] = useState(() =>
+  requestedMonthMatch ? Number(requestedMonthMatch[1]) : CURRENT_YEAR
+);
 
   const [report,  setReport]  = useState(null);
   const [loading, setLoading] = useState(false);
@@ -329,7 +339,7 @@ export default function OwnerReports() {
   const [dlPdf,   setDlPdf]   = useState(false);
   const [dlEbPdf, setDlEbPdf] = useState(false);
 
-  const [projectName, setProjectName] = useState(null);
+ const [projectName, setProjectName] = useState(requestedProject);
 
   // ── Fetch ──────────────────────────────────────────────────────────────────
   const fetchReport = useCallback(async () => {

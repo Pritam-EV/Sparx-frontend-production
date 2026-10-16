@@ -55,12 +55,6 @@ const dateValue = (value) => {
   });
 };
 
-const timestamp = (value) => {
-  if (!value) return 0;
-
-  const parsed = new Date(value).getTime();
-  return Number.isFinite(parsed) ? parsed : 0;
-};
 
 const getGreeting = () => {
   const hour = new Date().getHours();
@@ -156,100 +150,48 @@ const LandingHome = () => {
   const [transactionsError, setTransactionsError] = useState(false);
   const [walletError, setWalletError] = useState(false);
 
-  // Fetch existing customer data from the current backend.
+  // Fetch the compact dashboard summary from the backend.
   // Refresh on initial load, when the tab gains focus, and every 60 seconds.
   useEffect(() => {
     let cancelled = false;
 
     const loadDashboard = async () => {
-      const results = await Promise.allSettled([
-        api.get("/api/sessions/user-sessions"),
-        api.get("/api/payment/my-transactions"),
-        api.get("/api/wallet/balance"),
-      ]);
+      try {
+        // One API request instead of fetching complete histories separately.
+        const response = await api.get("/api/dashboard/summary");
 
-      if (cancelled) return;
+        if (cancelled) return;
 
-      const [sessionsResult, transactionsResult, walletResult] = results;
+        const data = response.data || {};
 
-      // ----------------------------
-      // Sessions
-      // ----------------------------
-      if (sessionsResult.status === "fulfilled") {
-        const data = sessionsResult.value.data || {};
-
-        const active = Array.isArray(data.activeSessions)
-          ? data.activeSessions
-          : [];
-
-        const past = Array.isArray(data.pastSessions)
-          ? data.pastSessions
-          : [];
-
-        const latestPastSession = [...past].sort((a, b) => {
-          const dateA = timestamp(
-            a.endTime || a.startTime || a.createdAt
-          );
-
-          const dateB = timestamp(
-            b.endTime || b.startTime || b.createdAt
-          );
-
-          return dateB - dateA;
-        })[0] || null;
-
-        // Keep the active session separate from recent past activity.
-        setActiveSession(active[0] || null);
-        setRecentSession(latestPastSession);
+        // ----------------------------
+        // Active session
+        // ----------------------------
+        setActiveSession(data.activeSession || null);
         setSessionsError(false);
-      } else {
-        setSessionsError(true);
-      }
 
-      // ----------------------------
-      // Successful transactions
-      // ----------------------------
-      if (transactionsResult.status === "fulfilled") {
-        const data = transactionsResult.value.data || {};
+        // ----------------------------
+        // Latest session
+        // ----------------------------
+        setRecentSession(data.lastSession || null);
 
-        const transactions = Array.isArray(data.transactions)
-          ? data.transactions
-          : [];
-
-        const successfulTransactions = transactions
-          .filter(
-            (transaction) =>
-              String(transaction?.status || "").toUpperCase() ===
-              "SUCCESS"
-          )
-          .sort((a, b) => {
-            const dateA = timestamp(
-              a.paidAt || a.createdAt || a.updatedAt
-            );
-
-            const dateB = timestamp(
-              b.paidAt || b.createdAt || b.updatedAt
-            );
-
-            return dateB - dateA;
-          });
-
-        setRecentTransaction(successfulTransactions[0] || null);
+        // ----------------------------
+        // Last successful charging payment
+        // ----------------------------
+        setRecentTransaction(
+          data.lastSuccessfulPayment || null
+        );
         setTransactionsError(false);
-      } else {
-        setTransactionsError(true);
-      }
 
-      // ----------------------------
-      // Wallet
-      // ----------------------------
-      if (walletResult.status === "fulfilled") {
-        const data = walletResult.value.data || {};
-        const balance = Number(data.balance);
+        // ----------------------------
+        // Wallet balance
+        // ----------------------------
+        const walletData = data.wallet || {};
+        const balance = Number(walletData.balance);
 
         if (
-          data.balance !== null &&
-          data.balance !== undefined &&
+          walletData.balance !== null &&
+          walletData.balance !== undefined &&
           Number.isFinite(balance)
         ) {
           setWalletBalance(balance);
@@ -258,24 +200,51 @@ const LandingHome = () => {
           setWalletBalance(null);
           setWalletError(true);
         }
-      } else {
-        setWalletBalance(null);
-        setWalletError(true);
-      }
+      } catch (error) {
+        if (cancelled) return;
 
-      setLoading(false);
+        console.error(
+          "Failed to load dashboard summary:",
+          error
+        );
+
+        // Clear stale dashboard data if the request fails.
+        setActiveSession(null);
+        setRecentSession(null);
+        setRecentTransaction(null);
+        setWalletBalance(null);
+
+        setSessionsError(true);
+        setTransactionsError(true);
+        setWalletError(true);
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     };
 
+    // Initial load
     loadDashboard();
 
-    const intervalId = window.setInterval(loadDashboard, 60000);
+    // Refresh every 60 seconds
+    const intervalId = window.setInterval(
+      loadDashboard,
+      60000
+    );
 
+    // Refresh when the user returns to this browser tab.
     window.addEventListener("focus", loadDashboard);
 
     return () => {
       cancelled = true;
+
       window.clearInterval(intervalId);
-      window.removeEventListener("focus", loadDashboard);
+
+      window.removeEventListener(
+        "focus",
+        loadDashboard
+      );
     };
   }, []);
 

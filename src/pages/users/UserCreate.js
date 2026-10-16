@@ -3,6 +3,7 @@ import React from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Box, Card, CardContent, TextField, Button, MenuItem, Typography } from '@mui/material';
 import { useNavigate } from "react-router-dom";
+import { api } from "../../api";
 
 const roles = [
   { label: 'Customer', value: 'customer' },
@@ -16,13 +17,10 @@ const UserCreate = () => {
 
   const onSubmit = async (data) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/users`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      if (response.ok) {
-        navigate('/users');
+      const response = await api.post("/api/users", data);
+
+      if (response.status === 201) {
+        navigate("/users");
       }
     } catch (error) {
       alert('Failed to create user!');

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { Box, Card, CardContent, TextField, Button, MenuItem, Typography } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
+import { api } from "../../api";
 
 const roleOptions = [
   { label: 'Customer', value: 'customer' },
@@ -19,16 +20,18 @@ const UserEdit = () => {
     // Fetch user data and populate form
     const fetchUser = async () => {
       try {
-        const response = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/users/${id}`);
-        if (response.ok) {
-          const data = await response.json();
-          setValue('name', data.name || '');
-          setValue('email', data.email || '');
-          setValue('mobile', data.mobile || '');
-          setValue('role', data.role || 'customer');
+        const response = await api.get(`/api/users/${id}`);
+
+        if (response.status === 200) {
+          const data = response.data;
+
+          setValue("name", data.name || "");
+          setValue("email", data.email || "");
+          setValue("mobile", data.mobile || "");
+          setValue("role", data.role || "customer");
         } else {
-          alert('Failed to fetch user data');
-          navigate('/users');
+          alert("Failed to fetch user data");
+          navigate("/users");
         }
       } catch (error) {
         console.error('Error loading user:', error);
@@ -42,18 +45,17 @@ const UserEdit = () => {
 
   const onSubmit = async (formData) => {
     try {
-      const response = await fetch(`${process.env.REACT_APP_Backend_API_Base_URL}/api/users/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
+        const response = await api.put(
+          `/api/users/${id}`,
+          formData
+        );
 
-      if (response.ok) {
-        alert('User updated successfully');
-        navigate('/users');
-      } else {
-        alert('Failed to update user');
-      }
+        if (response.status === 200) {
+          alert("User updated successfully");
+          navigate("/users");
+        } else {
+          alert("Failed to update user");
+        }
     } catch (error) {
       console.error('Error updating user:', error);
       alert('Error updating user');
