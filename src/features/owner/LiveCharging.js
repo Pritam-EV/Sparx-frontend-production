@@ -1,25 +1,189 @@
-import React, { useCallback, useEffect, useState } from "react";
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Chip,
-  IconButton,
-  Tooltip,
-  CircularProgress,
-} from "@mui/material";
-import RefreshIcon from "@mui/icons-material/Refresh";
+// src/features/owner/LiveCharging.js
 
-const fmtDateTime = (d) => (d ? new Date(d).toLocaleString() : "—");
+import React, { useCallback, useEffect, useState } from "react";
+import "./LiveCharging.css";
+
+import {
+  Alert,
+  Box,
+  CircularProgress,
+  IconButton,
+  Typography,
+} from "@mui/material";
+
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
+import EvStationRoundedIcon from "@mui/icons-material/EvStationRounded";
+import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
+import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
+import EnergySavingsLeafOutlinedIcon from "@mui/icons-material/EnergySavingsLeafOutlined";
+
+// ------------------------------------------------------------
+// FORMATTERS
+// ------------------------------------------------------------
+
+const fmtDateTime = (d) =>
+  d
+    ? new Date(d).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "—";
+
 const fmtKwh = (n) => `${Number(n || 0).toFixed(2)} kWh`;
-const fmtMoney = (n) => `₹${Number(n || 0).toFixed(2)}`;
+
+const fmtMoney = (n) =>
+  `₹${Number(n || 0).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+
+// ------------------------------------------------------------
+// LIVE SESSION CARD (LIGHT BENTO SPECIFICATION)
+// ------------------------------------------------------------
+
+function LiveChargingCard({ session }) {
+  const isRelayOn = !!session.relayOn;
+  const progress = Math.min(100, Math.max(0, Math.round(session.progressPercent || 0)));
+
+  return (
+    <div className="viz-session-card-light">
+      <div>
+        {/* Card Header: Device ID, Plain-Text Plate, Relay Status */}
+        <div className="viz-session-card-header">
+          <div className="viz-session-device-block">
+            <div className="viz-session-device-icon">
+              <BoltRoundedIcon sx={{ fontSize: 22 }} />
+            </div>
+
+            <div style={{ minWidth: 0 }}>
+              <div className="viz-session-title">
+                {session.deviceId || "Charger"}
+              </div>
+
+              {/* Plain text vehicle number plate per specifications */}
+              <div className="viz-plate-plaintext">
+                {session.vehicleNumber || "Vehicle not specified"}
+              </div>
+            </div>
+          </div>
+
+          <span className={`viz-relay-badge ${isRelayOn ? "on" : "off"}`}>
+            {isRelayOn ? "Relay ON" : "Relay OFF"}
+          </span>
+        </div>
+
+        {/* Location Row */}
+        <div className="viz-session-address" style={{ marginTop: 8 }}>
+          <PlaceOutlinedIcon
+            sx={{ fontSize: 15, color: "var(--viz-teal-deep)", flexShrink: 0 }}
+          />
+          <span>{session.address || "Station location not specified"}</span>
+        </div>
+
+        {/* Middle Telemetry & Circular Progress Gauge */}
+        <div className="viz-session-progress-hero" style={{ marginTop: 12 }}>
+          <div className="viz-progress-circle-wrap">
+            {/* Background Track */}
+            <CircularProgress
+              variant="determinate"
+              value={100}
+              size={66}
+              thickness={4.5}
+              sx={{ color: "var(--viz-border)" }}
+            />
+            {/* Active Charging Arc */}
+            <CircularProgress
+              variant="determinate"
+              value={progress}
+              size={66}
+              thickness={4.5}
+              sx={{
+                color: isRelayOn ? "var(--viz-aqua)" : "var(--viz-orange)",
+                position: "absolute",
+                left: 0,
+                strokeLinecap: "round",
+              }}
+            />
+            <div className="viz-progress-center-txt">
+              <span className="viz-progress-val">{progress}%</span>
+            </div>
+          </div>
+
+          {/* Consumed vs Target kWh breakdown */}
+          <div className="viz-progress-kwh-col">
+            <div className="viz-kwh-metric-row">
+              <span className="viz-kwh-label">Consumed:</span>
+              <span className="viz-kwh-val" style={{ color: "var(--viz-teal-deep)" }}>
+                {fmtKwh(session.energyConsumed)}
+              </span>
+            </div>
+
+            <div className="viz-kwh-metric-row">
+              <span className="viz-kwh-label">Target Energy:</span>
+              <span className="viz-kwh-val">{fmtKwh(session.energySelected)}</span>
+            </div>
+
+            <div className="viz-kwh-metric-row">
+              <span className="viz-kwh-label">Billing Amount:</span>
+              <span className="viz-kwh-val" style={{ color: "var(--viz-orange)" }}>
+                {fmtMoney(session.amountPaid)}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer Strip: Start Timestamp */}
+      <div className="viz-session-footer-strip">
+        <div className="viz-session-subkpi">
+          <span className="viz-subkpi-label">Started At</span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: 11,
+              fontWeight: 700,
+              color: "var(--viz-text-main)",
+              marginTop: 2,
+            }}
+          >
+            <AccessTimeRoundedIcon sx={{ fontSize: 14, color: "var(--viz-text-subtle)" }} />
+            <span>{fmtDateTime(session.startTime)}</span>
+          </div>
+        </div>
+
+        <div className="viz-session-subkpi" style={{ textAlign: "right" }}>
+          <span className="viz-subkpi-label">Status</span>
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 800,
+              color: isRelayOn ? "var(--viz-green-fg)" : "var(--viz-text-muted)",
+              marginTop: 2,
+            }}
+          >
+            {isRelayOn ? "⚡ Flowing Power" : "Standby / Idle"}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ------------------------------------------------------------
+// MAIN LIVE CHARGING COMPONENT
+// ------------------------------------------------------------
 
 export default function LiveCharging() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
-const [lastFetchedAt, setLastFetchedAt] = useState(null);
+  const [lastFetchedAt, setLastFetchedAt] = useState(null);
 
   const fetchRows = useCallback(async () => {
     try {
@@ -42,149 +206,190 @@ const [lastFetchedAt, setLastFetchedAt] = useState(null);
 
   useEffect(() => {
     fetchRows();
-    const t = setInterval(fetchRows, 5000);
+    const t = setInterval(fetchRows, 10000);
     return () => clearInterval(t);
   }, [fetchRows]);
 
-  if (loading) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <Card sx={{ borderRadius: 3, background: "#0f1722", color: "#EAF2FF" }}>
-          <CardContent sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <CircularProgress size={28} sx={{ color: "#04BFBF" }} />
-            <Box>
-              <Typography sx={{ fontWeight: 800 }}>Loading live charging…</Typography>
-              <Typography sx={{ opacity: 0.75 }}>Fetching active sessions</Typography>
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
-    );
-  }
-
-  if (err) {
-    return (
-      <Box sx={{ p: 2 }}>
-        <Card sx={{ borderRadius: 3, background: "#0f1722", color: "#EAF2FF" }}>
-          <CardContent>
-            <Typography sx={{ fontWeight: 900, color: "#ff9a9a" }}>Error</Typography>
-            <Typography sx={{ mt: 1, opacity: 0.8 }}>{err}</Typography>
-          </CardContent>
-        </Card>
-      </Box>
-    );
-  }
+  // Derived Telemetry Aggregates for Ribbon
+  const totalActive = rows.length;
+  const relayOnCount = rows.filter((r) => r.relayOn).length;
+  const totalKwhConsumed = rows.reduce(
+    (acc, cur) => acc + Number(cur.energyConsumed || 0),
+    0
+  );
+  const totalAmountPaid = rows.reduce(
+    (acc, cur) => acc + Number(cur.amountPaid || 0),
+    0
+  );
 
   return (
-    <Box sx={{ p: 2 }}>
-        <Box display="flex" alignItems="center" gap={1}>
-        <Typography variant="caption" sx={{ color: "rgba(234,242,255,0.6)", fontSize: 11 }}>
-            Last sync: {lastFetchedAt ? lastFetchedAt.toLocaleTimeString() : "—"}
-        </Typography>
+    <div className="viz-live-shell">
+      {/* ================================================================== */}
+      {/* 1. FLUSH TOP HEADER (ZERO SIDE GAPS)                             */}
+      {/* ================================================================== */}
+      <header className="viz-live-top-header">
+        <div className="viz-live-header-inner">
+          <div className="viz-live-brand-block">
+            <div className="viz-live-logo-box">
+             
+            </div>
+            <div>
+              <div className="viz-live-header-title">
+                VIZ-Smart Charging <span className="viz-live-cpo-tag">Live Sessions</span>
+              </div>
+              <div className="viz-live-header-sub">
+                <span className="viz-live-pulse-dot" />
+                Live 10s Polling • Last Sync:{" "}
+                {lastFetchedAt
+                  ? lastFetchedAt.toLocaleTimeString("en-IN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      second: "2-digit",
+                    })
+                  : "—"}
+              </div>
+            </div>
+          </div>
 
-        <Tooltip title="Refresh">
-            <IconButton onClick={fetchRows} sx={{ color: "#04BFBF" }} size="small">
-            <RefreshIcon fontSize="small" />
-            </IconButton>
-        </Tooltip>
-        </Box>
+        </div>
+      </header>
 
+      {/* ================================================================== */}
+      {/* 2. MAIN LAYOUT CONTAINER                                           */}
+      {/* ================================================================== */}
+      <main className="viz-live-container">
+        {/* Error Alert */}
+        {err && (
+          <Alert severity="error" sx={{ borderRadius: "14px", py: 0.5 }}>
+            {err}
+          </Alert>
+        )}
 
-      {rows.length === 0 ? (
-        <Card sx={{ borderRadius: 3, background: "#0f1722", color: "#EAF2FF" }}>
-          <CardContent>
-            <Typography sx={{ fontWeight: 800 }}>No active sessions</Typography>
-            <Typography sx={{ opacity: 0.75, mt: 0.5 }}>
-              When charging starts on your devices, it will appear here.
-            </Typography>
-          </CardContent>
-        </Card>
-      ) : (
-        rows.map((s) => {
-          const relayLabel = s.relayOn ? "ON" : "OFF";
-          const relayChipSx = s.relayOn
-            ? { bgcolor: "rgba(34,197,94,0.18)", color: "#22C55E", fontWeight: 900 }   // green
-            : { bgcolor: "rgba(59,130,246,0.18)", color: "#3B82F6", fontWeight: 900 }; // blue
-
-          return (
-            <Card
-              key={s.sessionId}
-              sx={{
-                mb: 2,
-                borderRadius: 3,
-                background: "linear-gradient(180deg, #0B1220 0%, #060A12 100%)",
-                border: "1px solid rgba(255,255,255,0.10)",
-                color: "#EAF2FF",
+        {/* Unclipped Live Telemetry Ribbon */}
+        <section className="viz-live-summary-ribbon">
+          <div className="viz-ribbon-title-row">
+            <span className="viz-ribbon-label">
+              <EvStationRoundedIcon
+                sx={{ fontSize: 17, color: "var(--viz-teal-deep)" }}
+              />
+              Live Telemetry Aggregates
+            </span>
+            <span
+              style={{
+                fontSize: 10,
+                fontWeight: 800,
+                color: totalActive > 0 ? "var(--viz-green-fg)" : "var(--viz-text-muted)",
+                background: totalActive > 0 ? "var(--viz-green-bg)" : "var(--viz-teal-wash)",
+                padding: "2px 8px",
+                borderRadius: 999,
+                fontFamily: "var(--font-display)",
               }}
             >
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                  <Box>
-                    <Typography sx={{ fontWeight: 900, color: "#04BFBF" }}>{s.deviceId}</Typography>
-                    <Typography sx={{ opacity: 0.75 }}>{s.address}</Typography>
-                  </Box>
-                  <Chip label={relayLabel} sx={relayChipSx} />
-                </Box>
+              {totalActive} Active
+            </span>
+          </div>
 
-                <Box sx={{ mt: 2, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.2 }}>
-                  <Box>
-                    <Typography variant="caption" sx={{ opacity: 0.65 }}>Vehicle No.</Typography>
-                    <Typography sx={{ fontWeight: 800 }}>{s.vehicleNumber}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" sx={{ opacity: 0.65 }}>Start</Typography>
-                    <Typography sx={{ fontWeight: 800 }}>{fmtDateTime(s.startTime)}</Typography>
-                  </Box>
+          <div className="viz-live-stat-pills">
+            <div className="viz-live-stat-pill">
+              <span
+                className="viz-live-stat-num"
+                style={{ color: "var(--viz-teal-deep)" }}
+              >
+                {totalActive}
+              </span>
+              <span className="viz-live-stat-lbl">Active Sessions</span>
+            </div>
 
-                  <Box>
-                    <Typography variant="caption" sx={{ opacity: 0.65 }}>Energy selected</Typography>
-                    <Typography sx={{ fontWeight: 800 }}>{fmtKwh(s.energySelected)}</Typography>
-                  </Box>
-                  <Box>
-                    <Typography variant="caption" sx={{ opacity: 0.65 }}>Amount paid</Typography>
-                    <Typography sx={{ fontWeight: 800 }}>{fmtMoney(s.amountPaid)}</Typography>
-                  </Box>
-                </Box>
+            <div className="viz-live-stat-pill">
+              <span
+                className="viz-live-stat-num"
+                style={{ color: "var(--viz-green-fg)" }}
+              >
+                {relayOnCount}
+              </span>
+              <span className="viz-live-stat-lbl">Relays ON</span>
+            </div>
 
-                <Box sx={{ mt: 2, display: "flex", alignItems: "center", gap: 2 }}>
-                  <Box sx={{ position: "relative", display: "inline-flex" }}>
-                    <CircularProgress
-                      variant="determinate"
-                      value={s.progressPercent || 0}
-                      size={74}
-                      thickness={5}
-                      sx={{ color: "#00E676" }}
-                    />
-                    <Box
-                      sx={{
-                        top: 0,
-                        left: 0,
-                        bottom: 0,
-                        right: 0,
-                        position: "absolute",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <Typography sx={{ fontWeight: 900 }}>{Math.round(s.progressPercent || 0)}%</Typography>
-                    </Box>
-                  </Box>
+            <div className="viz-live-stat-pill">
+              <span
+                className="viz-live-stat-num"
+                style={{ color: "var(--viz-text-main)" }}
+              >
+                {totalKwhConsumed.toFixed(2)}
+              </span>
+              <span className="viz-live-stat-lbl">Live kWh Dispensed</span>
+            </div>
 
-                  <Box>
-                    <Typography sx={{ opacity: 0.75 }}>
-                      Consumed: {fmtKwh(s.energyConsumed)}
-                    </Typography>
-                    <Typography sx={{ opacity: 0.75 }}>
-                      Target: {fmtKwh(s.energySelected)}
-                    </Typography>
-                  </Box>
-                </Box>
-              </CardContent>
-            </Card>
-          );
-        })
-      )}
-    </Box>
+            <div className="viz-live-stat-pill">
+              <span
+                className="viz-live-stat-num"
+                style={{ color: "var(--viz-orange)" }}
+              >
+                {fmtMoney(totalAmountPaid)}
+              </span>
+              <span className="viz-live-stat-lbl">Session Revenue</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Main Content Area */}
+        {loading && rows.length === 0 ? (
+          <Box
+            sx={{
+              py: 8,
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <CircularProgress sx={{ color: "var(--viz-aqua)" }} />
+            <Typography
+              sx={{
+                mt: 1.5,
+                fontSize: 13,
+                fontWeight: 700,
+                color: "var(--viz-text-muted)",
+              }}
+            >
+              Listening for active charging telemetry…
+            </Typography>
+          </Box>
+        ) : rows.length === 0 ? (
+          <div className="viz-empty-card">
+            <EvStationRoundedIcon
+              sx={{ fontSize: 40, color: "var(--viz-teal-deep)" }}
+            />
+            <Typography
+              sx={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 800,
+                fontSize: 16,
+                color: "var(--viz-text-main)",
+                mt: 0.5,
+              }}
+            >
+              No Active Sessions Running
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: 12,
+                color: "var(--viz-text-muted)",
+                maxWidth: 380,
+                mx: "auto",
+              }}
+            >
+              When an EV driver begins charging at any of your stations, real-time
+              telemetry, relay status, and kWh progress will display here automatically.
+            </Typography>
+          </div>
+        ) : (
+          <div className="viz-live-grid">
+            {rows.map((s) => (
+              <LiveChargingCard key={s.sessionId} session={s} />
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
   );
 }

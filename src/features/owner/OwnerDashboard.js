@@ -2,32 +2,23 @@
 
 import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
-
-import {
-  Box,
-  IconButton,
-  Typography,
-} from "@mui/material";
-
-import MenuIcon from "@mui/icons-material/Menu";
-
+import { Box, IconButton } from "@mui/material";
+import MenuRoundedIcon from "@mui/icons-material/MenuRounded";
 import OwnerSidebar from "./OwnerSidebar";
 
-const COLORS = {
-  background: "#F5F8FA",
-  darkTeal: "#01313A",
-  border: "#E2E8F0",
-};
-
-const OwnerDashboard = () => {
+export default function OwnerDashboard() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const toggleSidebar = () => {
-    setSidebarOpen((previous) => !previous);
+    setSidebarOpen((prev) => !prev);
   };
 
   const closeSidebar = () => {
     setSidebarOpen(false);
+  };
+
+  const openSidebar = () => {
+    setSidebarOpen(true);
   };
 
   return (
@@ -36,102 +27,63 @@ const OwnerDashboard = () => {
         display: "flex",
         width: "100%",
         minHeight: "100dvh",
-        backgroundColor: COLORS.background,
+        backgroundColor: "#f3fbfc", // Mint Canvas base
         position: "relative",
         overflow: "hidden",
       }}
     >
-      {/* MOBILE TOP BAR */}
-      <Box
-        component="header"
+      {/* ================================================================== */}
+      {/* 1. SLEEK FLOATING DRAWER TRIGGER (MOBILE & TABLET ONLY)            */}
+      {/* Sits over child header without taking vertical space               */}
+      {/* ================================================================== */}
+      <IconButton
+        onClick={toggleSidebar}
+        aria-label="Open Navigation Drawer"
         sx={{
-          display: { xs: "flex", md: "none" },
-          alignItems: "center",
+          display: { xs: "flex", lg: "none" },
           position: "fixed",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 56,
-          boxSizing: "border-box",
-          px: 1.5,
-          backgroundColor: "#FFFFFF",
-          borderBottom: `1px solid ${COLORS.border}`,
-          zIndex: 1100,
+          top: 9,
+          left: 10,
+          zIndex: 1200,
+          width: 36,
+          height: 36,
+          color: "#00d2b4", // Electric Aqua
+          transition: "all 0.2s ease",
+          "&:hover": {
+
+            transform: "scale(1.04)",
+          },
         }}
       >
-        <IconButton
-          onClick={toggleSidebar}
-          aria-label="Open navigation"
-          sx={{ color: COLORS.darkTeal, mr: 1 }}
-        >
-          <MenuIcon />
-        </IconButton>
+        <MenuRoundedIcon sx={{ fontSize: 20 }} />
+      </IconButton>
 
-        <Typography
-          sx={{
-            fontSize: 15,
-            fontWeight: 800,
-            color: COLORS.darkTeal,
-          }}
-        >
-          VIZ Owner Hub
-        </Typography>
-      </Box>
+      {/* ================================================================== */}
+      {/* 2. RESPONSIVE SIDEBAR DRAWER                                       */}
+      {/* ================================================================== */}
+      <OwnerSidebar isOpen={sidebarOpen} onClose={closeSidebar} />
 
-      {/* MOBILE SIDEBAR OVERLAY */}
-      {sidebarOpen && (
-        <Box
-          onClick={closeSidebar}
-          aria-hidden="true"
-          sx={{
-            display: { xs: "block", md: "none" },
-            position: "fixed",
-            inset: 0,
-            background: "rgba(1, 31, 38, 0.32)",
-            zIndex: 1200,
-          }}
-        />
-      )}
-
-      <OwnerSidebar
-        isOpen={sidebarOpen}
-        onClose={closeSidebar}
-      />
-
-      {/* MAIN CONTENT */}
+      {/* ================================================================== */}
+      {/* 3. MAIN CONTENT VIEWPORT (ZERO REDUNDANT PADDING / GAPS)           */}
+      {/* ================================================================== */}
       <Box
         component="main"
         sx={{
           flex: 1,
           minWidth: 0,
           height: "100dvh",
-          backgroundColor: COLORS.background,
+          backgroundColor: "#f3fbfc",
           boxSizing: "border-box",
-          pt: { xs: "56px", md: 0 },
+          overflowY: "auto",
+          overflowX: "hidden",
+          scrollBehavior: "smooth",
+          margin: 0,
+          padding: 0, // Zero outer padding so child headers flush to screen edges
         }}
       >
-        <Box
-          sx={{
-            boxSizing: "border-box",
-            height: {
-              xs: "calc(100dvh - 56px)",
-              md: "100dvh",
-            },
-            overflowY: "auto",
-            overflowX: "hidden",
-            p: {
-              xs: 1.5,
-              sm: 2.5,
-              lg: 3.5,
-            },
-            scrollBehavior: "smooth",
-          }}
-        >
-          <Outlet />
-        </Box>
+        {/* Pass sidebar controls through context if any child header wants direct control */}
+        <Outlet context={{ sidebarOpen, toggleSidebar, openSidebar, closeSidebar }} />
       </Box>
     </Box>
   );
-};
-
-export default OwnerDashboard;
+}

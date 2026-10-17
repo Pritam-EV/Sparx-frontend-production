@@ -3,46 +3,79 @@
 import React, { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { IconButton } from "@mui/material";
-
-import CloseIcon from "@mui/icons-material/Close";
-import DashboardIcon from "@mui/icons-material/Dashboard";
-import DevicesIcon from "@mui/icons-material/DeviceHub";
-import AnalyticsIcon from "@mui/icons-material/Analytics";
-import PersonIcon from "@mui/icons-material/Person";
-import BatteryChargingFullIcon from "@mui/icons-material/BatteryChargingFull";
-import HistoryIcon from "@mui/icons-material/History";
-import AssessmentIcon from "@mui/icons-material/Assessment";
-import AccountBalanceWalletIcon from "@mui/icons-material/AccountBalanceWallet";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
-import PaymentsOutlinedIcon from "@mui/icons-material/PaymentsOutlined";
 import { apiFetch } from "../../utils/apiFetch";
+import "./OwnerSidebar.css";
 
-const COLORS = {
-  teal: "#04BFBF",
-  darkTeal: "#01313A",
-  background: "#FFFFFF",
-  border: "#E2E8F0",
-  text: "#334155",
-  muted: "#64748B",
-};
+// Material-UI Icons
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import DashboardRoundedIcon from "@mui/icons-material/DashboardRounded";
+import EvStationRoundedIcon from "@mui/icons-material/EvStationRounded";
+import BatteryChargingFullRoundedIcon from "@mui/icons-material/BatteryChargingFullRounded";
+import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
+import AccountBalanceWalletRoundedIcon from "@mui/icons-material/AccountBalanceWalletRounded";
+import AssessmentRoundedIcon from "@mui/icons-material/AssessmentRounded";
+import PersonRoundedIcon from "@mui/icons-material/PersonRounded";
+import OpenInNewRoundedIcon from "@mui/icons-material/OpenInNewRounded";
 
-const OwnerSidebar = ({ isOpen, onClose }) => {
-  const [isDesktop, setIsDesktop] = useState(
-    window.innerWidth >= 768
+// Inline WhatsApp SVG Icon
+function WhatsAppGlyph() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M17.472 14.382C17.114 14.204 15.362 13.342 15.034 13.224C14.706 13.104 14.468 13.044 14.23 13.402C13.992 13.76 13.306 14.566 13.098 14.804C12.89 15.042 12.682 15.072 12.324 14.894C11.966 14.716 10.812 14.338 9.448 13.122C8.388 12.176 7.672 11.008 7.464 10.65C7.256 10.292 7.442 10.098 7.622 9.92C7.784 9.76 7.982 9.5 8.16 9.292C8.338 9.084 8.398 8.934 8.518 8.696C8.638 8.458 8.578 8.25 8.488 8.072C8.398 7.894 7.684 6.136 7.386 5.42C7.096 4.722 6.802 4.816 6.584 4.806C6.376 4.796 6.138 4.794 5.9 4.794C5.662 4.794 5.276 4.884 4.948 5.242C4.62 5.6 3.698 6.464 3.698 8.224C3.698 9.984 4.978 11.684 5.156 11.922C5.334 12.16 7.676 15.772 11.26 17.322C12.112 17.69 12.778 17.912 13.298 18.076C14.156 18.348 14.936 18.31 15.556 18.218C16.248 18.114 17.684 17.348 17.982 16.514C18.28 15.68 18.28 14.966 18.19 14.804C18.1 14.642 17.83 14.56 17.472 14.382Z"
+        fill="currentColor"
+      />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M12 2C6.48 2 2 6.48 2 12C2 13.85 2.5 15.58 3.38 17.07L2.05 22L7.1 20.68C8.55 21.52 10.22 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 20.17C10.42 20.17 8.95 19.72 7.7 18.94L7.33 18.71L4.35 19.49L5.15 16.58L4.9 16.18C4.05 14.83 3.6 13.25 3.6 12C3.6 7.37 7.37 3.6 12 3.6C16.63 3.6 20.4 7.37 20.4 12C20.4 16.63 16.63 20.17 12 20.17Z"
+        fill="currentColor"
+      />
+    </svg>
   );
+}
 
+// Inline Globe SVG Icon
+function GlobeGlyph() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M2 12H22"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M12 2C14.5013 4.73835 15.9228 8.29203 16 12C15.9228 15.708 14.5013 19.2616 12 22C9.49872 19.2616 8.07725 15.708 8 12C8.07725 8.29203 9.49872 4.73835 12 2Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+export default function OwnerSidebar({ isOpen, onClose }) {
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
   const [hasVjraDevices, setHasVjraDevices] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     const handleResize = () => {
-      setIsDesktop(window.innerWidth >= 768);
+      setIsDesktop(window.innerWidth >= 1024);
     };
 
     window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -51,10 +84,8 @@ const OwnerSidebar = ({ isOpen, onClose }) => {
     apiFetch("/api/eb/owner/projects")
       .then((result) => {
         if (!mounted) return;
-
         setHasVjraDevices(
-          Array.isArray(result?.projects) &&
-          result.projects.length > 0
+          Array.isArray(result?.projects) && result.projects.length > 0
         );
       })
       .catch(() => {
@@ -66,268 +97,189 @@ const OwnerSidebar = ({ isOpen, onClose }) => {
     };
   }, []);
 
-  const navStyle = ({ isActive }) => ({
-    ...styles.link,
-    ...(isActive ? styles.activeLink : {}),
-  });
-
-  const sidebarStyle = {
-    ...styles.sidebar,
-    position: isDesktop ? "static" : "fixed",
-    transform: isDesktop
-      ? "none"
-      : `translateX(${isOpen ? "0" : "-100%"})`,
-  };
-
   const closeAfterNavigation = () => {
     if (!isDesktop && onClose) onClose();
   };
 
-  const links = [
+  const navLinks = [
     {
       label: "Overview",
       to: "/owner",
-      icon: <DashboardIcon sx={styles.icon} />,
+      icon: <DashboardRoundedIcon sx={{ fontSize: 20 }} />,
       end: true,
     },
     {
       label: "My Devices",
       to: "/owner/devices",
-      icon: <DevicesIcon sx={styles.icon} />,
+      icon: <EvStationRoundedIcon sx={{ fontSize: 20 }} />,
     },
     {
       label: "Live Charging",
       to: "/owner/live-charging",
-      icon: <BatteryChargingFullIcon sx={styles.icon} />,
-    },
-    {
-      label: "Past Sessions",
-      to: "/owner/past-sessions",
-      icon: <HistoryIcon sx={styles.icon} />,
+      icon: <BatteryChargingFullRoundedIcon sx={{ fontSize: 20 }} />,
     },
     {
       label: "Session Register",
       to: "/owner/sessions",
-      icon: <HistoryIcon sx={styles.icon} />,
-      },
-      {
-        label: "Finance & Settlements",
-        to: "/owner/finance",
-        icon: <AccountBalanceWalletIcon sx={styles.icon} />,
-      },
+      icon: <HistoryRoundedIcon sx={{ fontSize: 20 }} />,
+    },
     {
-      label: "Analytics",
-      to: "/owner/analytics",
-      icon: <AnalyticsIcon sx={styles.icon} />,
+      label: "Finance & Settlements",
+      to: "/owner/finance",
+      icon: <AccountBalanceWalletRoundedIcon sx={{ fontSize: 20 }} />,
     },
   ];
 
   if (hasVjraDevices) {
-    links.push({
+    navLinks.push({
       label: "Energy Bills",
       to: "/owner/reports",
-      icon: <AssessmentIcon sx={styles.icon} />,
+      icon: <AssessmentRoundedIcon sx={{ fontSize: 20 }} />,
     });
   }
 
-  links.push({
-    label: "Profile",
-    to: "/profile",
-    icon: <PersonIcon sx={styles.icon} />,
+  navLinks.push({
+    label: "Home",
+    to: "/landing-home",
+    icon: <PersonRoundedIcon sx={{ fontSize: 20 }} />,
   });
 
-  return (
-    <aside style={sidebarStyle}>
-      <div style={styles.header}>
-        <div style={styles.brand}>
-          <div style={styles.brandMark}>V</div>
-
-          <div>
-            <div style={styles.logo}>VIZ</div>
-            <div style={styles.subtitle}>OWNER HUB</div>
-          </div>
-        </div>
-
-        {!isDesktop && (
-          <IconButton
-            onClick={onClose}
-            size="small"
-            aria-label="Close navigation"
-            sx={{ color: COLORS.darkTeal }}
-          >
-            <CloseIcon />
-          </IconButton>
-        )}
-      </div>
-
-      <div style={styles.sectionLabel}>WORKSPACE</div>
-
-      <nav aria-label="Owner navigation">
-        <ul style={styles.menu}>
-          {links.map((link) => (
-            <li key={link.to} style={styles.menuItem}>
-              <NavLink
-                to={link.to}
-                end={link.end}
-                style={navStyle}
-                onClick={closeAfterNavigation}
-              >
-                {link.icon}
-                <span>{link.label}</span>
-              </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <div style={styles.sidebarFooter}>
-        <div style={styles.footerDot} />
-
-        <div>
-          <div style={styles.footerTitle}>VIZ Smart Charging</div>
-          <div style={styles.footerText}>Owner workspace</div>
-        </div>
-      </div>
-    </aside>
-  );
-};
-
-const styles = {
-  sidebar: {
+  const sidebarInlineStyle = {
+    position: isDesktop ? "sticky" : "fixed",
     top: 0,
     left: 0,
-    width: 260,
-    minWidth: 260,
-    height: "100vh",
-    display: "flex",
-    flexDirection: "column",
-    boxSizing: "border-box",
-    background: COLORS.background,
-    color: COLORS.text,
-    zIndex: 1300,
-    transition: "transform 0.25s ease",
-    borderRight: `1px solid ${COLORS.border}`,
-    overflowY: "auto",
-    flexShrink: 0,
-  },
+    transform: isDesktop
+      ? "none"
+      : `translateX(${isOpen ? "0" : "-100%"})`,
+  };
 
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "22px 20px",
-    borderBottom: `1px solid ${COLORS.border}`,
-    minHeight: 86,
-    boxSizing: "border-box",
-  },
+  return (
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {!isDesktop && isOpen && (
+        <div
+          className="viz-sidebar-backdrop"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
 
-  brand: {
-    display: "flex",
-    alignItems: "center",
-    gap: 11,
-  },
+      {/* Main Sidebar Shell */}
+      <aside className="viz-sidebar" style={sidebarInlineStyle}>
+        {/* Brand Header */}
+        <div className="viz-sidebar-header">
+          <div className="viz-sidebar-brand">
+            <div className="viz-sidebar-logo-container">
+              {!imgError ? (
+                <img
+                  src="/logo2.png"
+                  alt="VIZ Logo"
+                  className="viz-sidebar-logo-img"
+                  onError={() => setImgError(true)}
+                />
+              ) : (
+                <div className="viz-sidebar-logo-fallback">V</div>
+              )}
+            </div>
 
-  brandMark: {
-    width: 40,
-    height: 40,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 12,
-    background: COLORS.darkTeal,
-    color: "#FFFFFF",
-    fontSize: 21,
-    fontWeight: 850,
-  },
+            <div className="viz-sidebar-title-block">
+              <div className="viz-sidebar-title">
+                VIZ-Smart Charging
+              </div>
+              <div className="viz-sidebar-subtext">Charging Point Operator</div>
+            </div>
+          </div>
 
-  logo: {
-    fontSize: 18,
-    fontWeight: 850,
-    letterSpacing: "-0.3px",
-    color: COLORS.darkTeal,
-    lineHeight: 1.3,
-  },
+          {!isDesktop && (
+            <IconButton
+              onClick={onClose}
+              size="small"
+              aria-label="Close navigation"
+              sx={{ color: "var(--viz-text-muted)" }}
+            >
+              <CloseRoundedIcon sx={{ fontSize: 15 }} />
+            </IconButton>
+          )}
+        </div>
 
-  subtitle: {
-    color: COLORS.muted,
-    fontSize: 9,
-    fontWeight: 750,
-    letterSpacing: "1.5px",
-    marginTop: 2,
-  },
+        {/* Navigation Body */}
+        <div className="viz-sidebar-body">
+          <div className="viz-sidebar-section-label">Workspace</div>
 
-  sectionLabel: {
-    padding: "23px 20px 9px",
-    color: "#94A3B8",
-    fontSize: 10,
-    fontWeight: 800,
-    letterSpacing: "1.3px",
-  },
+          <nav aria-label="CPO Navigation">
+            <ul className="viz-sidebar-menu">
+              {navLinks.map((link) => (
+                <li key={link.to}>
+                  <NavLink
+                    to={link.to}
+                    end={link.end}
+                    className={({ isActive }) =>
+                      `viz-sidebar-link ${isActive ? "active" : ""}`
+                    }
+                    onClick={closeAfterNavigation}
+                  >
+                    <span className="viz-sidebar-link-icon">{link.icon}</span>
+                    <span>{link.label}</span>
+                  </NavLink>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </div>
 
-  menu: {
-    listStyle: "none",
-    padding: "0 12px",
-    margin: 0,
-  },
+        {/* Auxiliary Cards (WhatsApp Support & Website) */}
+        <div className="viz-sidebar-auxiliary">
+          {/* WhatsApp Support Card */}
+          <a
+            href="https://wa.me/918855094432?text=Hello%20VIZ%20Support,%20I%20am%20a%20charging%20station%20owner%20and%20need%20assistance."
+            target="_blank"
+            rel="noopener noreferrer"
+            className="viz-whatsapp-card"
+          >
+            <div className="viz-whatsapp-left">
+              <div className="viz-whatsapp-icon-box">
+                <WhatsAppGlyph />
+              </div>
+              <div>
+                <div className="viz-whatsapp-title">Contact Support</div>
+                <div className="viz-whatsapp-phone">+91 8855094432</div>
+              </div>
+            </div>
 
-  menuItem: {
-    marginBottom: 5,
-  },
+            <OpenInNewRoundedIcon
+              sx={{ fontSize: 14, color: "var(--viz-green-fg)", opacity: 0.8 }}
+            />
+          </a>
 
-  link: {
-    color: COLORS.text,
-    textDecoration: "none",
-    display: "flex",
-    alignItems: "center",
-    gap: 12,
-    padding: "12px 13px",
-    borderRadius: 10,
-    fontSize: 13,
-    fontWeight: 600,
-    transition: "background 0.18s ease, color 0.18s ease",
-    borderLeft: "3px solid transparent",
-  },
+          {/* Official Website Card */}
+          <a
+            href="https://eviz.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="viz-website-card"
+          >
+            <div className="viz-website-left">
+              <div className="viz-website-icon-box">
+                <GlobeGlyph />
+              </div>
+              <div>
+                <div className="viz-website-title">Official Portal</div>
+                <div className="viz-website-url">eviz.in</div>
+              </div>
+            </div>
 
-  activeLink: {
-    background: "#E5F8F7",
-    color: COLORS.darkTeal,
-    fontWeight: 800,
-    borderLeft: `3px solid ${COLORS.teal}`,
-  },
+            <OpenInNewRoundedIcon
+              sx={{ fontSize: 14, color: "var(--viz-orange)", opacity: 0.8 }}
+            />
+          </a>
+        </div>
 
-  icon: {
-    fontSize: 20,
-    flexShrink: 0,
-  },
-
-  sidebarFooter: {
-    display: "flex",
-    gap: 10,
-    alignItems: "center",
-    padding: "18px 20px",
-    marginTop: "auto",
-    borderTop: `1px solid ${COLORS.border}`,
-  },
-
-  footerDot: {
-    width: 9,
-    height: 9,
-    background: COLORS.teal,
-    borderRadius: "50%",
-    flexShrink: 0,
-  },
-
-  footerTitle: {
-    color: COLORS.darkTeal,
-    fontSize: 11,
-    fontWeight: 750,
-  },
-
-  footerText: {
-    color: COLORS.muted,
-    fontSize: 10,
-    marginTop: 3,
-  },
-};
-
-export default OwnerSidebar;
+        {/* Footer Attribution */}
+        <div className="viz-sidebar-footer">
+          <div className="viz-footer-brand-title">A brand by</div>
+          <div className="viz-footer-brand-company">Vjra Technologies LLP</div>
+        </div>
+      </aside>
+    </>
+  );
+}

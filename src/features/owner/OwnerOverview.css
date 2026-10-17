@@ -1,0 +1,1030 @@
+/* ==========================================================================
+   VIZ EV CPO COMMAND CENTER — High-Density Responsive Design System
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --viz-mint-canvas: #f3fbfc;
+  --viz-obsidian: #031216;
+  --viz-obsidian-card: linear-gradient(145deg, #072227 0%, #0d3840 55%, #09272c 100%);
+  --viz-white: #ffffff;
+  --viz-mint-tint: #f7fdfc;
+  --viz-teal-wash: #edf8f6;
+
+  --viz-aqua: #00d2b4;
+  --viz-aqua-glow: #00e5be;
+  --viz-teal-deep: #00776b;
+  --viz-orange: #ff8236;
+  --viz-orange-deep: #ff521a;
+  --viz-Sunrise-grad: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+  --viz-Aqua-grad: linear-gradient(135deg, #00d2b4 0%, #009e8f 100%);
+
+  --viz-text-main: #0e2e33;
+  --viz-text-muted: #53757a;
+  --viz-text-subtle: #799ea4;
+  --viz-border: #d4f0ec;
+  --viz-border-soft: #e5f5f2;
+
+  --viz-green-fg: #008764;
+  --viz-green-bg: #dbfaf0;
+  --viz-warn-fg: #e06014;
+  --viz-warn-bg: #fff3ed;
+  --viz-err-fg: #d93b3b;
+  --viz-err-bg: #fff2f0;
+
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+}
+
+.viz-cpo-shell {
+  min-height: 100vh;
+  width: 100vw;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 0 2rem 0;
+  background-color: var(--viz-mint-canvas);
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(0, 229, 190, 0.12), transparent 28rem),
+    radial-gradient(circle at 0% 100%, rgba(255, 130, 54, 0.08), transparent 26rem);
+  font-family: var(--font-body);
+  color: var(--viz-text-main);
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   1. COMPACT TOP COMMAND HEADER & INLINE FILTER BAR
+   ========================================================================== */
+
+/* Flush top bar with 0 side gaps */
+.viz-top-header {
+  background: var(--viz-obsidian-card);
+  border-radius: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  padding: 0.85rem 1rem !important;
+  box-sizing: border-box;
+  border-bottom: 1px solid rgba(0, 210, 180, 0.2);
+}
+
+.viz-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.viz-brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.viz-logo-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  flex-shrink: 0;
+}
+
+.viz-brand-name {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  line-height: 1;
+}
+
+.viz-cpo-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--viz-Sunrise-grad);
+  color: #fff;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.viz-brand-sub {
+  font-size: 11px;
+  color: #8bb4ba;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+/* Compact Inline Filter & Sync Controls */
+.viz-controls-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  max-width: 100%;
+}
+
+.viz-period-pillbox {
+  display: flex;
+  align-items: center;
+  background: rgba(3, 18, 22, 0.55);
+  border: 1px solid rgba(212, 240, 236, 0.16);
+  border-radius: 999px;
+  padding: 3px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: calc(100vw - 78px);
+}
+
+.viz-period-pillbox::-webkit-scrollbar {
+  display: none;
+}
+
+.viz-period-btn {
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #a3c5ca;
+  background: transparent;
+  border: none;
+  padding: 5px 11px;
+  border-radius: 999px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+}
+
+.viz-period-btn:hover {
+  color: #ffffff;
+}
+
+.viz-period-btn.active {
+  background: var(--viz-Sunrise-grad);
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 3px 12px rgba(255, 82, 26, 0.4);
+}
+
+.viz-sync-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.viz-sync-icon-btn:hover:not(:disabled) {
+  background: var(--viz-aqua);
+  color: var(--viz-obsidian);
+  border-color: var(--viz-aqua);
+}
+
+/* ==========================================================================
+   2. MAIN CONTAINER
+   ========================================================================== */
+
+.viz-container {
+  max-width: 1440px;
+  width: 100%;
+  margin: 0.75rem auto 0 auto;
+  padding: 0 0.85rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0; /* Critical: allows flex children to shrink */
+}
+/* ==========================================================================
+   3. HARDWARE HEALTH STATUS RIBBON (TOP PRIORITY BAR)
+   ========================================================================== */
+
+.viz-health-ribbon {
+  background: var(--viz-white);
+  border: 1px solid var(--viz-border);
+  border-radius: 18px;
+  padding: 0.85rem;
+  box-shadow: 0 4px 18px rgba(0, 160, 145, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.viz-health-title-block {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.viz-health-label {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.viz-health-pills {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.viz-stat-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 2px;
+  border-radius: 12px;
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border-soft);
+  text-align: center;
+  min-width: 0;
+}
+
+.viz-stat-pill-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.viz-stat-pill-num {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.viz-stat-pill-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--viz-text-muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.viz-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   4. SPLIT COMMAND GRID (FINANCIAL BENTO + LIVE SESSIONS)
+   ========================================================================== */
+
+.viz-command-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 0.85rem;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+}
+
+/* Left Column: Financial & Telemetry Bento */
+.viz-bento-left {
+    min-width: 0; /* Prevents overflow */
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+/* Obsidian Hero Financial Card */
+.viz-fin-hero-card {
+  background: var(--viz-obsidian-card);
+  border-radius: 22px;
+  padding: 1.25rem;
+  color: #ffffff;
+  box-shadow: 0 10px 26px rgba(3, 18, 22, 0.16);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.viz-fin-hero-card-light {
+  background: var(--viz-white);
+  border: 1.5px solid var(--viz-border);
+  border-radius: 20px;
+  padding: 1.35rem 1.15rem;
+  box-shadow: 0 8px 24px rgba(0, 160, 145, 0.08);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.viz-payout-center-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.viz-fin-hero-card::before {
+  content: "";
+  position: absolute;
+  top: -50px;
+  right: -50px;
+  width: 180px;
+  height: 180px;
+  background: radial-gradient(circle, rgba(255, 130, 54, 0.22), transparent 70%);
+  pointer-events: none;
+}
+
+.viz-fin-main-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.viz-fin-kicker {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #93b7bd;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.viz-fin-big-val {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.6vw, 2rem);
+  font-weight: 900;
+  letter-spacing: -0.6px;
+  line-height: 1.1;
+  margin-top: 0.3rem;
+}
+
+.viz-fin-sub {
+  font-size: 11px;
+  color: #799ea4;
+  margin-top: 3px;
+}
+
+.viz-tax-strip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 13px;
+  padding: 0.6rem 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.viz-tax-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.viz-tax-lbl {
+  font-size: 11px;
+  color: #9ec0c6;
+  font-weight: 600;
+}
+
+.viz-tax-val {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.viz-fin-kicker-light {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--viz-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.viz-fin-big-val-center {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 4vw, 2.3rem);
+  font-weight: 900;
+  color: var(--viz-teal-deep);
+  letter-spacing: -0.6px;
+  line-height: 1.15;
+  margin: 0.25rem 0;
+}
+
+.viz-revenue-strip-light {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--viz-pale-mint-tint);
+  border: 1px solid var(--viz-border-soft);
+  border-radius: 12px;
+  padding: 0.6rem 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.viz-tax-strip-light {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  width: 100%;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--viz-border);
+  gap: 0.5rem;
+}
+
+.viz-tax-item-light {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.viz-tax-lbl-light {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--viz-text-muted);
+  text-transform: uppercase;
+}
+.viz-plain-plate {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+  letter-spacing: 0.4px;
+}
+.viz-tax-val-light {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+  margin-top: 1px;
+}
+
+
+/* Secondary 2-Col Bento Tiles (Energy & Receipts) */
+.viz-bento-subgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.viz-compact-tile {
+  background: var(--viz-white);
+  border: 1px solid var(--viz-border);
+  border-radius: 20px;
+  padding: 1rem 1.1rem;
+  box-shadow: 0 6px 20px rgba(0, 160, 145, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.viz-tile-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  color: var(--viz-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.viz-tile-value {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-weight: 800;
+  color: var(--viz-text-main);
+  line-height: 1.15;
+  margin-top: 2px;
+}
+
+.viz-tile-sub {
+  font-size: 11px;
+  color: var(--viz-text-subtle);
+  font-weight: 600;
+  margin-top: 2px;
+}
+
+.viz-tile-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Right Column: Live Active Sessions Panel */
+.viz-live-panel {
+  background: var(--viz-white);
+  border: 1px solid var(--viz-border);
+  border-radius: 22px;
+  padding: 1.1rem;
+  box-shadow: 0 8px 24px rgba(0, 160, 145, 0.07);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-width: 0; /* Prevents overflow */
+  width: 100%;
+}
+
+.viz-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.viz-panel-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.viz-live-radar-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--viz-green-fg);
+  box-shadow: 0 0 0 4px rgba(0, 135, 100, 0.18);
+}
+
+.viz-panel-title {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+}
+
+.viz-live-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  max-height: 255px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+/* Compact Live Session Row Card */
+.viz-live-row-card {
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border);
+  border-radius: 15px;
+  padding: 0.7rem 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  transition: border-color 0.2s ease;
+}
+
+.viz-live-row-card:hover {
+  border-color: var(--viz-aqua);
+}
+
+.viz-live-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.viz-live-charger-name {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.viz-live-meta {
+  font-size: 11px;
+  color: var(--viz-text-muted);
+  font-weight: 600;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Compact Indian Green EV Number Plate */
+.viz-ev-plate {
+  display: inline-flex;
+  align-items: center;
+  background: linear-gradient(180deg, #008751 0%, #00683e 100%);
+  color: #ffffff;
+  border: 1.5px solid #ffffff;
+  outline: 1px solid #0e2e33;
+  border-radius: 5px;
+  padding: 1px 6px 1px 3px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.7px;
+  gap: 3px;
+}
+
+.viz-ev-plate-ind {
+  background: #003893;
+  font-size: 6.5px;
+  padding: 1px 2.5px;
+  border-radius: 2px;
+}
+
+.viz-live-right {
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.viz-live-kwh {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--viz-teal-deep);
+}
+
+.viz-live-status-tag {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 999px;
+  margin-top: 2px;
+}
+
+.viz-empty-live {
+  background: var(--viz-mint-tint);
+  border: 1.5px dashed var(--viz-border);
+  border-radius: 16px;
+  padding: 1.75rem 1rem;
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   5. BAR CHART ANALYTICS SECTION WITH VIEW SWITCHER
+   ========================================================================== */
+
+.viz-analytics-card {
+  background: var(--viz-white);
+  border: 1px solid var(--viz-border);
+  border-radius: 22px;
+  padding: 1.25rem;
+  box-shadow: 0 8px 26px rgba(0, 160, 145, 0.06);
+}
+
+.viz-analytics-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.viz-chart-mode-tabs {
+  display: flex;
+  background: var(--viz-teal-wash);
+  border: 1px solid var(--viz-border);
+  border-radius: 12px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.viz-mode-tab {
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 5px 12px;
+  border-radius: 9px;
+  border: none;
+  background: transparent;
+  color: var(--viz-text-muted);
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.viz-mode-tab.active {
+  background: var(--viz-white);
+  color: var(--viz-text-main);
+  box-shadow: 0 2px 8px rgba(14, 46, 51, 0.08);
+}
+
+.viz-bar-viewport {
+  width: 100%;
+  height: 310px;
+}
+
+.viz-chart-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--viz-border-soft);
+}
+
+.viz-strip-box {
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border-soft);
+  border-radius: 12px;
+  padding: 0.6rem 0.85rem;
+}
+
+/* Tooltip */
+.viz-bar-tooltip {
+  background: rgba(3, 18, 22, 0.96);
+  border: 1px solid rgba(0, 210, 180, 0.4);
+  border-radius: 12px;
+  padding: 0.75rem 0.95rem;
+  color: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  min-width: 195px;
+}
+
+/* ==========================================================================
+   RESPONSIVE BREAKPOINTS (MOBILE & TABLET COMPACT TUNING)
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  .viz-command-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+    
+.viz-top-header {
+    padding: 0.65rem 0.85rem;
+    border-radius: 0;
+  }
+  .viz-header-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .viz-brand-row {
+    justify-content: space-between;
+  }
+
+  .viz-period-pillbox {
+    max-width: 100%;
+    width: 100%;
+  }
+
+.viz-container {
+    padding: 0 0.75rem;
+    margin: 0.75rem auto 0 auto;
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* Compact 5-column horizontal scroll or wrap for hardware health on mobile */
+  .viz-health-ribbon {
+    padding: 0.6rem 0.75rem;
+  }
+
+/* 5-item horizontal wrap that centers evenly across mobile */
+  .viz-health-pills {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.3rem;
+  }
+
+  .viz-health-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.viz-stat-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 5px 10px;
+  border-radius: 9px;
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border-soft);
+  flex-shrink: 0; /* Keeps pill shape intact during scroll */
+}
+
+  .viz-stat-pill-lbl {
+    font-size: 8.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .viz-stat-pill-num {
+    font-size: 0.85rem;
+  }
+
+  /* Compact Financial Hero on Mobile */
+  .viz-fin-hero-card {
+    padding: 0.95rem;
+    border-radius: 18px;
+    gap: 0.75rem;
+  }
+
+  .viz-fin-big-val {
+    font-size: 1.3rem;
+  }
+
+  .viz-tax-strip {
+    padding: 0.5rem 0.7rem;
+  }
+
+  /* Compact 2-Column Subcards on Mobile */
+  .viz-bento-subgrid {
+    gap: 0.6rem;
+  }
+
+  .viz-compact-tile {
+    padding: 0.75rem 0.8rem;
+    border-radius: 16px;
+  }
+
+  .viz-tile-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+  }
+
+  .viz-tile-value {
+    font-size: 1.15rem;
+  }
+
+  /* Bar Chart Mobile Sizing */
+  .viz-analytics-card {
+    padding: 0.95rem;
+    border-radius: 18px;
+  }
+
+  .viz-bar-viewport {
+    height: 235px;
+  }
+
+  .viz-chart-summary-strip {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.45rem;
+  }
+
+  .viz-strip-box {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .viz-container {
+    padding: 0 0.65rem;
+    margin-top: 0.6rem;
+  }
+
+  /* 1. Stack Financial Hero values vertically to eliminate horizontal clipping */
+  .viz-fin-hero-card {
+    padding: 0.85rem;
+    border-radius: 16px;
+  }
+
+  .viz-fin-main-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .viz-fin-main-row > div:last-child {
+    border-left: none !important;
+    border-top: 1px dashed rgba(255, 255, 255, 0.15);
+    padding-left: 0 !important;
+    padding-top: 0.75rem;
+  }
+
+  .viz-fin-big-val {
+    font-size: 1.45rem !important;
+    word-break: break-word;
+  }
+
+  /* Tax strip: full-width rows */
+  .viz-tax-strip {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.3rem;
+    padding: 0.5rem 0.65rem;
+  }
+
+  .viz-tax-item {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  /* 2. Responsive Subgrid Tiles */
+  .viz-compact-tile {
+    padding: 0.7rem 0.75rem;
+  }
+
+  .viz-tile-value {
+    font-size: 1.15rem !important;
+  }
+
+  /* 3. Live Session Card Fix: Stack Plate & Align Stats */
+  .viz-live-panel {
+    padding: 0.85rem;
+    border-radius: 16px;
+  }
+
+  .viz-live-row-card {
+    padding: 0.65rem;
+    gap: 0.5rem;
+  }
+
+  .viz-live-charger-name {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 3px !important;
+  }
+
+  .viz-ev-plate {
+    font-size: 9px !important;
+    padding: 1px 5px 1px 3px !important;
+  }
+
+  .viz-live-kwh {
+    font-size: 0.92rem !important;
+  }
+
+  /* 4. Chart Tabs: 50/50 Full Width */
+  .viz-chart-mode-tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .viz-mode-tab {
+    text-align: center;
+    padding: 6px 4px;
+    font-size: 10.5px;
+  }
+
+  .viz-chart-summary-strip {
+    grid-template-columns: 1fr !important;
+    gap: 0.4rem !important;
+  }
+}
+
+/* ==========================================================================
+   Footer Metadata
+   ========================================================================== */
+
+.viz-footer-meta {
+  text-align: center;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--viz-text-subtle);
+  padding: 1rem 0;
+}

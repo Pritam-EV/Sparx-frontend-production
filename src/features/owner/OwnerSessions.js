@@ -1,16 +1,17 @@
+// src/features/owner/OwnerSessions.js
+
 import React, { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
+import "./OwnerSessions.css";
+
 import {
   Alert,
   Box,
   Button,
   Card,
-  CardContent,
   Chip,
   CircularProgress,
-  Stack,
-  Tab,
-  Tabs,
+  IconButton,
   Table,
   TableBody,
   TableCell,
@@ -18,26 +19,22 @@ import {
   TableHead,
   TablePagination,
   TableRow,
-  TextField,
   Typography,
 } from "@mui/material";
-import RefreshIcon from "@mui/icons-material/Refresh";
-import BoltIcon from "@mui/icons-material/Bolt";
-import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
 
-const C = {
-  teal: "#04BFBF",
-  tealDark: "#038a8a",
-  bg: "#f5f7fa",
-  text: "#0f172a",
-  muted: "#64748b",
-  border: "#e2e8f0",
-  white: "#ffffff",
-  green: "#15803d",
-};
+// Icons
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
+import ReceiptLongRoundedIcon from "@mui/icons-material/ReceiptLongRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
+import CalendarTodayRoundedIcon from "@mui/icons-material/CalendarTodayRounded";
+import AccessTimeRoundedIcon from "@mui/icons-material/AccessTimeRounded";
+import EvStationRoundedIcon from "@mui/icons-material/EvStationRounded";
 
-const FONT =
-  "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+// ------------------------------------------------------------
+// DATE & FORMATTING UTILITIES
+// ------------------------------------------------------------
 
 const localDate = (date) => {
   const year = date.getFullYear();
@@ -54,7 +51,6 @@ const nextDate = (date) => {
 
 const initialPeriod = () => {
   const today = new Date();
-
   return {
     from: localDate(new Date(today.getFullYear(), today.getMonth(), 1)),
     to: localDate(nextDate(today)),
@@ -78,11 +74,14 @@ const dateTime = (value) =>
     ? new Date(value).toLocaleString("en-IN", {
         day: "2-digit",
         month: "short",
-        year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
       })
     : "—";
+
+// ------------------------------------------------------------
+// MAIN OWNER SESSIONS COMPONENT
+// ------------------------------------------------------------
 
 export default function OwnerSessions({ initialTab = "live" }) {
   const initial = initialPeriod();
@@ -123,9 +122,7 @@ export default function OwnerSessions({ initialTab = "live" }) {
         ? "/api/owner/sessions"
         : "/api/owner/receipts";
 
-      const result = await apiFetch(
-        `${endpoint}?${params.toString()}`
-      );
+      const result = await apiFetch(`${endpoint}?${params.toString()}`);
 
       setItems(Array.isArray(result?.items) ? result.items : []);
       setTotal(Number(result?.pagination?.total || 0));
@@ -145,336 +142,406 @@ export default function OwnerSessions({ initialTab = "live" }) {
     fetchRows();
   }, [fetchRows]);
 
-  const changeTab = (_event, nextTab) => {
+  const changeTab = (nextTab) => {
     setTab(nextTab);
     setPage(1);
   };
 
   const applyPeriod = () => {
     if (!from || !to || from >= to) {
-      setError("Choose a valid date range. The end date is exclusive.");
+      setError("Choose a valid date range. The end date must be after the start date.");
       return;
     }
-
     setError("");
     setPage(1);
     setAppliedPeriod({ from, to });
   };
 
-  const handleSearchChange = (event) => {
-    setSearch(event.target.value);
-    setPage(1);
-  };
-
   return (
-    <Box
-      sx={{
-        minHeight: "100%",
-        bgcolor: C.bg,
-        p: { xs: 1, sm: 2, md: 3 },
-        fontFamily: FONT,
-      }}
-    >
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        alignItems={{ xs: "stretch", sm: "center" }}
-        justifyContent="space-between"
-        spacing={1.5}
-        sx={{ mb: 2.5 }}
-      >
-        <Box>
-          <Typography
-            sx={{
-              fontSize: { xs: 24, sm: 29 },
-              color: C.text,
-              fontWeight: 800,
-              fontFamily: FONT,
-            }}
+    <div className="viz-sessions-shell">
+      {/* ================================================================== */}
+      {/* 1. FLUSH TOP HEADER (ZERO GAPS ON SIDES)                           */}
+      {/* ================================================================== */}
+      <header className="viz-sessions-top-header">
+        <div className="viz-sessions-header-inner">
+          <div className="viz-sessions-brand-block">
+            <div className="viz-sessions-logo-box">
+              
+            </div>
+            <div>
+              <div className="viz-sessions-header-title">
+                VIZ-Smart Charging <span className="viz-sessions-cpo-tag">Session Hub</span>
+
+
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              type="button"
+              onClick={fetchRows}
+              disabled={loading}
+              className="viz-btn-icon-soft"
+              title="Refresh Records"
+            >
+              {loading ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <RefreshRoundedIcon sx={{ fontSize: 19 }} />
+              )}
+            </button>
+                          </div>
+            </div>
+          </div>
+          </div>
+        </div>
+      </header>
+
+      {/* ================================================================== */}
+      {/* 2. MAIN CONTAINER & CONTROLS DOCK                                  */}
+      {/* ================================================================== */}
+      <main className="viz-sessions-container">
+        {/* Tab Switcher */}
+        <div className="viz-tab-bar">
+          <button
+            type="button"
+            className={`viz-tab-btn ${isLive ? "active" : ""}`}
+            onClick={() => changeTab("live")}
           >
-            Charging Sessions
-          </Typography>
+            <BoltRoundedIcon sx={{ fontSize: 18 }} />
+            <span>Live Sessions</span>
+          </button>
 
-          <Typography sx={{ mt: 0.5, color: C.muted, fontSize: 13 }}>
-            Live activity and receipt-based charging history.
-          </Typography>
-        </Box>
-
-        <Button
-          variant="outlined"
-          startIcon={<RefreshIcon />}
-          onClick={fetchRows}
-          disabled={loading}
-          sx={{
-            alignSelf: { xs: "flex-start", sm: "center" },
-            borderColor: C.border,
-            color: C.text,
-            textTransform: "none",
-            fontWeight: 700,
-          }}
-        >
-          Refresh
-        </Button>
-      </Stack>
-
-      <Card
-        elevation={0}
-        sx={{
-          border: `1px solid ${C.border}`,
-          borderRadius: 3,
-          mb: 2,
-        }}
-      >
-        <CardContent>
-          <Stack
-            direction={{ xs: "column", md: "row" }}
-            spacing={1.5}
-            alignItems={{ xs: "stretch", md: "center" }}
+          <button
+            type="button"
+            className={`viz-tab-btn ${!isLive ? "active" : ""}`}
+            onClick={() => changeTab("history")}
           >
-            <TextField
-              label="Search charger, vehicle or receipt"
-              size="small"
+            <ReceiptLongRoundedIcon sx={{ fontSize: 18 }} />
+            <span>Past Sessions</span>
+          </button>
+        </div>
+
+        {/* Compact Search & Date Filter Strip */}
+        <div className="viz-filter-strip">
+          <div className="viz-search-box">
+            <SearchRoundedIcon sx={{ color: "var(--viz-teal-deep)", fontSize: 19 }} />
+            <input
+              type="text"
+              className="viz-search-field"
+              placeholder="Search charger, vehicle plate or receipt…"
               value={search}
-              onChange={handleSearchChange}
-              sx={{ minWidth: { md: 260 }, flex: 1 }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
             />
+            {search && (
+              <IconButton size="small" onClick={() => setSearch("")} sx={{ p: 0.2 }}>
+                <CloseRoundedIcon sx={{ fontSize: 15 }} />
+              </IconButton>
+            )}
+          </div>
 
-            <TextField
-              label="From"
-              type="date"
-              size="small"
-              value={from}
-              onChange={(event) => setFrom(event.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
+          <div className="viz-date-controls">
+            <div className="viz-date-input-group">
+              <span className="viz-date-label">From</span>
+              <input
+                type="date"
+                className="viz-native-date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+              />
+            </div>
 
-            <TextField
-              label="To (exclusive)"
-              type="date"
-              size="small"
-              value={to}
-              onChange={(event) => setTo(event.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
+            <div className="viz-date-input-group">
+              <span className="viz-date-label">To</span>
+              <input
+                type="date"
+                className="viz-native-date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+              />
+            </div>
 
             <Button
               variant="contained"
               onClick={applyPeriod}
-              sx={{
-                bgcolor: C.teal,
-                color: "#042f2e",
-                fontWeight: 800,
-                textTransform: "none",
-                "&:hover": { bgcolor: "#03aaaa" },
-              }}
+              className="viz-btn-apply"
             >
-              Apply
+              Apply Filter
             </Button>
-          </Stack>
+          </div>
+        </div>
 
-          <Typography sx={{ mt: 1, fontSize: 11, color: C.muted }}>
-            {isLive
-              ? "Live sessions are read from current Session records."
-              : "Past charging activity is read from Receipts, not completed Session records."}
-          </Typography>
-        </CardContent>
-      </Card>
-
-      <Card
-        elevation={0}
-        sx={{
-          border: `1px solid ${C.border}`,
-          borderRadius: 3,
-          overflow: "hidden",
-        }}
-      >
-        <Box sx={{ px: { xs: 1.5, sm: 2.5 }, pt: 1 }}>
-          <Tabs
-            value={tab}
-            onChange={changeTab}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              "& .MuiTab-root": {
-                textTransform: "none",
-                minHeight: 54,
-                fontWeight: 700,
-              },
-              "& .Mui-selected": { color: C.tealDark },
-              "& .MuiTabs-indicator": { bgcolor: C.teal },
-            }}
-          >
-            <Tab
-              value="live"
-              icon={<BoltIcon />}
-              iconPosition="start"
-              label="Live sessions"
-            />
-            <Tab
-              value="history"
-              icon={<ReceiptLongIcon />}
-              iconPosition="start"
-              label="Past sessions / Receipts"
-            />
-          </Tabs>
-        </Box>
-
+        {/* Alerts */}
         {error && (
-          <Alert
-            severity="error"
-            sx={{ mx: 2, mt: 1 }}
-            action={
-              <Button
-                color="inherit"
-                size="small"
-                onClick={fetchRows}
-              >
-                Retry
-              </Button>
-            }
-          >
+          <Alert severity="error" sx={{ borderRadius: "14px", py: 0.5 }}>
             {error}
           </Alert>
         )}
 
-        {loading ? (
-          <Box sx={{ py: 8, textAlign: "center" }}>
-            <CircularProgress sx={{ color: C.teal }} />
-            <Typography sx={{ mt: 2, color: C.muted, fontSize: 13 }}>
-              Loading {isLive ? "live sessions" : "receipt history"}…
+        {/* ================================================================== */}
+        {/* 3. CONTENT AREA: HYBRID RESPONSIVE VIEW                            */}
+        {/* ================================================================== */}
+        {loading && items.length === 0 ? (
+          <Box sx={{ py: 8, display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <CircularProgress sx={{ color: "var(--viz-aqua)" }} />
+            <Typography sx={{ mt: 1.5, fontSize: 13, fontWeight: 700, color: "var(--viz-text-muted)" }}>
+              Loading {isLive ? "active session telemetry…" : "receipt ledger…"}
             </Typography>
           </Box>
+        ) : items.length === 0 ? (
+          <div className="viz-empty-box">
+            <EvStationRoundedIcon sx={{ fontSize: 38, color: "var(--viz-teal-deep)" }} />
+            <Typography sx={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15, mt: 1 }}>
+              {isLive ? "No Live Sessions Active" : "No Receipts Found In Period"}
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: "var(--viz-text-muted)", mt: 0.3, maxWidth: 350 }}>
+              {isLive
+                ? "Active charging sessions will populate here automatically."
+                : "Try expanding your date filter range to view earlier activity."}
+            </Typography>
+          </div>
         ) : (
           <>
-            <TableContainer sx={{ overflowX: "auto" }}>
-              <Table size="small">
-                <TableHead>
-                  <TableRow sx={{ bgcolor: "#f8fafc" }}>
-                    {(isLive
-                      ? [
-                          "Charger",
-                          "Vehicle number",
-                          "Vehicle model",
-                          "Status",
-                          "Start time",
-                          "Energy consumed",
-                        ]
-                      : [
-                          "Receipt ID",
-                          "Date",
-                          "Charger",
-                          "Vehicle number",
-                          "Vehicle model",
-                          "Total amount",
-                          "Taxable",
-                          "GST",
-                          "Energy",
-                          "Owner payout",
-                        ]
-                    ).map((heading) => (
-                      <TableCell
-                        key={heading}
-                        sx={{
-                          color: C.muted,
-                          fontWeight: 800,
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {heading}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                </TableHead>
+            {/* VIEW A: Mobile Bento Record Cards (< 768px) */}
+            <div className="viz-mobile-records-list">
+              {items.map((item) => {
+                const key = item.sessionId || item.receiptId;
+                const isPaused = item.status === "paused";
 
-                <TableBody>
-                  {items.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={isLive ? 6 : 10}
-                        align="center"
-                        sx={{ py: 5, color: C.muted }}
-                      >
-                        {isLive
-                          ? "No live sessions found."
-                          : "No receipts found for this period."}
-                      </TableCell>
+                return (
+                  <div key={key} className="viz-record-card">
+                    <div className="viz-record-card-top">
+                      <div>
+                        <div className="viz-record-main-id">
+                          {item.deviceId || "Charger"}
+                        </div>
+                        <div className="viz-plain-plate-text">
+                          {item.vehicleNumber || "Vehicle not specified"}
+                        </div>
+                      </div>
+
+                      {isLive ? (
+                        <span
+                          style={{
+                            fontFamily: "var(--font-display)",
+                            fontSize: 10,
+                            fontWeight: 800,
+                            textTransform: "uppercase",
+                            padding: "3px 9px",
+                            borderRadius: 999,
+                            backgroundColor: isPaused ? "var(--viz-warn-bg)" : "var(--viz-green-bg)",
+                            color: isPaused ? "var(--viz-warn-fg)" : "var(--viz-green-fg)",
+                          }}
+                        >
+                          {isPaused ? "Paused" : "Charging"}
+                        </span>
+                      ) : (
+                        <span
+                          style={{
+                            fontFamily: "var(--font-display)",
+                            fontSize: 11,
+                            fontWeight: 800,
+                            color: "var(--viz-orange)",
+                          }}
+                        >
+                          {money(item.totalAmount)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="viz-record-bento-strip">
+                      <div className="viz-record-mini-cell">
+                        <span className="viz-record-mini-lbl">Energy</span>
+                        <span className="viz-record-mini-val" style={{ color: "var(--viz-teal-deep)" }}>
+                          {number(item.energyConsumed)} kWh
+                        </span>
+                      </div>
+
+                      <div className="viz-record-mini-cell">
+                        <span className="viz-record-mini-lbl">Model</span>
+                        <span className="viz-record-mini-val">
+                          {item.vehicleModel || "Standard EV"}
+                        </span>
+                      </div>
+
+                      <div className="viz-record-mini-cell">
+                        <span className="viz-record-mini-lbl">
+                          {isLive ? "Status" : "Payout"}
+                        </span>
+                        <span className="viz-record-mini-val" style={{ color: isLive ? "var(--viz-text-main)" : "#7c3aed" }}>
+                          {isLive ? item.status || "Active" : money(item.ownerPayout)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--viz-text-muted)" }}>
+                      <AccessTimeRoundedIcon sx={{ fontSize: 13, color: "var(--viz-text-subtle)" }} />
+                      <span>{dateTime(item.startTime || item.createdAt)}</span>
+                      {!isLive && item.receiptId && (
+                        <span style={{ marginLeft: "auto", fontFamily: "monospace", fontSize: 10 }}>
+                          #{String(item.receiptId).slice(-6)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* VIEW B: Desktop / Tablet Clean Data Table (>= 768px) */}
+            <div className="viz-table-wrapper">
+              <TableContainer>
+                <Table size="small">
+                  <TableHead>
+                    <TableRow sx={{ bgcolor: "var(--viz-pale-mint-tint)" }}>
+                      {(isLive
+                        ? [
+                            "Charger",
+                            "Vehicle Number",
+                            "Model",
+                            "Status",
+                            "Start Time",
+                            "Energy Dispensed",
+                          ]
+                        : [
+                            "Receipt ID",
+                            "Date",
+                            "Charger",
+                            "Vehicle Number",
+                            "Model",
+                            "Total Amount",
+                            "Taxable",
+                            "GST",
+                            "Energy",
+                            "Owner Payout",
+                          ]
+                      ).map((h) => (
+                        <TableCell
+                          key={h}
+                          sx={{
+                            color: "var(--viz-text-muted)",
+                            fontFamily: "var(--font-display)",
+                            fontWeight: 800,
+                            fontSize: 11,
+                            whiteSpace: "nowrap",
+                            borderBottom: "1px solid var(--viz-border)",
+                          }}
+                        >
+                          {h}
+                        </TableCell>
+                      ))}
                     </TableRow>
-                  ) : (
-                    items.map((item) =>
+                  </TableHead>
+
+                  <TableBody>
+                    {items.map((item) =>
                       isLive ? (
                         <TableRow key={item.sessionId} hover>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                          <TableCell sx={{ fontFamily: "var(--font-display)", fontWeight: 800 }}>
                             {item.deviceId || "—"}
                           </TableCell>
-                          <TableCell>{item.vehicleNumber || "—"}</TableCell>
-                          <TableCell>{item.vehicleModel || "—"}</TableCell>
+                          <TableCell sx={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+                            {item.vehicleNumber || "—"}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: 12 }}>{item.vehicleModel || "—"}</TableCell>
                           <TableCell>
                             <Chip
                               size="small"
                               label={item.status || "active"}
                               sx={{
-                                bgcolor: "#dcfce7",
-                                color: C.green,
-                                textTransform: "capitalize",
+                                bgcolor:
+                                  item.status === "paused"
+                                    ? "var(--viz-warn-bg)"
+                                    : "var(--viz-green-bg)",
+                                color:
+                                  item.status === "paused"
+                                    ? "var(--viz-warn-fg)"
+                                    : "var(--viz-green-fg)",
+                                fontWeight: 800,
+                                fontSize: 10,
+                                textTransform: "uppercase",
                               }}
                             />
                           </TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                          <TableCell sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
                             {dateTime(item.startTime)}
                           </TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                          <TableCell sx={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "var(--viz-teal-deep)" }}>
                             {number(item.energyConsumed)} kWh
                           </TableCell>
                         </TableRow>
                       ) : (
                         <TableRow key={item.receiptId} hover>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                          <TableCell sx={{ fontFamily: "monospace", fontSize: 11 }}>
                             {item.receiptId || "—"}
                           </TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                          <TableCell sx={{ fontSize: 12, whiteSpace: "nowrap" }}>
                             {dateTime(item.createdAt)}
                           </TableCell>
-                          <TableCell>{item.deviceId || "—"}</TableCell>
-                          <TableCell>{item.vehicleNumber || "—"}</TableCell>
-                          <TableCell>{item.vehicleModel || "—"}</TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                          <TableCell sx={{ fontFamily: "var(--font-display)", fontWeight: 800 }}>
+                            {item.deviceId || "—"}
+                          </TableCell>
+                          <TableCell sx={{ fontFamily: "var(--font-display)", fontWeight: 700 }}>
+                            {item.vehicleNumber || "—"}
+                          </TableCell>
+                          <TableCell sx={{ fontSize: 12 }}>{item.vehicleModel || "—"}</TableCell>
+                          <TableCell sx={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "var(--viz-orange)" }}>
                             {money(item.totalAmount)}
                           </TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>
-                            {money(item.taxableAmount)}
-                          </TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                          <TableCell sx={{ fontSize: 12 }}>{money(item.taxableAmount)}</TableCell>
+                          <TableCell sx={{ fontSize: 12, color: "var(--viz-orange-deep)" }}>
                             {money(item.gstAmount)}
                           </TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap" }}>
+                          <TableCell sx={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "var(--viz-teal-deep)" }}>
                             {number(item.energyConsumed)} kWh
                           </TableCell>
-                          <TableCell sx={{ whiteSpace: "nowrap", fontWeight: 700 }}>
+                          <TableCell sx={{ fontFamily: "var(--font-display)", fontWeight: 800, color: "#7c3aed" }}>
                             {money(item.ownerPayout)}
                           </TableCell>
                         </TableRow>
                       )
-                    )
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </div>
 
-            <TablePagination
-              component="div"
-              count={total}
-              page={page - 1}
-              onPageChange={(_event, nextPage) => setPage(nextPage + 1)}
-              rowsPerPage={limit}
-              onRowsPerPageChange={(event) => {
-                setLimit(Number(event.target.value));
-                setPage(1);
+            {/* Pagination Controls */}
+            <Card
+              elevation={0}
+              sx={{
+                border: "1px solid var(--viz-border)",
+                borderRadius: "16px",
+                bgcolor: "var(--viz-white)",
+                overflow: "hidden",
+                boxShadow: "0 4px 16px rgba(0, 160, 145, 0.05)",
               }}
-              rowsPerPageOptions={[10, 25, 50, 100]}
-              labelRowsPerPage="Rows"
-            />
+            >
+              <TablePagination
+                component="div"
+                count={total}
+                page={page - 1}
+                onPageChange={(_e, nextPage) => setPage(nextPage + 1)}
+                rowsPerPage={limit}
+                onRowsPerPageChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                rowsPerPageOptions={[10, 25, 50, 100]}
+                labelRowsPerPage="Rows per page"
+                sx={{
+                  fontFamily: "var(--font-body)",
+                  "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
+                    fontFamily: "var(--font-body)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                  },
+                }}
+              />
+            </Card>
           </>
         )}
-      </Card>
-    </Box>
+      </main>
+    </div>
   );
 }

@@ -3,14 +3,13 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { apiFetch } from "../../utils/apiFetch";
 import { useNavigate } from "react-router-dom";
+import "./MyDevices.css";
 
 import {
   Alert,
   Box,
   Button,
   Card,
-  CardContent,
-  Chip,
   CircularProgress,
   Dialog,
   DialogActions,
@@ -19,7 +18,6 @@ import {
   Divider,
   FormControl,
   IconButton,
-  InputAdornment,
   InputLabel,
   MenuItem,
   Select,
@@ -36,50 +34,23 @@ import {
   Typography,
 } from "@mui/material";
 
-import RefreshIcon from "@mui/icons-material/Refresh";
-import AddIcon from "@mui/icons-material/Add";
-import SearchIcon from "@mui/icons-material/Search";
+// Icons
+import RefreshRoundedIcon from "@mui/icons-material/RefreshRounded";
+import AddRoundedIcon from "@mui/icons-material/AddRounded";
+import SearchRoundedIcon from "@mui/icons-material/SearchRounded";
 import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
-import HistoryIcon from "@mui/icons-material/History";
+import HistoryRoundedIcon from "@mui/icons-material/HistoryRounded";
 import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
-import BoltIcon from "@mui/icons-material/Bolt";
-import DeviceHubOutlinedIcon from "@mui/icons-material/DeviceHubOutlined";
+import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
+import EvStationRoundedIcon from "@mui/icons-material/EvStationRounded";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
-import CloseIcon from "@mui/icons-material/Close";
+import CloseRoundedIcon from "@mui/icons-material/CloseRounded";
 import SaveOutlinedIcon from "@mui/icons-material/SaveOutlined";
+import WifiRoundedIcon from "@mui/icons-material/WifiRounded";
+import PriceChangeOutlinedIcon from "@mui/icons-material/PriceChangeOutlined";
 
-const C = {
-  teal: "#04BFBF",
-  tealDark: "#038a8a",
-  tealLight: "#e8fbfb",
-
-  bg: "#f5f7fa",
-  surface: "#ffffff",
-  surfaceAlt: "#f8fafc",
-
-  text: "#0f172a",
-  muted: "#64748b",
-  border: "#e2e8f0",
-
-  green: "#15803d",
-  greenBg: "#dcfce7",
-
-  orange: "#c2410c",
-  orangeBg: "#ffedd5",
-
-  red: "#dc2626",
-  redBg: "#fee2e2",
-};
-
-const FONT =
-  "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
-
-const METER_TYPES = [
-  "Green Meter",
-  "Commercial",
-  "Residential",
-];
+const METER_TYPES = ["Green Meter", "Commercial", "Residential"];
 
 // ------------------------------------------------------------
 // FORMATTERS
@@ -91,7 +62,7 @@ const money = (value) =>
     maximumFractionDigits: 2,
   })}`;
 
-const number = (value, digits = 3) =>
+const number = (value, digits = 2) =>
   Number(value || 0).toLocaleString("en-IN", {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
@@ -109,115 +80,64 @@ const formatDateTime = (value) =>
     : "—";
 
 const displayValue = (value) =>
-  value === undefined ||
-  value === null ||
-  String(value).trim() === ""
+  value === undefined || value === null || String(value).trim() === ""
     ? "—"
     : String(value);
 
-const getStatusStyle = (status) => {
+const getStatusBadgeTokens = (status) => {
   const value = String(status || "").trim().toLowerCase();
 
-  if (
-    value === "available" ||
-    value === "online"
-  ) {
+  if (value === "available" || value === "online") {
     return {
-      bgcolor: C.greenBg,
-      color: C.green,
+      bg: "var(--viz-green-bg)",
+      fg: "var(--viz-green-fg)",
+      border: "1px solid var(--viz-green-fg)",
+      label: "Available",
+      dot: "#008764",
     };
   }
 
-  if (
-    value === "occupied" ||
-    value === "busy"
-  ) {
+  if (value === "occupied" || value === "busy") {
     return {
-      bgcolor: "#dbeafe",
-      color: "#1d4ed8",
+      bg: "var(--viz-warn-bg)",
+      fg: "var(--viz-orange)",
+      border: "1px solid var(--viz-orange)",
+      label: "Occupied",
+      dot: "#ff8236",
     };
   }
 
-  if (
-    value === "maintenance" ||
-    value === "unknown"
-  ) {
+  if (value === "maintenance" || value === "offline" || value === "disconnected") {
     return {
-      bgcolor: C.orangeBg,
-      color: C.orange,
+      bg: "var(--viz-warn-bg)",
+      fg: "var(--viz-warn-fg)",
+      border: "1px solid var(--viz-warn-fg)",
+      label: "Offline",
+      dot: "#e06014",
     };
   }
 
-  if (
-    value === "faulty" ||
-    value === "error"
-  ) {
+  if (value === "faulty" || value === "error") {
     return {
-      bgcolor: C.redBg,
-      color: C.red,
+      bg: "var(--viz-err-bg)",
+      fg: "var(--viz-err-fg)",
+      border: "1px solid var(--viz-err-fg)",
+      label: "Faulty",
+      dot: "#d93b3b",
     };
   }
 
   return {
-    bgcolor: "#e2e8f0",
-    color: "#334155",
+    bg: "var(--viz-teal-wash)",
+    fg: "var(--viz-text-muted)",
+    border: "1px solid var(--viz-border)",
+    label: status || "Unknown",
+    dot: "#799ea4",
   };
 };
 
 // ------------------------------------------------------------
-// FIELD ROW
-// ------------------------------------------------------------
-
-function FieldRow({ label, value, valueNode, fullWidth = false }) {
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: { xs: "column", sm: "row" },
-        alignItems: { xs: "flex-start", sm: "flex-start" },
-        justifyContent: "space-between",
-        gap: { xs: 0.35, sm: 1.5 },
-        py: 0.9,
-        width: "100%",
-        gridColumn: fullWidth ? "1 / -1" : "auto",
-        minWidth: 0,
-      }}
-    >
-      <Typography
-        sx={{
-          color: C.muted,
-          fontSize: 12,
-          fontWeight: 500,
-          fontFamily: FONT,
-          flexShrink: 0,
-        }}
-      >
-        {label}
-      </Typography>
-
-      {valueNode || (
-        <Typography
-          sx={{
-            color: C.text,
-            fontSize: 12,
-            fontWeight: 650,
-            textAlign: { xs: "left", sm: "right" },
-            maxWidth: { xs: "100%", sm: "66%" },
-            minWidth: 0,
-            overflowWrap: "anywhere",
-            wordBreak: "break-word",
-            fontFamily: FONT,
-          }}
-        >
-          {displayValue(value)}
-        </Typography>
-      )}
-    </Box>
-  );
-}
-
-// ------------------------------------------------------------
-// DEVICE CARD
+// DEVICE CARD (BENTO SPECIFICATION)
 // ------------------------------------------------------------
 
 function DeviceCard({
@@ -227,14 +147,9 @@ function DeviceCard({
   onViewRateHistory,
 }) {
   const [showWifiPassword, setShowWifiPassword] = useState(false);
+  const badge = getStatusBadgeTokens(device.status);
 
-  const statusStyle = getStatusStyle(device.status);
-
-  const energyValue =
-    device.totalEnergy ??
-    device.totalenergy ??
-    null;
-
+  const energyValue = device.totalEnergy ?? device.totalenergy ?? null;
   const hasEnergy =
     energyValue !== null &&
     energyValue !== undefined &&
@@ -242,449 +157,184 @@ function DeviceCard({
 
   const latitude =
     device.lat !== null && device.lat !== undefined
-      ? Number(device.lat).toFixed(6)
+      ? Number(device.lat).toFixed(5)
       : "—";
 
   const longitude =
     device.lng !== null && device.lng !== undefined
-      ? Number(device.lng).toFixed(6)
+      ? Number(device.lng).toFixed(5)
       : "—";
 
   const password = String(device.wifiPassword || "");
 
   return (
-    <Card
-      elevation={0}
-      sx={{
-        height: "100%",
-        border: `1px solid ${C.border}`,
-        borderRadius: 3,
-        bgcolor: C.surface,
-        boxShadow: "0 2px 7px rgba(15,23,42,0.04)",
-        transition: "box-shadow 0.18s, transform 0.18s",
-        "&:hover": {
-          boxShadow: "0 7px 24px rgba(15,23,42,0.08)",
-          transform: "translateY(-1px)",
-        },
-      }}
-    >
-      <CardContent
-        sx={{
-          p: { xs: 1.7, sm: 2.2 },
-          "&:last-child": { pb: { xs: 1.7, sm: 2.2 } },
-        }}
-      >
-        {/* Header: device ID and current status */}
-        <Stack
-          direction="row"
-          alignItems="flex-start"
-          justifyContent="space-between"
-          spacing={1}
-          sx={{ mb: 0.6 }}
-        >
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={0.8}
-              sx={{ minWidth: 0 }}
-            >
-              <DeviceHubOutlinedIcon
-                sx={{
-                  fontSize: 20,
-                  color: C.tealDark,
-                  flexShrink: 0,
-                }}
-              />
+    <div className="viz-device-card">
+      <div>
+        {/* Card Header */}
+        <div className="viz-card-top-header">
+          <div className="viz-card-id-block">
+            <div className="viz-card-device-icon">
+              <EvStationRoundedIcon sx={{ fontSize: 21 }} />
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div className="viz-card-title">{device.deviceId || "Charger"}</div>
+              <div className="viz-card-project">
+                {device.project || "VIZ Smart Charging"}
+              </div>
+            </div>
+          </div>
 
-              <Typography
-                sx={{
-                  color: C.text,
-                  fontSize: 16,
-                  fontWeight: 800,
-                  overflowWrap: "anywhere",
-                  fontFamily: FONT,
-                }}
-              >
-                {device.deviceId || "Charger"}
-              </Typography>
-            </Stack>
-
-            <Typography
-              sx={{
-                color: C.muted,
-                fontSize: 11,
-                mt: 0.65,
-                pl: 3.5,
-                overflowWrap: "anywhere",
-                fontFamily: FONT,
-              }}
-            >
-              {device.project || "VIZ Smart Charging"}
-            </Typography>
-          </Box>
-
-          <Chip
-            size="small"
-            label={device.status || "Unknown"}
-            sx={{
-              ...statusStyle,
-              height: "auto",
-              minHeight: 23,
-              maxWidth: "42%",
-              fontWeight: 800,
-              fontSize: 10,
-              "& .MuiChip-label": {
-                whiteSpace: "normal",
-                textAlign: "center",
-                px: 1,
-              },
-            }}
-          />
-        </Stack>
-
-        {/* Human-readable device location */}
-        <Stack
-          direction="row"
-          alignItems="flex-start"
-          spacing={0.7}
-          sx={{ mt: 1.2, mb: 1.3 }}
-        >
-          <PlaceOutlinedIcon
-            sx={{
-              color: C.muted,
-              fontSize: 17,
-              mt: 0.15,
-              flexShrink: 0,
-            }}
-          />
-
-          <Typography
-            sx={{
-              color: C.muted,
-              fontSize: 12,
-              lineHeight: 1.5,
-              overflowWrap: "anywhere",
-              fontFamily: FONT,
+          <span
+            className="viz-device-status-badge"
+            style={{
+              backgroundColor: badge.bg,
+              color: badge.fg,
+              border: badge.border,
             }}
           >
+            {badge.label}
+          </span>
+        </div>
+
+        {/* Location Row */}
+        <div className="viz-card-location-row" style={{ marginTop: 10 }}>
+          <PlaceOutlinedIcon
+            sx={{ fontSize: 16, color: "var(--viz-teal-deep)", flexShrink: 0, mt: 0.2 }}
+          />
+          <span style={{ wordBreak: "break-word" }}>
             {device.location ||
               [device.city, device.state].filter(Boolean).join(", ") ||
               "Location not configured"}
-          </Typography>
-        </Stack>
+          </span>
+        </div>
 
-        <Divider sx={{ borderColor: C.border, mb: 0.5 }} />
+        {/* 2-Col KPI Bento Strip */}
+        <div className="viz-card-kpi-strip" style={{ marginTop: 12 }}>
+          <div className="viz-kpi-sub-tile">
+            <span className="viz-kpi-sub-lbl">Total Dispensed</span>
+            <span className="viz-kpi-sub-val" style={{ color: "var(--viz-teal-deep)" }}>
+              {hasEnergy ? `${number(energyValue)} kWh` : "—"}
+            </span>
+          </div>
 
-        {/* Main summary: current tariff and total energy */}
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-            gap: 1,
-            my: 1.1,
-          }}
-        >
-          <Box
-            sx={{
-              p: 1.3,
-              borderRadius: 2.5,
-              bgcolor: C.tealLight,
-              minWidth: 0,
-            }}
-          >
-            <Typography
-              sx={{
-                color: C.tealDark,
-                fontSize: 10,
-                fontWeight: 700,
-              }}
-            >
-              TOTAL ENERGY
-            </Typography>
-
-            <Stack
-              direction="row"
-              alignItems="center"
-              spacing={0.6}
-              sx={{ mt: 0.8 }}
-            >
-              <BoltIcon
-                sx={{
-                  color: C.tealDark,
-                  fontSize: 18,
-                  flexShrink: 0,
-                }}
-              />
-
-              <Typography
-                sx={{
-                  color: C.text,
-                  fontSize: { xs: 15, sm: 17 },
-                  fontWeight: 800,
-                  overflowWrap: "anywhere",
-                  fontFamily: FONT,
-                }}
-              >
-                {hasEnergy
-                  ? `${number(energyValue)} kWh`
-                  : "—"}
-              </Typography>
-            </Stack>
-          </Box>
-
-          <Box
-            sx={{
-              p: 1.3,
-              borderRadius: 2.5,
-              bgcolor: C.surfaceAlt,
-              border: `1px solid ${C.border}`,
-              minWidth: 0,
-            }}
-          >
-            <Typography
-              sx={{
-                color: C.muted,
-                fontSize: 10,
-                fontWeight: 700,
-              }}
-            >
-              TARIFF
-            </Typography>
-
-            <Typography
-              sx={{
-                color: C.text,
-                fontSize: { xs: 15, sm: 17 },
-                fontWeight: 800,
-                mt: 0.8,
-                overflowWrap: "anywhere",
-                fontFamily: FONT,
-              }}
-            >
-              {money(device.rateInclGst)}
-              <Typography
-                component="span"
-                sx={{
-                  color: C.muted,
-                  fontSize: 10,
-                  fontWeight: 500,
-                  ml: 0.35,
-                }}
-              >
+          <div className="viz-kpi-sub-tile">
+            <span className="viz-kpi-sub-lbl">Active Tariff</span>
+            <span className="viz-kpi-sub-val" style={{ color: "var(--viz-orange)" }}>
+              {money(device.rateInclGst)}{" "}
+              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--viz-text-muted)" }}>
                 /kWh
-              </Typography>
-            </Typography>
-          </Box>
-        </Box>
+              </span>
+            </span>
+          </div>
+        </div>
 
-        {/* Device metadata */}
-        <FieldRow
-          label="Serial number"
-          value={device.serialNumber}
-        />
+        {/* Technical Specs List */}
+        <div className="viz-card-specs-list" style={{ marginTop: 10 }}>
+          <div className="viz-spec-line">
+            <span className="viz-spec-label">Serial Number</span>
+            <span className="viz-spec-value">{displayValue(device.serialNumber)}</span>
+          </div>
+          <div className="viz-spec-line">
+            <span className="viz-spec-label">Charger Type</span>
+            <span className="viz-spec-value">{displayValue(device.chargerType)}</span>
+          </div>
+          <div className="viz-spec-line">
+            <span className="viz-spec-label">Consumer Meter</span>
+            <span className="viz-spec-value">
+              {displayValue(device.meterConsumerNumber)} ({displayValue(device.meterType)})
+            </span>
+          </div>
+          <div className="viz-spec-line">
+            <span className="viz-spec-label">Coordinates</span>
+            <span className="viz-spec-value">
+              {latitude !== "—" ? `${latitude}, ${longitude}` : "—"}
+            </span>
+          </div>
+        </div>
 
-        <FieldRow
-          label="Charger type"
-          value={device.chargerType}
-        />
-
-        <FieldRow
-          label="Meter number"
-          value={device.meterConsumerNumber}
-        />
-
-        <FieldRow
-          label="Meter type"
-          value={device.meterType}
-        />
-
-        <FieldRow
-          label="City"
-          value={device.city}
-        />
-
-        <FieldRow
-          label="State"
-          value={device.state}
-        />
-
-        <FieldRow
-          label="Latitude"
-          value={latitude}
-        />
-
-        <FieldRow
-          label="Longitude"
-          value={longitude}
-        />
-
-        <Divider sx={{ borderColor: C.border, my: 1 }} />
-
-        {/* Current Wi-Fi credentials, masked by default */}
-        <Typography
-          sx={{
-            color: C.text,
-            fontSize: 12,
-            fontWeight: 800,
-            mb: 0.4,
-          }}
-        >
-          Wi-Fi configuration
-        </Typography>
-
-        <FieldRow
-          label="Wi-Fi SSID"
-          value={device.wifiSSID}
-          fullWidth
-        />
-
-        <FieldRow
-          label="Current Wi-Fi password"
-          fullWidth
-          valueNode={
-            <Stack
-              direction="row"
-              spacing={0.4}
-              alignItems="center"
-              sx={{
-                maxWidth: { xs: "100%", sm: "68%" },
-                minWidth: 0,
+        {/* Wi-Fi Configuration Strip */}
+        <div className="viz-wifi-box" style={{ marginTop: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+            <WifiRoundedIcon sx={{ fontSize: 16, color: "var(--viz-teal-deep)", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, color: "var(--viz-text-muted)" }}>SSID:</span>
+            <span
+              style={{
+                fontWeight: 800,
+                color: "var(--viz-text-main)",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
               }}
             >
-              <Typography
-                sx={{
-                  color: password ? C.text : C.muted,
-                  fontSize: 12,
-                  fontWeight: 650,
-                  minWidth: 0,
-                  textAlign: { xs: "left", sm: "right" },
-                  overflowWrap: "anywhere",
-                  wordBreak: "break-all",
-                  fontFamily: FONT,
-                }}
+              {device.wifiSSID || "Not Set"}
+            </span>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 3, flexShrink: 0 }}>
+            <span style={{ fontFamily: "monospace", fontWeight: 700 }}>
+              {!password
+                ? "—"
+                : showWifiPassword
+                ? password
+                : "••••••••"}
+            </span>
+            {password && (
+              <IconButton
+                size="small"
+                onClick={() => setShowWifiPassword((prev) => !prev)}
+                sx={{ p: 0.3, color: "var(--viz-teal-deep)" }}
               >
-                {!password
-                  ? "Not configured"
-                  : showWifiPassword
-                  ? password
-                  : "••••••••••••"}
-              </Typography>
+                {showWifiPassword ? (
+                  <VisibilityOffOutlinedIcon sx={{ fontSize: 15 }} />
+                ) : (
+                  <VisibilityOutlinedIcon sx={{ fontSize: 15 }} />
+                )}
+              </IconButton>
+            )}
+          </div>
+        </div>
+      </div>
 
-              {password && (
-                <Tooltip
-                  title={
-                    showWifiPassword
-                      ? "Hide password"
-                      : "Show password"
-                  }
-                >
-                  <IconButton
-                    size="small"
-                    aria-label={
-                      showWifiPassword
-                        ? "Hide Wi-Fi password"
-                        : "Show Wi-Fi password"
-                    }
-                    onClick={() =>
-                      setShowWifiPassword((previous) => !previous)
-                    }
-                    sx={{
-                      color: C.tealDark,
-                      flexShrink: 0,
-                      p: 0.5,
-                    }}
-                  >
-                    {showWifiPassword ? (
-                      <VisibilityOffOutlinedIcon sx={{ fontSize: 17 }} />
-                    ) : (
-                      <VisibilityOutlinedIcon sx={{ fontSize: 17 }} />
-                    )}
-                  </IconButton>
-                </Tooltip>
-              )}
-            </Stack>
-          }
-        />
-
-        <Typography
-          sx={{
-            color: C.muted,
-            fontSize: 10,
-            mt: 0.7,
-            lineHeight: 1.5,
-          }}
+      {/* Action Buttons Footer */}
+      <div className="viz-card-actions-row">
+        <Button
+          fullWidth
+          variant="contained"
+          startIcon={<EditOutlinedIcon sx={{ fontSize: 17 }} />}
+          onClick={() => onEditDetails(device)}
+          className="viz-btn-edit-main"
         >
-          Wi-Fi credentials are hidden until you reveal them.
-        </Typography>
+          Edit Device Details
+        </Button>
 
-        <Divider sx={{ borderColor: C.border, my: 1.3 }} />
-
-        {/* Device actions */}
-        <Stack spacing={1}>
+        <div className="viz-card-btn-subgroup">
           <Button
-            fullWidth
-            variant="contained"
-            startIcon={<EditOutlinedIcon />}
-            onClick={() => onEditDetails(device)}
-            sx={{
-              bgcolor: C.teal,
-              color: "#042f2e",
-              borderRadius: 2.5,
-              py: 1,
-              fontWeight: 800,
-              textTransform: "none",
-              "&:hover": { bgcolor: "#03aaaa" },
-            }}
+            size="small"
+            variant="outlined"
+            startIcon={<PriceChangeOutlinedIcon sx={{ fontSize: 15 }} />}
+            onClick={() => onEditRate(device)}
+            className="viz-btn-outline-soft"
           >
-            Edit Device Details
+            Edit Tariff
           </Button>
 
-          <Stack direction="row" spacing={1}>
-            <Button
-              fullWidth
-              size="small"
-              variant="outlined"
-              startIcon={<EditOutlinedIcon />}
-              onClick={() => onEditRate(device)}
-              sx={{
-                borderColor: C.border,
-                color: C.text,
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "none",
-                borderRadius: 2,
-              }}
-            >
-              Edit Tariff
-            </Button>
-
-            <Button
-              fullWidth
-              size="small"
-              variant="outlined"
-              startIcon={<HistoryIcon />}
-              onClick={() => onViewRateHistory(device)}
-              sx={{
-                borderColor: C.border,
-                color: C.text,
-                fontSize: 11,
-                fontWeight: 700,
-                textTransform: "none",
-                borderRadius: 2,
-              }}
-            >
-              Rate History
-            </Button>
-          </Stack>
-        </Stack>
-      </CardContent>
-    </Card>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<HistoryRoundedIcon sx={{ fontSize: 15 }} />}
+            onClick={() => onViewRateHistory(device)}
+            className="viz-btn-outline-soft"
+          >
+            Rate History
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 // ------------------------------------------------------------
-// MAIN PAGE
+// MAIN MY DEVICES COMPONENT
 // ------------------------------------------------------------
 
 export default function MyDevices() {
@@ -709,10 +359,9 @@ export default function MyDevices() {
 
   const [lastFetchedAt, setLastFetchedAt] = useState(null);
 
-  // Details editor.
+  // Details editor state
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedDevice, setSelectedDevice] = useState(null);
-
   const [detailsForm, setDetailsForm] = useState({
     meterConsumerNumber: "",
     meterType: "",
@@ -723,7 +372,7 @@ export default function MyDevices() {
     lng: "",
   });
 
-  // Tariff editor.
+  // Tariff editor state
   const [rateDialogOpen, setRateDialogOpen] = useState(false);
   const [rateDevice, setRateDevice] = useState(null);
   const [rateForm, setRateForm] = useState({
@@ -731,13 +380,13 @@ export default function MyDevices() {
     reason: "",
   });
 
-  // Rate history.
+  // Rate history state
   const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
   const [historyDevice, setHistoryDevice] = useState(null);
   const [rateHistory, setRateHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  // Debounce device search.
+  // Debounce device search
   useEffect(() => {
     const timer = setTimeout(() => {
       setPage(0);
@@ -747,10 +396,7 @@ export default function MyDevices() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // ----------------------------------------------------------
-  // LOAD DEVICES
-  // ----------------------------------------------------------
-
+  // Load devices from API[cite: 3]
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -765,16 +411,9 @@ export default function MyDevices() {
         params.set("search", appliedSearch);
       }
 
-      const result = await apiFetch(
-        `/api/owner/devices?${params.toString()}`
-      );
+      const result = await apiFetch(`/api/owner/devices?${params.toString()}`);
 
-      setDevices(
-        Array.isArray(result?.items)
-          ? result.items
-          : []
-      );
-
+      setDevices(Array.isArray(result?.items) ? result.items : []);
       setPagination({
         total: Number(result?.pagination?.total || 0),
         totalPages: Number(result?.pagination?.totalPages || 0),
@@ -782,9 +421,7 @@ export default function MyDevices() {
 
       setLastFetchedAt(new Date());
     } catch (err) {
-      setError(
-        err.message || "Could not load your devices."
-      );
+      setError(err.message || "Could not load your devices.");
     } finally {
       setLoading(false);
     }
@@ -794,13 +431,9 @@ export default function MyDevices() {
     load();
   }, [load]);
 
-  // ----------------------------------------------------------
-  // DEVICE DETAILS EDITOR
-  // ----------------------------------------------------------
-
+  // Details editor helpers[cite: 3]
   const openDetailsEditor = (device) => {
     setSelectedDevice(device);
-
     setDetailsForm({
       meterConsumerNumber: device.meterConsumerNumber || "",
       meterType: device.meterType || "",
@@ -816,23 +449,18 @@ export default function MyDevices() {
           ? ""
           : String(device.lng),
     });
-
     setError("");
     setDetailsDialogOpen(true);
   };
 
   const closeDetailsEditor = () => {
     if (saving) return;
-
     setDetailsDialogOpen(false);
     setSelectedDevice(null);
   };
 
   const updateDetailsForm = (field, value) => {
-    setDetailsForm((previous) => ({
-      ...previous,
-      [field]: value,
-    }));
+    setDetailsForm((prev) => ({ ...prev, [field]: value }));
   };
 
   const saveDeviceDetails = async () => {
@@ -882,8 +510,7 @@ export default function MyDevices() {
         {
           method: "PATCH",
           body: {
-            meterConsumerNumber:
-              detailsForm.meterConsumerNumber.trim(),
+            meterConsumerNumber: detailsForm.meterConsumerNumber.trim(),
             meterType: detailsForm.meterType,
             location,
             city,
@@ -895,13 +522,10 @@ export default function MyDevices() {
       );
 
       const updatedDevice = result?.device;
-
       if (updatedDevice) {
-        setDevices((previous) =>
-          previous.map((item) =>
-            item.deviceId === deviceId
-              ? { ...item, ...updatedDevice }
-              : item
+        setDevices((prev) =>
+          prev.map((item) =>
+            item.deviceId === deviceId ? { ...item, ...updatedDevice } : item
           )
         );
       } else {
@@ -910,38 +534,27 @@ export default function MyDevices() {
 
       setDetailsDialogOpen(false);
       setSelectedDevice(null);
-
-      setSuccess(
-        `Device ${deviceId} details updated successfully.`
-      );
+      setSuccess(`Device ${deviceId} details updated successfully.`);
     } catch (err) {
-      setError(
-        err.message || "Could not save device details."
-      );
+      setError(err.message || "Could not save device details.");
     } finally {
       setSaving(false);
     }
   };
 
-  // ----------------------------------------------------------
-  // TARIFF EDITOR
-  // ----------------------------------------------------------
-
+  // Tariff editor helpers[cite: 3]
   const openRateEditor = (device) => {
     setRateDevice(device);
-
     setRateForm({
       rateInclGst: String(device.rateInclGst ?? ""),
       reason: "",
     });
-
     setError("");
     setRateDialogOpen(true);
   };
 
   const closeRateEditor = () => {
     if (saving) return;
-
     setRateDialogOpen(false);
     setRateDevice(null);
   };
@@ -980,40 +593,26 @@ export default function MyDevices() {
         }
       );
 
-      setDevices((previous) =>
-        previous.map((item) =>
+      setDevices((prev) =>
+        prev.map((item) =>
           item.deviceId === deviceId
-            ? {
-                ...item,
-                rateInclGst:
-                  result?.rateInclGst ?? rate,
-              }
+            ? { ...item, rateInclGst: result?.rateInclGst ?? rate }
             : item
         )
       );
 
       setRateDialogOpen(false);
       setRateDevice(null);
-
-      setSuccess(
-        `Tariff for ${deviceId} updated successfully.`
-      );
-
-      // Refresh the complete device list after the change.
+      setSuccess(`Tariff for ${deviceId} updated successfully.`);
       await load();
     } catch (err) {
-      setError(
-        err.message || "Could not update the device tariff."
-      );
+      setError(err.message || "Could not update the device tariff.");
     } finally {
       setSaving(false);
     }
   };
 
-  // ----------------------------------------------------------
-  // RATE HISTORY
-  // ----------------------------------------------------------
-
+  // Rate history helpers[cite: 3]
   const openRateHistory = async (device) => {
     setHistoryDevice(device);
     setRateHistory([]);
@@ -1023,20 +622,12 @@ export default function MyDevices() {
 
     try {
       const result = await apiFetch(
-        `/api/owner/devices/${encodeURIComponent(
-          device.deviceId
-        )}/rate-history?limit=50`
+        `/api/owner/devices/${encodeURIComponent(device.deviceId)}/rate-history?limit=50`
       );
 
-      setRateHistory(
-        Array.isArray(result?.items)
-          ? result.items
-          : []
-      );
+      setRateHistory(Array.isArray(result?.items) ? result.items : []);
     } catch (err) {
-      setError(
-        err.message || "Could not load rate history."
-      );
+      setError(err.message || "Could not load rate history.");
     } finally {
       setHistoryLoading(false);
     }
@@ -1048,17 +639,11 @@ export default function MyDevices() {
     setRateHistory([]);
   };
 
-  // ----------------------------------------------------------
-  // COUNTS FOR CURRENTLY DISPLAYED DEVICES
-  // ----------------------------------------------------------
-
+  // Status counts for visible devices[cite: 3]
   const currentPageCounts = devices.reduce(
     (counts, device) => {
       counts.total += 1;
-
-      const status = String(device.status || "")
-        .trim()
-        .toLowerCase();
+      const status = String(device.status || "").trim().toLowerCase();
 
       if (["available", "online"].includes(status)) {
         counts.available += 1;
@@ -1069,439 +654,272 @@ export default function MyDevices() {
       } else if (["faulty", "error"].includes(status)) {
         counts.faulty += 1;
       }
-
       return counts;
     },
-    {
-      total: 0,
-      available: 0,
-      occupied: 0,
-      offline: 0,
-      faulty: 0,
-    }
+    { total: 0, available: 0, occupied: 0, offline: 0, faulty: 0 }
   );
 
-  // ----------------------------------------------------------
-  // PAGE
-  // ----------------------------------------------------------
-
   return (
-    <Box
-      sx={{
-        minHeight: "100%",
-        bgcolor: C.bg,
-        color: C.text,
-        p: { xs: 1.2, sm: 2, md: 3 },
-        boxSizing: "border-box",
-        fontFamily: FONT,
-      }}
-    >
-      {/* Page header */}
-      <Stack
-        direction={{ xs: "column", sm: "row" }}
-        alignItems={{ xs: "stretch", sm: "center" }}
-        justifyContent="space-between"
-        spacing={1.5}
-        sx={{ mb: 2.5 }}
-      >
-        <Box>
-          <Typography
-            sx={{
-              fontWeight: 800,
-              fontSize: { xs: 23, sm: 29 },
-              color: C.text,
-              lineHeight: 1.2,
-              fontFamily: FONT,
-            }}
-          >
-            My Devices
-          </Typography>
+    <div className="viz-devices-shell">
+      {/* ================================================================== */}
+      {/* 1. FLUSH TOP HEADER (NO GAPS ON SIDES)                             */}
+      {/* ================================================================== */}
+      <header className="viz-devices-top-header">
+        <div className="viz-devices-header-inner">
+          <div className="viz-devices-brand-block">
+            <div className="viz-devices-logo-box">
 
-          <Typography
-            sx={{
-              color: C.muted,
-              fontSize: 13,
-              mt: 0.6,
-              fontFamily: FONT,
-            }}
-          >
-            Manage charger information, location, meter details and tariff.
-          </Typography>
+            </div>
+            <div>
+              <div className="viz-devices-header-title">
+                VIZ-Smart Charging <span className="viz-devices-cpo-tag">My Devices</span>
+              </div>
+              <div className="viz-devices-header-sub">
+                Last updated{" "}
+                {lastFetchedAt
+                  ? lastFetchedAt.toLocaleTimeString("en-IN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })
+                  : "—"}
+              </div>
+            </div>
+          </div>
 
-          <Typography
-            sx={{
-              color: C.muted,
-              fontSize: 11,
-              mt: 0.6,
-              fontFamily: FONT,
-            }}
-          >
-            {number(pagination.total, 0)}{" "}
-            {pagination.total === 1 ? "device" : "devices"} in your account
-          </Typography>
-        </Box>
+          <div className="viz-devices-top-actions">
+            <Button
+              variant="contained"
+              startIcon={<AddRoundedIcon />}
+              onClick={() => navigate("/onboard-device")}
+              className="viz-btn-primary-sunrise"
+            >
+              Link Charger
+            </Button>
 
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={1}
-          flexWrap="wrap"
-          useFlexGap
-        >
-          <Button
-            size="small"
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => navigate("/onboard-device")}
-            sx={{
-              bgcolor: C.teal,
-              color: "#042f2e",
-              textTransform: "none",
-              fontSize: 12,
-              fontWeight: 800,
-              borderRadius: 2.5,
-              px: 1.6,
-              "&:hover": { bgcolor: "#03aaaa" },
-            }}
-          >
-            Link Charger
-          </Button>
+            <button
+              type="button"
+              onClick={load}
+              disabled={loading}
+              className="viz-btn-icon-soft"
+              title="Refresh Devices"
+            >
+              {loading ? (
+                <CircularProgress size={16} color="inherit" />
+              ) : (
+                <RefreshRoundedIcon sx={{ fontSize: 19 }} />
+              )}
+            </button>
+          </div>
+        </div>
+      </header>
 
-          <Typography
-            sx={{
-              color: C.muted,
-              fontSize: 10,
-              whiteSpace: "nowrap",
-            }}
-          >
-            Updated{" "}
-            {lastFetchedAt
-              ? lastFetchedAt.toLocaleTimeString("en-IN", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })
-              : "—"}
-          </Typography>
-
-          <Tooltip title="Refresh devices">
-            <span>
-              <IconButton
-                size="small"
-                onClick={load}
-                disabled={loading}
-                sx={{
-                  color: C.tealDark,
-                  border: `1px solid ${C.border}`,
-                  bgcolor: C.surface,
-                }}
-              >
-                <RefreshIcon fontSize="small" />
-              </IconButton>
-            </span>
-          </Tooltip>
-        </Stack>
-      </Stack>
-
-      {/* Search */}
-      <Card
-        elevation={0}
-        sx={{
-          border: `1px solid ${C.border}`,
-          borderRadius: 3,
-          mb: 2,
-          bgcolor: C.surface,
-        }}
-      >
-        <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
-          <TextField
-            fullWidth
-            size="small"
-            placeholder="Search by charger ID, project, location, city or area"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ color: C.muted }} />
-                </InputAdornment>
-              ),
-              endAdornment: search ? (
-                <InputAdornment position="end">
-                  <IconButton
-                    size="small"
-                    aria-label="Clear search"
-                    onClick={() => setSearch("")}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </IconButton>
-                </InputAdornment>
-              ) : null,
-            }}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2.5,
-                bgcolor: C.surface,
-              },
-              "& .MuiOutlinedInput-notchedOutline": {
-                borderColor: C.border,
-              },
-            }}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Status summary */}
-      <Stack
-        direction="row"
-        spacing={0.8}
-        useFlexGap
-        flexWrap="wrap"
-        sx={{ mb: 2.5 }}
-      >
-        <Chip
-          size="small"
-          label={`On this page: ${currentPageCounts.total}`}
-          sx={{ bgcolor: C.surface, color: C.text, fontWeight: 700 }}
-        />
-
-        <Chip
-          size="small"
-          label={`Available: ${currentPageCounts.available}`}
-          sx={{ bgcolor: C.greenBg, color: C.green, fontWeight: 700 }}
-        />
-
-        <Chip
-          size="small"
-          label={`Occupied: ${currentPageCounts.occupied}`}
-          sx={{ bgcolor: "#dbeafe", color: "#1d4ed8", fontWeight: 700 }}
-        />
-
-        <Chip
-          size="small"
-          label={`Offline: ${currentPageCounts.offline}`}
-          sx={{ bgcolor: C.redBg, color: C.red, fontWeight: 700 }}
-        />
-
-        <Chip
-          size="small"
-          label={`Faulty: ${currentPageCounts.faulty}`}
-          sx={{ bgcolor: C.orangeBg, color: C.orange, fontWeight: 700 }}
-        />
-      </Stack>
-
-      {/* Alerts */}
-      {!!error && (
-        <Alert
-          severity="error"
-          onClose={() => setError("")}
-          sx={{ mb: 2, borderRadius: 2 }}
-        >
-          {error}
-        </Alert>
-      )}
-
-      {!!success && (
-        <Alert
-          severity="success"
-          onClose={() => setSuccess("")}
-          sx={{ mb: 2, borderRadius: 2 }}
-        >
-          {success}
-        </Alert>
-      )}
-
-      {/* Device cards */}
-      {loading && devices.length === 0 ? (
-        <Box
-          sx={{
-            py: 8,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <CircularProgress sx={{ color: C.teal }} />
-
-          <Typography sx={{ mt: 2, color: C.muted, fontSize: 13 }}>
-            Loading devices…
-          </Typography>
-        </Box>
-      ) : !loading && devices.length === 0 ? (
-        <Card
-          elevation={0}
-          sx={{
-            border: `1px solid ${C.border}`,
-            borderRadius: 3,
-            bgcolor: C.surface,
-          }}
-        >
-          <CardContent sx={{ py: 7, textAlign: "center" }}>
-            <DeviceHubOutlinedIcon
-              sx={{ color: C.muted, fontSize: 42, mb: 1 }}
+      {/* ================================================================== */}
+      {/* 2. MAIN LAYOUT CONTAINER                                           */}
+      {/* ================================================================== */}
+      <main className="viz-devices-container">
+        {/* Search Input Bar */}
+        <div className="viz-search-dock">
+          <div className="viz-search-input-wrap">
+            <SearchRoundedIcon sx={{ color: "var(--viz-teal-deep)", fontSize: 20 }} />
+            <input
+              type="text"
+              className="viz-search-input"
+              placeholder="Search by charger ID, project, city or address…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
             />
+            {search && (
+              <IconButton size="small" onClick={() => setSearch("")} sx={{ p: 0.2 }}>
+                <CloseRoundedIcon sx={{ fontSize: 16 }} />
+              </IconButton>
+            )}
+          </div>
+        </div>
 
-            <Typography
-              sx={{
-                color: C.text,
-                fontWeight: 800,
-                fontSize: 16,
-              }}
-            >
-              {appliedSearch ? "No matching devices" : "No devices linked"}
+        {/* Unclipped Vertical Status Ribbon */}
+        <section className="viz-devices-health-ribbon">
+          <div className="viz-ribbon-title-row">
+            <span className="viz-ribbon-label">
+              <EvStationRoundedIcon sx={{ fontSize: 17, color: "var(--viz-teal-deep)" }} />
+              Charging Station Breakdown
+            </span>
+          </div>
+
+          <div className="viz-devices-stat-pills">
+            {[
+              { label: "Total", val: currentPageCounts.total, dot: "#0e2e33", color: "var(--viz-text-main)" },
+              { label: "Available", val: currentPageCounts.available, dot: "#008764", color: "var(--viz-teal-deep)" },
+              { label: "Occupied", val: currentPageCounts.occupied, dot: "#ff8236", color: "var(--viz-orange)" },
+              { label: "Offline", val: currentPageCounts.offline, dot: "#e06014", color: "var(--viz-warn-fg)" },
+              { label: "Faulty", val: currentPageCounts.faulty, dot: "#d93b3b", color: "var(--viz-err-fg)" },
+            ].map((st) => (
+              <div key={st.label} className="viz-devices-stat-pill">
+                <div className="viz-devices-stat-pill-top">
+                  <span className="viz-status-dot-sm" style={{ backgroundColor: st.dot }} />
+                  <span className="viz-devices-stat-num" style={{ color: st.color }}>
+                    {number(st.val, 0)}
+                  </span>
+                </div>
+                <span className="viz-devices-stat-lbl">{st.label}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Error / Success Banners */}
+        {error && (
+          <Alert severity="error" onClose={() => setError("")} sx={{ borderRadius: "14px", py: 0.5 }}>
+            {error}
+          </Alert>
+        )}
+        {success && (
+          <Alert severity="success" onClose={() => setSuccess("")} sx={{ borderRadius: "14px", py: 0.5 }}>
+            {success}
+          </Alert>
+        )}
+
+        {/* Device Cards Grid */}
+        {loading && devices.length === 0 ? (
+          <Box sx={{ py: 8, display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <CircularProgress sx={{ color: "var(--viz-aqua)" }} />
+            <Typography sx={{ mt: 1.5, fontSize: 13, fontWeight: 700, color: "var(--viz-text-muted)" }}>
+              Loading your charging points…
             </Typography>
-
-            <Typography
-              sx={{
-                color: C.muted,
-                fontSize: 12,
-                mt: 0.7,
-                mb: 2,
-              }}
-            >
+          </Box>
+        ) : !loading && devices.length === 0 ? (
+          <div className="viz-empty-card" style={{ padding: "3rem 1.5rem", textAlign: "center" }}>
+            <EvStationRoundedIcon sx={{ fontSize: 36, color: "var(--viz-teal-deep)" }} />
+            <Typography sx={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 15, mt: 1 }}>
+              {appliedSearch ? "No Matching Devices Found" : "No Devices Linked Yet"}
+            </Typography>
+            <Typography sx={{ fontSize: 12, color: "var(--viz-text-muted)", mt: 0.3, maxWidth: 350, mx: "auto" }}>
               {appliedSearch
-                ? "Try searching with a different charger ID or location."
-                : "Link a charger to start managing your charging network."}
+                ? "Try searching with a different device ID or clear your search query."
+                : "Connect your hardware chargers to start monitoring live telemetry."}
             </Typography>
-
             {appliedSearch ? (
-              <Button
-                variant="outlined"
-                onClick={() => setSearch("")}
-                sx={{ textTransform: "none" }}
-              >
-                Clear search
+              <Button onClick={() => setSearch("")} sx={{ mt: 1.5, textTransform: "none", fontWeight: 700 }}>
+                Clear Search
               </Button>
             ) : (
               <Button
                 variant="contained"
-                startIcon={<AddIcon />}
                 onClick={() => navigate("/onboard-device")}
-                sx={{
-                  bgcolor: C.teal,
-                  color: "#042f2e",
-                  fontWeight: 800,
-                  textTransform: "none",
-                  "&:hover": { bgcolor: "#03aaaa" },
-                }}
+                className="viz-btn-primary-sunrise"
+                sx={{ mt: 1.5 }}
               >
-                Link Charger
+                Link First Charger
               </Button>
             )}
-          </CardContent>
-        </Card>
-      ) : (
-        <>
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: {
-                xs: "minmax(0, 1fr)",
-                sm: "repeat(2, minmax(0, 1fr))",
-                xl: "repeat(3, minmax(0, 1fr))",
-              },
-              alignItems: "stretch",
-              gap: { xs: 1.5, sm: 2 },
-              pb: 1,
-            }}
-          >
-            {devices.map((device) => (
-              <DeviceCard
-                key={device.deviceId}
-                device={device}
-                onEditDetails={openDetailsEditor}
-                onEditRate={openRateEditor}
-                onViewRateHistory={openRateHistory}
-              />
-            ))}
-          </Box>
-
-          <Card
-            elevation={0}
-            sx={{
-              mt: 1.5,
-              border: `1px solid ${C.border}`,
-              borderRadius: 3,
-              bgcolor: C.surface,
-              overflow: "hidden",
-            }}
-          >
-            <TablePagination
-              component="div"
-              count={pagination.total}
-              page={page}
-              onPageChange={(_event, nextPage) => setPage(nextPage)}
-              rowsPerPage={rowsPerPage}
-              onRowsPerPageChange={(event) => {
-                setRowsPerPage(Number(event.target.value));
-                setPage(0);
+          </div>
+        ) : (
+          <>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: {
+                  xs: "minmax(0, 1fr)",
+                  sm: "repeat(2, minmax(0, 1fr))",
+                  lg: "repeat(3, minmax(0, 1fr))",
+                },
+                gap: 1.25,
+                pb: 1,
               }}
-              rowsPerPageOptions={[10, 25, 50, 100]}
-              labelRowsPerPage="Devices per page"
-            />
-          </Card>
-        </>
-      )}
+            >
+              {devices.map((device) => (
+                <DeviceCard
+                  key={device.deviceId}
+                  device={device}
+                  onEditDetails={openDetailsEditor}
+                  onEditRate={openRateEditor}
+                  onViewRateHistory={openRateHistory}
+                />
+              ))}
+            </Box>
 
-      {/* ------------------------------------------------------ */}
-      {/* EDIT DEVICE DETAILS DIALOG                             */}
-      {/* ------------------------------------------------------ */}
+            {/* Pagination Controls */}
+            <Card
+              elevation={0}
+              sx={{
+                border: "1px solid var(--viz-border)",
+                borderRadius: "16px",
+                bgcolor: "var(--viz-white)",
+                overflow: "hidden",
+                boxShadow: "0 4px 16px rgba(0, 160, 145, 0.05)",
+              }}
+            >
+              <TablePagination
+                component="div"
+                count={pagination.total}
+                page={page}
+                onPageChange={(_e, nextPage) => setPage(nextPage)}
+                rowsPerPage={rowsPerPage}
+                onRowsPerPageChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setPage(0);
+                }}
+                rowsPerPageOptions={[10, 25, 50, 100]}
+                labelRowsPerPage="Per page"
+                sx={{
+                  fontFamily: "var(--font-body)",
+                  "& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows": {
+                    fontFamily: "var(--font-body)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                  },
+                }}
+              />
+            </Card>
+          </>
+        )}
+      </main>
 
+      {/* ================================================================== */}
+      {/* 3. EDIT DEVICE DETAILS DIALOG                                      */}
+      {/* ================================================================== */}
       <Dialog
         open={detailsDialogOpen}
         onClose={closeDetailsEditor}
         fullWidth
         maxWidth="sm"
-        fullScreen={false}
         PaperProps={{
           sx: {
-            borderRadius: { xs: 2, sm: 3 },
-            m: { xs: 1, sm: 2 },
-            width: { xs: "calc(100% - 16px)", sm: "100%" },
+            borderRadius: "20px",
+            border: "1px solid var(--viz-border)",
+            boxShadow: "0 10px 35px rgba(3, 18, 22, 0.15)",
+            m: { xs: 1.5, sm: 2 },
           },
         }}
       >
         <DialogTitle
           sx={{
             display: "flex",
-            alignItems: "flex-start",
+            alignItems: "center",
             justifyContent: "space-between",
-            gap: 1,
             pb: 1,
           }}
         >
-          <Box>
-            <Typography sx={{ color: C.text, fontSize: 18, fontWeight: 800 }}>
+          <div>
+            <Typography sx={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 18, color: "var(--viz-text-main)" }}>
               Edit Device Details
             </Typography>
-
-            <Typography sx={{ color: C.muted, fontSize: 12, mt: 0.4 }}>
+            <Typography sx={{ fontSize: 12, color: "var(--viz-text-muted)", fontWeight: 600 }}>
               {selectedDevice?.deviceId || ""}
             </Typography>
-          </Box>
-
-          <IconButton
-            onClick={closeDetailsEditor}
-            disabled={saving}
-            size="small"
-            aria-label="Close editor"
-          >
-            <CloseIcon />
+          </div>
+          <IconButton onClick={closeDetailsEditor} disabled={saving} size="small">
+            <CloseRoundedIcon />
           </IconButton>
         </DialogTitle>
 
-        <DialogContent dividers sx={{ borderColor: C.border }}>
-          <Alert
-            severity="info"
-            sx={{ mb: 2, borderRadius: 2, fontSize: 12 }}
-          >
-            You can update meter details and site location. The serial
-            number and charger ID are read-only.
+        <DialogContent dividers sx={{ borderColor: "var(--viz-border)" }}>
+          <Alert severity="info" sx={{ mb: 2, borderRadius: "12px", fontSize: 12 }}>
+            Update meter identifiers and site location. Serial number & charger ID are immutable.
           </Alert>
 
           <Stack spacing={2}>
             <TextField
-              label="Serial number"
+              label="Serial Number"
               value={selectedDevice?.serialNumber || ""}
               fullWidth
               size="small"
@@ -1509,36 +927,24 @@ export default function MyDevices() {
             />
 
             <TextField
-              label="Meter number"
+              label="Meter Consumer Number"
               value={detailsForm.meterConsumerNumber}
-              onChange={(event) =>
-                updateDetailsForm(
-                  "meterConsumerNumber",
-                  event.target.value
-                )
-              }
+              onChange={(e) => updateDetailsForm("meterConsumerNumber", e.target.value)}
               fullWidth
               size="small"
-              inputProps={{ maxLength: 100 }}
             />
 
             <FormControl fullWidth size="small">
-              <InputLabel id="owner-meter-type-label">
-                Meter type
-              </InputLabel>
-
+              <InputLabel id="meter-type-label">Meter Type</InputLabel>
               <Select
-                labelId="owner-meter-type-label"
-                label="Meter type"
+                labelId="meter-type-label"
+                label="Meter Type"
                 value={detailsForm.meterType}
-                onChange={(event) =>
-                  updateDetailsForm("meterType", event.target.value)
-                }
+                onChange={(e) => updateDetailsForm("meterType", e.target.value)}
               >
                 <MenuItem value="">
                   <em>Not specified</em>
                 </MenuItem>
-
                 {METER_TYPES.map((type) => (
                   <MenuItem key={type} value={type}>
                     {type}
@@ -1547,161 +953,81 @@ export default function MyDevices() {
               </Select>
             </FormControl>
 
-            <Divider sx={{ borderColor: C.border }} />
+            <Divider sx={{ borderColor: "var(--viz-border)" }} />
 
-            <Typography
-              sx={{
-                color: C.text,
-                fontWeight: 800,
-                fontSize: 13,
-              }}
-            >
-              Site location
+            <Typography sx={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: 13, color: "var(--viz-text-main)" }}>
+              Site Geolocation
             </Typography>
 
             <TextField
-              label="Location / address"
+              label="Location / Address"
               value={detailsForm.location}
-              onChange={(event) =>
-                updateDetailsForm("location", event.target.value)
-              }
+              onChange={(e) => updateDetailsForm("location", e.target.value)}
               fullWidth
               size="small"
               multiline
               minRows={2}
-              inputProps={{ maxLength: 300 }}
               required
             />
 
-            <TextField
-              label="City"
-              value={detailsForm.city}
-              onChange={(event) =>
-                updateDetailsForm("city", event.target.value)
-              }
-              fullWidth
-              size="small"
-              inputProps={{ maxLength: 100 }}
-              required
-            />
-
-            <TextField
-              label="State"
-              value={detailsForm.state}
-              onChange={(event) =>
-                updateDetailsForm("state", event.target.value)
-              }
-              fullWidth
-              size="small"
-              inputProps={{ maxLength: 100 }}
-              required
-            />
-
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: {
-                  xs: "minmax(0, 1fr)",
-                  sm: "repeat(2, minmax(0, 1fr))",
-                },
-                gap: 1.5,
-              }}
-            >
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
               <TextField
-                label="Latitude"
-                value={detailsForm.lat}
-                onChange={(event) =>
-                  updateDetailsForm("lat", event.target.value)
-                }
-                fullWidth
+                label="City"
+                value={detailsForm.city}
+                onChange={(e) => updateDetailsForm("city", e.target.value)}
                 size="small"
-                type="number"
-                inputProps={{
-                  min: -90,
-                  max: 90,
-                  step: "any",
-                }}
                 required
               />
-
               <TextField
-                label="Longitude"
-                value={detailsForm.lng}
-                onChange={(event) =>
-                  updateDetailsForm("lng", event.target.value)
-                }
-                fullWidth
+                label="State"
+                value={detailsForm.state}
+                onChange={(e) => updateDetailsForm("state", e.target.value)}
                 size="small"
-                type="number"
-                inputProps={{
-                  min: -180,
-                  max: 180,
-                  step: "any",
-                }}
                 required
               />
             </Box>
 
-            <Typography
-              sx={{
-                color: C.muted,
-                fontSize: 11,
-                lineHeight: 1.6,
-              }}
-            >
-              Latitude must be between -90 and 90. Longitude must be
-              between -180 and 180. Coordinates are used for the charger's
-              site location.
-            </Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1.5 }}>
+              <TextField
+                label="Latitude (-90 to 90)"
+                value={detailsForm.lat}
+                onChange={(e) => updateDetailsForm("lat", e.target.value)}
+                type="number"
+                size="small"
+                required
+              />
+              <TextField
+                label="Longitude (-180 to 180)"
+                value={detailsForm.lng}
+                onChange={(e) => updateDetailsForm("lng", e.target.value)}
+                type="number"
+                size="small"
+                required
+              />
+            </Box>
           </Stack>
         </DialogContent>
 
-        <DialogActions
-          sx={{
-            p: 2,
-            borderTop: `1px solid ${C.border}`,
-          }}
-        >
-          <Button
-            onClick={closeDetailsEditor}
-            disabled={saving}
-            sx={{
-              color: C.muted,
-              textTransform: "none",
-              fontWeight: 700,
-            }}
-          >
+        <DialogActions sx={{ p: 2, borderTop: "1px solid var(--viz-border)" }}>
+          <Button onClick={closeDetailsEditor} disabled={saving} sx={{ textTransform: "none", fontWeight: 700 }}>
             Cancel
           </Button>
 
           <Button
             variant="contained"
-            startIcon={
-              saving ? (
-                <CircularProgress size={16} color="inherit" />
-              ) : (
-                <SaveOutlinedIcon />
-              )
-            }
+            startIcon={saving ? <CircularProgress size={16} color="inherit" /> : <SaveOutlinedIcon />}
             onClick={saveDeviceDetails}
             disabled={saving}
-            sx={{
-              bgcolor: C.teal,
-              color: "#042f2e",
-              textTransform: "none",
-              fontWeight: 800,
-              "&:hover": { bgcolor: "#03aaaa" },
-            }}
+            className="viz-btn-primary-sunrise"
           >
             {saving ? "Saving…" : "Save Details"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* ------------------------------------------------------ */}
-      {/* EDIT TARIFF DIALOG                                     */}
-      {/* ------------------------------------------------------ */}
-
+      {/* ================================================================== */}
+      {/* 4. EDIT TARIFF DIALOG                                              */}
+      {/* ================================================================== */}
       <Dialog
         open={rateDialogOpen}
         onClose={closeRateEditor}
@@ -1709,105 +1035,69 @@ export default function MyDevices() {
         maxWidth="xs"
         PaperProps={{
           sx: {
-            borderRadius: { xs: 2, sm: 3 },
-            m: { xs: 1, sm: 2 },
+            borderRadius: "20px",
+            border: "1px solid var(--viz-border)",
+            m: { xs: 1.5, sm: 2 },
           },
         }}
       >
-        <DialogTitle
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <Box>
-            <Typography sx={{ fontSize: 17, color: C.text, fontWeight: 800 }}>
-              Edit Charging Tariff
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <Typography sx={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 17 }}>
+              Update Tariff
             </Typography>
-
-            <Typography sx={{ color: C.muted, fontSize: 12, mt: 0.4 }}>
+            <Typography sx={{ fontSize: 12, color: "var(--viz-text-muted)" }}>
               {rateDevice?.deviceId || ""}
             </Typography>
-          </Box>
-
-          <IconButton
-            size="small"
-            onClick={closeRateEditor}
-            disabled={saving}
-          >
-            <CloseIcon />
+          </div>
+          <IconButton size="small" onClick={closeRateEditor} disabled={saving}>
+            <CloseRoundedIcon />
           </IconButton>
         </DialogTitle>
 
-        <DialogContent dividers sx={{ borderColor: C.border }}>
-          <Stack spacing={2}>
+        <DialogContent dividers sx={{ borderColor: "var(--viz-border)" }}>
+          <Stack spacing={2} sx={{ mt: 0.5 }}>
             <TextField
-              label="Tariff including GST (₹/kWh)"
+              label="Tariff Including GST (₹/kWh)"
               type="number"
               value={rateForm.rateInclGst}
-              onChange={(event) =>
-                setRateForm((previous) => ({
-                  ...previous,
-                  rateInclGst: event.target.value,
-                }))
-              }
+              onChange={(e) => setRateForm((prev) => ({ ...prev, rateInclGst: e.target.value }))}
               fullWidth
               size="small"
-              inputProps={{ min: 0.01, max: 1000, step: "0.01" }}
-              helperText="Enter the public customer tariff including GST."
+              helperText="Public charging price per kilowatt-hour"
             />
 
             <TextField
-              label="Reason for change"
+              label="Reason for Change"
               value={rateForm.reason}
-              onChange={(event) =>
-                setRateForm((previous) => ({
-                  ...previous,
-                  reason: event.target.value,
-                }))
-              }
+              onChange={(e) => setRateForm((prev) => ({ ...prev, reason: e.target.value }))}
               fullWidth
               size="small"
               multiline
               minRows={2}
-              inputProps={{ maxLength: 500 }}
-              helperText="Enter at least 5 characters."
+              helperText="Enter at least 5 characters"
             />
           </Stack>
         </DialogContent>
 
         <DialogActions sx={{ p: 2 }}>
-          <Button
-            onClick={closeRateEditor}
-            disabled={saving}
-            sx={{ textTransform: "none" }}
-          >
+          <Button onClick={closeRateEditor} disabled={saving} sx={{ textTransform: "none", fontWeight: 700 }}>
             Cancel
           </Button>
-
           <Button
             variant="contained"
             onClick={saveRate}
             disabled={saving}
-            sx={{
-              bgcolor: C.teal,
-              color: "#042f2e",
-              fontWeight: 800,
-              textTransform: "none",
-              "&:hover": { bgcolor: "#03aaaa" },
-            }}
+            className="viz-btn-primary-sunrise"
           >
-            {saving ? "Saving…" : "Save Tariff"}
+            {saving ? "Updating…" : "Apply Tariff"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* ------------------------------------------------------ */}
-      {/* RATE HISTORY DIALOG                                    */}
-      {/* ------------------------------------------------------ */}
-
+      {/* ================================================================== */}
+      {/* 5. RATE HISTORY DIALOG                                             */}
+      {/* ================================================================== */}
       <Dialog
         open={historyDialogOpen}
         onClose={closeRateHistory}
@@ -1815,94 +1105,76 @@ export default function MyDevices() {
         maxWidth="md"
         PaperProps={{
           sx: {
-            borderRadius: { xs: 2, sm: 3 },
-            m: { xs: 1, sm: 2 },
+            borderRadius: "20px",
+            border: "1px solid var(--viz-border)",
+            m: { xs: 1.5, sm: 2 },
           },
         }}
       >
-        <DialogTitle
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: 1,
-          }}
-        >
-          <Box>
-            <Typography sx={{ fontSize: 17, color: C.text, fontWeight: 800 }}>
+        <DialogTitle sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <Typography sx={{ fontFamily: "var(--font-display)", fontWeight: 900, fontSize: 17 }}>
               Tariff History
             </Typography>
-
-            <Typography sx={{ color: C.muted, fontSize: 12, mt: 0.4 }}>
+            <Typography sx={{ fontSize: 12, color: "var(--viz-text-muted)" }}>
               {historyDevice?.deviceId || ""}
             </Typography>
-          </Box>
-
+          </div>
           <IconButton size="small" onClick={closeRateHistory}>
-            <CloseIcon />
+            <CloseRoundedIcon />
           </IconButton>
         </DialogTitle>
 
-        <DialogContent dividers sx={{ borderColor: C.border }}>
+        <DialogContent dividers sx={{ borderColor: "var(--viz-border)", p: 0 }}>
           {historyLoading ? (
-            <Box sx={{ py: 5, textAlign: "center" }}>
-              <CircularProgress sx={{ color: C.teal }} />
-              <Typography sx={{ mt: 1.5, color: C.muted, fontSize: 12 }}>
-                Loading tariff history…
+            <Box sx={{ py: 6, textAlign: "center" }}>
+              <CircularProgress sx={{ color: "var(--viz-aqua)" }} />
+              <Typography sx={{ mt: 1.5, color: "var(--viz-text-muted)", fontSize: 12 }}>
+                Retrieving tariff revisions…
               </Typography>
             </Box>
           ) : rateHistory.length === 0 ? (
-            <Alert severity="info" sx={{ borderRadius: 2 }}>
-              No tariff changes are recorded for this charger.
-            </Alert>
+            <Box sx={{ p: 3 }}>
+              <Alert severity="info" sx={{ borderRadius: "12px" }}>
+                No prior tariff revisions on record for this charger.
+              </Alert>
+            </Box>
           ) : (
-            <TableContainer sx={{ overflowX: "auto" }}>
-              <Table size="small">
+            <TableContainer sx={{ maxHeight: 380 }}>
+              <Table size="small" stickyHeader>
                 <TableHead>
-                  <TableRow sx={{ bgcolor: C.surfaceAlt }}>
-                    {[
-                      "Changed on",
-                      "Previous tariff",
-                      "New tariff",
-                      "Changed by",
-                      "Reason",
-                    ].map((heading) => (
+                  <TableRow>
+                    {["Changed On", "Previous Rate", "New Rate", "Modified By", "Reason"].map((h) => (
                       <TableCell
-                        key={heading}
+                        key={h}
                         sx={{
-                          color: C.muted,
+                          bgcolor: "var(--viz-pale-mint-tint)",
+                          fontFamily: "var(--font-display)",
                           fontWeight: 800,
-                          whiteSpace: "nowrap",
+                          fontSize: 11,
+                          color: "var(--viz-text-muted)",
+                          borderBottom: "1px solid var(--viz-border)",
                         }}
                       >
-                        {heading}
+                        {h}
                       </TableCell>
                     ))}
                   </TableRow>
                 </TableHead>
-
                 <TableBody>
-                  {rateHistory.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell sx={{ whiteSpace: "nowrap" }}>
-                        {formatDateTime(item.changedAt)}
+                  {rateHistory.map((row) => (
+                    <TableRow key={row.id} hover>
+                      <TableCell sx={{ fontSize: 11.5, whiteSpace: "nowrap" }}>
+                        {formatDateTime(row.changedAt)}
                       </TableCell>
-
-                      <TableCell sx={{ whiteSpace: "nowrap" }}>
-                        {money(item.previousRateInclGst)}
+                      <TableCell sx={{ fontSize: 11.5, whiteSpace: "nowrap" }}>
+                        {money(row.previousRateInclGst)}
                       </TableCell>
-
-                      <TableCell sx={{ whiteSpace: "nowrap", fontWeight: 800 }}>
-                        {money(item.newRateInclGst)}
+                      <TableCell sx={{ fontSize: 11.5, fontWeight: 800, color: "var(--viz-teal-deep)", whiteSpace: "nowrap" }}>
+                        {money(row.newRateInclGst)}
                       </TableCell>
-
-                      <TableCell>
-                        {item.changedByRole || "—"}
-                      </TableCell>
-
-                      <TableCell sx={{ minWidth: 180 }}>
-                        {item.reason || "—"}
-                      </TableCell>
+                      <TableCell sx={{ fontSize: 11.5 }}>{row.changedByRole || "—"}</TableCell>
+                      <TableCell sx={{ fontSize: 11.5, maxWidth: 220 }}>{row.reason || "—"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -1911,15 +1183,12 @@ export default function MyDevices() {
           )}
         </DialogContent>
 
-        <DialogActions sx={{ p: 2 }}>
-          <Button
-            onClick={closeRateHistory}
-            sx={{ textTransform: "none", fontWeight: 700 }}
-          >
-            Close
+        <DialogActions sx={{ p: 1.5 }}>
+          <Button onClick={closeRateHistory} sx={{ textTransform: "none", fontWeight: 700 }}>
+            Dismiss
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   );
 }

@@ -1,0 +1,396 @@
+/* ==========================================================================
+   VIZ EV CPO SIDEBAR — Mint Canvas & Sunrise Orange Design System
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --viz-mint-canvas: #f3fbfc;
+  --viz-obsidian: #031216;
+  --viz-obsidian-surface: #0e2e33;
+  --viz-white: #ffffff;
+  --viz-mint-tint: #f7fdfc;
+  --viz-teal-wash: #edf8f6;
+
+  --viz-aqua: #00d2b4;
+  --viz-aqua-glow: #00e5be;
+  --viz-teal-deep: #00776b;
+  --viz-orange: #ff8236;
+  --viz-orange-deep: #ff521a;
+  --viz-Sunrise-grad: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+  --viz-Aqua-grad: linear-gradient(135deg, #00d2b4 0%, #009e8f 100%);
+
+  --viz-text-main: #0e2e33;
+  --viz-text-muted: #53757a;
+  --viz-text-subtle: #799ea4;
+  --viz-border: #d4f0ec;
+  --viz-border-soft: #e5f5f2;
+
+  --viz-green-fg: #008764;
+  --viz-green-bg: #dbfaf0;
+  --viz-green-border: #b8f2dd;
+
+  --viz-warn-fg: #c2410c;
+  --viz-warn-bg: #fff8f3;
+  --viz-warn-border: #ffd8c7;
+
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* ==========================================================================
+   1. MOBILE BACKDROP OVERLAY
+   ========================================================================== */
+
+.viz-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 18, 22, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 1250;
+  transition: opacity 0.25s ease;
+}
+
+/* ==========================================================================
+   2. SIDEBAR CONTAINER SHELL
+   ========================================================================== */
+
+.viz-sidebar {
+  width: 275px;
+  min-width: 275px;
+  height: 100vh;
+  height: 100dvh;
+  background: var(--viz-white);
+  border-right: 1.5px solid var(--viz-border);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  z-index: 1300;
+  overflow-y: auto;
+  overflow-x: hidden;
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0;
+}
+
+.viz-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.viz-sidebar::-webkit-scrollbar-thumb {
+  background: var(--viz-border);
+  border-radius: 999px;
+}
+
+/* ==========================================================================
+   3. BRAND HEADER WITH LOGO.PNG & CLOSE BUTTON
+   ========================================================================== */
+
+.viz-sidebar-header {
+  padding: 1.25rem 1.15rem;
+  border-bottom: 1.5px solid var(--viz-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  background: var(--viz-white);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.viz-sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;
+}
+
+.viz-sidebar-logo-container {
+  width: 42px;
+  height: 42px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+
+}
+
+.viz-sidebar-logo-img {
+  width: 52px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.viz-sidebar-logo-fallback {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  background: var(--viz-Aqua-grad);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.35rem;
+}
+
+.viz-sidebar-title-block {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.viz-sidebar-title {
+  font-family: var(--font-display);
+  font-size: 1.02rem;
+  font-weight: 900;
+  color: var(--viz-text-main);
+  letter-spacing: -0.3px;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.viz-sidebar-cpo-badge {
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  background: var(--viz-Sunrise-grad);
+  color: #ffffff;
+  padding: 1.5px 6px;
+  border-radius: 999px;
+  margin-left: 5px;
+  display: inline-block;
+}
+
+.viz-sidebar-subtext {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--viz-text-muted);
+  margin-top: 1px;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   4. NAVIGATION MENU
+   ========================================================================== */
+
+.viz-sidebar-body {
+  padding: 0.85rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  flex: 1;
+}
+
+.viz-sidebar-section-label {
+  font-family: var(--font-display);
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  color: var(--viz-text-subtle);
+  text-transform: uppercase;
+  padding: 0.65rem 0.6rem 0.35rem;
+}
+
+.viz-sidebar-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.viz-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.68rem 0.85rem;
+  border-radius: 12px;
+  text-decoration: none;
+  font-family: var(--font-body);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--viz-text-main);
+  border-left: 3.5px solid transparent;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.viz-sidebar-link:hover {
+  background: var(--viz-mint-tint);
+  color: var(--viz-teal-deep);
+  transform: translateX(2px);
+}
+
+.viz-sidebar-link.active {
+  background: var(--viz-teal-wash);
+  color: var(--viz-teal-deep);
+  font-weight: 800;
+  border-left-color: var(--viz-aqua);
+  box-shadow: 0 2px 10px rgba(0, 143, 127, 0.08);
+}
+
+.viz-sidebar-link-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  color: var(--viz-text-subtle);
+  transition: color 0.2s ease;
+  flex-shrink: 0;
+}
+
+.viz-sidebar-link:hover .viz-sidebar-link-icon,
+.viz-sidebar-link.active .viz-sidebar-link-icon {
+  color: var(--viz-teal-deep);
+}
+
+/* ==========================================================================
+   5. AUXILIARY DRAWER CARDS (WHATSAPP SUPPORT & WEBSITE)
+   ========================================================================== */
+
+.viz-sidebar-auxiliary {
+  padding: 0.75rem 0.85rem 0.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-top: 1px dashed var(--viz-border);
+}
+
+/* Green WhatsApp Support Card */
+.viz-whatsapp-card {
+  background: var(--viz-green-bg);
+  border: 1px solid var(--viz-green-border);
+  border-radius: 14px;
+  padding: 0.7rem 0.85rem;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.viz-whatsapp-card:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 14px rgba(0, 135, 100, 0.15);
+}
+
+.viz-whatsapp-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.viz-whatsapp-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: #25d366;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(37, 211, 102, 0.35);
+}
+
+.viz-whatsapp-title {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #044b36;
+  line-height: 1.1;
+}
+
+.viz-whatsapp-phone {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--viz-green-fg);
+  margin-top: 1px;
+}
+
+/* Warm Orange Website Card */
+.viz-website-card {
+  background: var(--viz-warn-bg);
+  border: 1px solid var(--viz-warn-border);
+  border-radius: 14px;
+  padding: 0.65rem 0.85rem;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.viz-website-card:hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 4px 14px rgba(255, 82, 26, 0.15);
+}
+
+.viz-website-left {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.viz-website-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--viz-Sunrise-grad);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(255, 82, 26, 0.3);
+}
+
+.viz-website-title {
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--viz-warn-fg);
+  line-height: 1.1;
+}
+
+.viz-website-url {
+  font-size: 10px;
+  font-weight: 700;
+  color: #ea580c;
+  margin-top: 1px;
+}
+
+/* ==========================================================================
+   6. FOOTER BRAND ATTRIBUTION
+   ========================================================================== */
+
+.viz-sidebar-footer {
+  padding: 0.85rem 1rem 1.15rem;
+  text-align: center;
+  border-top: 1px solid var(--viz-border);
+  background: var(--viz-mint-tint);
+}
+
+.viz-footer-brand-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--viz-text-muted);
+}
+
+.viz-footer-brand-company {
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--viz-text-main);
+  margin-top: 2px;
+}

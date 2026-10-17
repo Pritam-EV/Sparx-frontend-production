@@ -1,0 +1,518 @@
+/* ==========================================================================
+   VIZ EV CPO FINANCE & SETTLEMENT — High-Density Responsive Design System
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --viz-mint-canvas: #f3fbfc;
+  --viz-obsidian-card: linear-gradient(145deg, #072227 0%, #0d3840 55%, #09272c 100%);
+  --viz-white: #ffffff;
+  --viz-mint-tint: #f7fdfc;
+  --viz-teal-wash: #edf8f6;
+
+  --viz-aqua: #00d2b4;
+  --viz-aqua-glow: #00e5be;
+  --viz-teal-deep: #00776b;
+  --viz-orange: #ff8236;
+  --viz-orange-deep: #ff521a;
+  --viz-Sunrise-grad: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+  --viz-Aqua-grad: linear-gradient(135deg, #00d2b4 0%, #009e8f 100%);
+
+  --viz-text-main: #0e2e33;
+  --viz-text-muted: #53757a;
+  --viz-text-subtle: #799ea4;
+  --viz-border: #d4f0ec;
+  --viz-border-soft: #e5f5f2;
+
+  --viz-green-fg: #008764;
+  --viz-green-bg: #dbfaf0;
+  --viz-warn-fg: #e06014;
+  --viz-warn-bg: #fff3ed;
+  --viz-err-fg: #d93b3b;
+  --viz-err-bg: #fff2f0;
+
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Base Shell */
+.viz-finance-shell {
+  min-height: 100vh;
+  width: 100vw;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 0 3rem 0;
+  background-color: var(--viz-mint-canvas);
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(0, 229, 190, 0.12), transparent 28rem),
+    radial-gradient(circle at 0% 100%, rgba(255, 130, 54, 0.08), transparent 26rem);
+  font-family: var(--font-body);
+  color: var(--viz-text-main);
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   1. FLUSH TOP HEADER (ZERO SIDE GAPS)
+   ========================================================================== */
+
+.viz-finance-top-header {
+  background: var(--viz-obsidian-card);
+  border-radius: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  padding: 0.85rem 1.25rem !important;
+  box-sizing: border-box;
+  border-bottom: 1px solid rgba(0, 210, 180, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 6px 20px rgba(3, 18, 22, 0.2);
+}
+
+.viz-finance-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.viz-finance-brand-block {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.viz-finance-logo-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.viz-finance-header-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  line-height: 1;
+}
+
+.viz-finance-cpo-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--viz-Sunrise-grad);
+  color: #fff;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.viz-finance-header-sub {
+  font-size: 11px;
+  color: #8bb4ba;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.viz-finance-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.viz-month-pill {
+  background: rgba(3, 18, 22, 0.55);
+  border: 1px solid rgba(212, 240, 236, 0.2);
+  border-radius: 12px;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.viz-month-native-select {
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 800;
+  outline: none;
+  cursor: pointer;
+}
+
+.viz-month-native-select option {
+  background: #072227;
+  color: #ffffff;
+}
+
+.viz-btn-icon-soft {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.viz-btn-icon-soft:hover:not(:disabled) {
+  background: var(--viz-aqua);
+  color: #031216;
+  border-color: var(--viz-aqua);
+}
+
+/* ==========================================================================
+   2. MAIN CONTAINER & SECTION CARDS
+   ========================================================================== */
+
+.viz-finance-container {
+  max-width: 1400px;
+  width: 100%;
+  margin: 0.85rem auto 0 auto;
+  padding: 0 1rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0;
+}
+
+.viz-card-section {
+  background: var(--viz-white);
+  border: 1.5px solid var(--viz-border);
+  border-radius: 20px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 18px rgba(0, 160, 145, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.viz-section-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.viz-section-heading {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.viz-section-pill-tag {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--viz-teal-wash);
+  color: var(--viz-teal-deep);
+  letter-spacing: 0.3px;
+}
+
+/* ==========================================================================
+   SECTION 1: TOP 3 METRICS & LEDGER
+   ========================================================================== */
+
+.viz-top-three-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.viz-mini-kpi-box {
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border-soft);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.viz-kpi-sub-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--viz-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.viz-kpi-sub-val {
+  font-family: var(--font-display);
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  font-weight: 900;
+  line-height: 1.15;
+  margin-top: 3px;
+}
+
+/* Visual Math Equation Box */
+.viz-math-equation-card {
+  background: #ffffff;
+  border: 1.5px solid var(--viz-border);
+  border-radius: 16px;
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.viz-ledger-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.viz-ledger-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.viz-math-operator {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.viz-math-operator.plus {
+  background: var(--viz-teal-wash);
+  color: var(--viz-teal-deep);
+}
+
+.viz-math-operator.minus {
+  background: var(--viz-warn-bg);
+  color: var(--viz-orange);
+}
+
+.viz-math-operator.equals {
+  background: var(--viz-green-bg);
+  color: var(--viz-green-fg);
+}
+
+.viz-ledger-text {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--viz-text-main);
+}
+
+.viz-ledger-amount {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+}
+
+.viz-highlight-result-row {
+  background: var(--viz-pale-mint-tint);
+  border: 1px solid var(--viz-border);
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.viz-highlight-result-row .viz-ledger-amount {
+  font-size: 1.35rem;
+  color: var(--viz-teal-deep);
+  font-weight: 900;
+}
+
+/* ==========================================================================
+   SECTION 2: VJRA ELECTRICITY SETTLEMENT
+   ========================================================================== */
+
+.viz-step-settle-card {
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border);
+  border-radius: 15px;
+  padding: 1rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.viz-final-settlement-hero {
+  background: linear-gradient(135deg, #072227 0%, #0d3840 100%);
+  border-radius: 16px;
+  padding: 1.15rem 1.3rem;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 6px 20px rgba(3, 18, 22, 0.15);
+}
+
+.viz-hero-settle-val {
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  font-weight: 900;
+  color: var(--viz-aqua-glow);
+  line-height: 1.1;
+  margin-top: 2px;
+}
+
+/* ==========================================================================
+   SECTION 3: MSEB ELECTRICITY BREAKDOWN
+   ========================================================================== */
+
+.viz-mseb-three-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.viz-mseb-kpi-tile {
+  background: #ffffff;
+  border: 1px solid var(--viz-border);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.viz-project-item-box {
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border);
+  border-radius: 14px;
+  padding: 0.95rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.viz-btn-pay-action {
+  background: var(--viz-Sunrise-grad) !important;
+  color: #ffffff !important;
+  font-family: var(--font-display) !important;
+  font-weight: 800 !important;
+  font-size: 0.8rem !important;
+  text-transform: none !important;
+  border-radius: 11px !important;
+  padding: 6px 16px !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(255, 82, 26, 0.35) !important;
+  cursor: pointer;
+  align-self: flex-start;
+}
+
+/* ==========================================================================
+   RESPONSIVE TUNING (< 768px & < 480px)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .viz-top-three-grid,
+  .viz-mseb-three-grid {
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  .viz-final-settlement-hero {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .viz-finance-top-header {
+    padding: 0.75rem 0.85rem !important;
+  }
+
+  .viz-finance-header-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .viz-finance-brand-block {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .viz-finance-controls {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .viz-finance-container {
+    padding: 0 0.75rem;
+    margin-top: 0.65rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .viz-finance-container {
+    padding: 0 0.6rem;
+  }
+
+  .viz-card-section {
+    padding: 0.95rem;
+    border-radius: 16px;
+  }
+
+  .viz-ledger-line {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .viz-ledger-amount {
+    font-size: 1rem;
+    padding-left: 28px;
+  }
+
+  .viz-highlight-result-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .viz-highlight-result-row .viz-ledger-amount {
+    font-size: 1.25rem;
+    padding-left: 28px;
+  }
+
+  .viz-hero-settle-val {
+    font-size: 1.65rem;
+  }
+}

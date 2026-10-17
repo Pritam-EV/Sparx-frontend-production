@@ -1,0 +1,436 @@
+/* ==========================================================================
+   VIZ EV CPO SESSION REGISTER — Responsive Hybrid Table & Bento System
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --viz-mint-canvas: #f3fbfc;
+  --viz-obsidian-card: linear-gradient(145deg, #072227 0%, #0d3840 55%, #09272c 100%);
+  --viz-white: #ffffff;
+  --viz-mint-tint: #f7fdfc;
+  --viz-teal-wash: #edf8f6;
+
+  --viz-aqua: #00d2b4;
+  --viz-aqua-glow: #00e5be;
+  --viz-teal-deep: #00776b;
+  --viz-orange: #ff8236;
+  --viz-orange-deep: #ff521a;
+  --viz-Sunrise-grad: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+  --viz-Aqua-grad: linear-gradient(135deg, #00d2b4 0%, #009e8f 100%);
+
+  --viz-text-main: #0e2e33;
+  --viz-text-muted: #53757a;
+  --viz-text-subtle: #799ea4;
+  --viz-border: #d4f0ec;
+  --viz-border-soft: #e5f5f2;
+
+  --viz-green-fg: #008764;
+  --viz-green-bg: #dbfaf0;
+  --viz-warn-fg: #e06014;
+  --viz-warn-bg: #fff3ed;
+  --viz-err-fg: #d93b3b;
+  --viz-err-bg: #fff2f0;
+
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Base Shell */
+.viz-sessions-shell {
+  min-height: 100vh;
+  width: 100vw;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 0 2.5rem 0;
+  background-color: var(--viz-mint-canvas);
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(0, 229, 190, 0.12), transparent 28rem),
+    radial-gradient(circle at 0% 100%, rgba(255, 130, 54, 0.08), transparent 26rem);
+  font-family: var(--font-body);
+  color: var(--viz-text-main);
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   1. FLUSH TOP HEADER (ZERO SIDE GAPS)
+   ========================================================================== */
+
+.viz-sessions-top-header {
+  background: var(--viz-obsidian-card);
+  border-radius: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  padding: 0.85rem 1.25rem !important;
+  box-sizing: border-box;
+  border-bottom: 1px solid rgba(0, 210, 180, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 6px 20px rgba(3, 18, 22, 0.2);
+}
+
+.viz-sessions-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.viz-sessions-brand-block {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.viz-sessions-logo-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.viz-sessions-header-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  line-height: 1;
+}
+
+.viz-sessions-cpo-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--viz-Sunrise-grad);
+  color: #fff;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.viz-sessions-header-sub {
+  font-size: 11px;
+  color: #8bb4ba;
+  font-weight: 500;
+  margin-top: 2px;
+}
+
+.viz-btn-icon-soft {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.viz-btn-icon-soft:hover:not(:disabled) {
+  background: var(--viz-aqua);
+  color: #031216;
+  border-color: var(--viz-aqua);
+}
+
+/* ==========================================================================
+   2. MAIN CONTAINER & FILTER DOCK
+   ========================================================================== */
+
+.viz-sessions-container {
+  max-width: 1400px;
+  width: 100%;
+  margin: 0.85rem auto 0 auto;
+  padding: 0 1rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+/* Tab Switcher Bar */
+.viz-tab-bar {
+  display: flex;
+  align-items: center;
+  background: var(--viz-white);
+  border: 1px solid var(--viz-border);
+  border-radius: 16px;
+  padding: 4px;
+  box-shadow: 0 4px 16px rgba(0, 160, 145, 0.05);
+}
+
+.viz-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--viz-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.viz-tab-btn.active {
+  background: var(--viz-teal-wash);
+  color: var(--viz-teal-deep);
+  border: 1px solid var(--viz-border);
+  box-shadow: 0 2px 8px rgba(0, 143, 127, 0.08);
+}
+
+/* Compact Filter Dock */
+.viz-filter-strip {
+  background: var(--viz-white);
+  border: 1px solid var(--viz-border);
+  border-radius: 16px;
+  padding: 0.75rem 0.95rem;
+  box-shadow: 0 4px 16px rgba(0, 160, 145, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.viz-search-box {
+  flex: 1;
+  min-width: 200px;
+  display: flex;
+  align-items: center;
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border-soft);
+  border-radius: 12px;
+  padding: 0 0.65rem;
+}
+
+.viz-search-field {
+  width: 100%;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--viz-text-main);
+  padding: 8px 4px;
+}
+
+.viz-date-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.viz-date-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border-soft);
+  border-radius: 10px;
+  padding: 3px 8px;
+}
+
+.viz-date-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--viz-text-muted);
+  text-transform: uppercase;
+}
+
+.viz-native-date {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--viz-text-main);
+  cursor: pointer;
+}
+
+.viz-btn-apply {
+  background: var(--viz-Sunrise-grad) !important;
+  color: #ffffff !important;
+  font-family: var(--font-display) !important;
+  font-weight: 800 !important;
+  font-size: 0.8rem !important;
+  text-transform: none !important;
+  border-radius: 10px !important;
+  padding: 6px 14px !important;
+  border: none !important;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   3. MOBILE BENTO CARDS VIEW (< 768px)
+   ========================================================================== */
+
+.viz-mobile-records-list {
+  display: none; /* Desktop default */
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.viz-record-card {
+  background: var(--viz-white);
+  border: 1px solid var(--viz-border);
+  border-radius: 16px;
+  padding: 0.95rem;
+  box-shadow: 0 4px 14px rgba(0, 160, 145, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.viz-record-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.viz-record-main-id {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.98rem;
+  color: var(--viz-text-main);
+}
+
+.viz-plain-plate-text {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+}
+
+.viz-record-bento-strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border-soft);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+}
+
+.viz-record-mini-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.viz-record-mini-lbl {
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--viz-text-muted);
+  text-transform: uppercase;
+}
+
+.viz-record-mini-val {
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 800;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   4. DESKTOP / TABLET DATA TABLE (>= 768px)
+   ========================================================================== */
+
+.viz-table-wrapper {
+  display: block; /* Shown on desktop/tablet */
+  background: var(--viz-white);
+  border: 1px solid var(--viz-border);
+  border-radius: 18px;
+  box-shadow: 0 4px 18px rgba(0, 160, 145, 0.06);
+  overflow: hidden;
+}
+
+/* Empty State Card */
+.viz-empty-box {
+  background: var(--viz-white);
+  border: 1.5px dashed var(--viz-border);
+  border-radius: 18px;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   5. RESPONSIVE BREAKPOINTS
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .viz-table-wrapper {
+    display: none; /* Hide heavy table on mobile */
+  }
+
+  .viz-mobile-records-list {
+    display: flex; /* Show mobile bento list */
+  }
+
+  .viz-date-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .viz-date-input-group {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .viz-btn-apply {
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .viz-sessions-top-header {
+    padding: 0.75rem 0.85rem !important;
+  }
+
+  .viz-sessions-header-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .viz-sessions-brand-block {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .viz-sessions-container {
+    padding: 0 0.75rem;
+    margin-top: 0.65rem;
+  }
+}

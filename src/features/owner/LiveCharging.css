@@ -1,0 +1,565 @@
+/* ==========================================================================
+   VIZ EV CPO LIVE CHARGING SESSIONS — Mint Canvas & Sunrise Orange Design System
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --viz-mint-canvas: #f3fbfc;
+  --viz-obsidian-card: linear-gradient(145deg, #072227 0%, #0d3840 55%, #09272c 100%);
+  --viz-white: #ffffff;
+  --viz-mint-tint: #f7fdfc;
+  --viz-teal-wash: #edf8f6;
+
+  --viz-aqua: #00d2b4;
+  --viz-aqua-glow: #00e5be;
+  --viz-teal-deep: #00776b;
+  --viz-orange: #ff8236;
+  --viz-orange-deep: #ff521a;
+  --viz-Sunrise-grad: linear-gradient(135deg, #ff8236 0%, #ff521a 100%);
+  --viz-Aqua-grad: linear-gradient(135deg, #00d2b4 0%, #009e8f 100%);
+
+  --viz-text-main: #0e2e33;
+  --viz-text-muted: #53757a;
+  --viz-text-subtle: #799ea4;
+  --viz-border: #d4f0ec;
+  --viz-border-soft: #e5f5f2;
+
+  --viz-green-fg: #008764;
+  --viz-green-bg: #dbfaf0;
+  --viz-blue-fg: #1d4ed8;
+  --viz-blue-bg: #dbeafe;
+  --viz-warn-fg: #e06014;
+  --viz-warn-bg: #fff3ed;
+  --viz-err-fg: #d93b3b;
+  --viz-err-bg: #fff2f0;
+
+  --font-display: 'Outfit', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+}
+
+/* Base Shell with Ambient Dual Glow */
+.viz-live-shell {
+  min-height: 100vh;
+  width: 100vw;
+  max-width: 100%;
+  margin: 0;
+  padding: 0 0 2.5rem 0;
+  background-color: var(--viz-mint-canvas);
+  background-image:
+    radial-gradient(circle at 100% 0%, rgba(0, 229, 190, 0.12), transparent 28rem),
+    radial-gradient(circle at 0% 100%, rgba(255, 130, 54, 0.08), transparent 26rem);
+  font-family: var(--font-body);
+  color: var(--viz-text-main);
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* ==========================================================================
+   1. FLUSH TOP HEADER (NO GAPS ON SIDES)
+   ========================================================================== */
+
+.viz-live-top-header {
+  background: var(--viz-obsidian-card);
+  border-radius: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+  padding: 0.85rem 1.25rem !important;
+  box-sizing: border-box;
+  border-bottom: 1px solid rgba(0, 210, 180, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: 0 6px 20px rgba(3, 18, 22, 0.2);
+}
+
+.viz-live-header-inner {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.viz-live-brand-block {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.viz-live-logo-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.viz-live-header-title {
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  line-height: 1;
+}
+
+.viz-live-cpo-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--viz-Sunrise-grad);
+  color: #fff;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+.viz-live-header-sub {
+  font-size: 11px;
+  color: #8bb4ba;
+  font-weight: 500;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.viz-live-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--viz-aqua);
+  box-shadow: 0 0 0 3px rgba(0, 210, 180, 0.3);
+  animation: vizRadarPing 1.8s infinite ease-out;
+}
+
+@keyframes vizRadarPing {
+  0% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.4); opacity: 0.4; }
+  100% { transform: scale(1); opacity: 0.9; }
+}
+
+.viz-live-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.viz-btn-icon-soft {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.viz-btn-icon-soft:hover:not(:disabled) {
+  background: var(--viz-aqua);
+  color: #031216;
+  border-color: var(--viz-aqua);
+}
+
+/* ==========================================================================
+   2. MAIN CONTAINER & LIVE SUMMARY RIBBON
+   ========================================================================== */
+
+.viz-live-container {
+  max-width: 1400px;
+  width: 100%;
+  margin: 0.85rem auto 0 auto;
+  padding: 0 1rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+/* 4-Item Quick Telemetry Overview */
+.viz-live-summary-ribbon {
+  background: var(--viz-white);
+  border: 1.5px solid var(--viz-border);
+  border-radius: 18px;
+  padding: 0.75rem 0.85rem;
+  box-shadow: 0 4px 16px rgba(0, 160, 145, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.viz-ribbon-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.viz-ribbon-label {
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.viz-live-stat-pills {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.4rem;
+  width: 100%;
+}
+
+.viz-live-stat-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 4px;
+  border-radius: 12px;
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border-soft);
+  text-align: center;
+  min-width: 0;
+}
+
+.viz-live-stat-num {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.viz-live-stat-lbl {
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--viz-text-muted);
+  text-transform: uppercase;
+  margin-top: 2px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ==========================================================================
+   3. LIVE SESSION CARDS GRID
+   ========================================================================== */
+
+.viz-live-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+@media (min-width: 1280px) {
+  .viz-live-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .viz-live-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Bento Live Session Card */
+.viz-session-card-light {
+  background: var(--viz-white);
+  border: 1.5px solid var(--viz-border);
+  border-radius: 20px;
+  padding: 1.15rem;
+  box-shadow: 0 4px 18px rgba(0, 160, 145, 0.06);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.9rem;
+  box-sizing: border-box;
+  min-width: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.viz-session-card-light:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(0, 160, 145, 0.12);
+  border-color: var(--viz-aqua);
+}
+
+/* Card Header */
+.viz-session-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.viz-session-device-block {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.viz-session-device-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: var(--viz-teal-wash);
+  color: var(--viz-teal-deep);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.viz-session-title {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+  line-height: 1.2;
+}
+
+/* Plain text vehicle plate styling */
+.viz-plate-plaintext {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+  letter-spacing: 0.4px;
+}
+
+/* Relay Status Badge */
+.viz-relay-badge {
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 999px;
+  letter-spacing: 0.4px;
+  flex-shrink: 0;
+}
+
+.viz-relay-badge.on {
+  background: var(--viz-green-bg);
+  color: var(--viz-green-fg);
+  border: 1px solid var(--viz-green-fg);
+}
+
+.viz-relay-badge.off {
+  background: var(--viz-teal-wash);
+  color: var(--viz-text-muted);
+  border: 1px solid var(--viz-border);
+}
+
+/* Location Subtext */
+.viz-session-address {
+  font-size: 11.5px;
+  color: var(--viz-text-muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Middle Progress Hero Block */
+.viz-session-progress-hero {
+  background: var(--viz-mint-tint);
+  border: 1px solid var(--viz-border-soft);
+  border-radius: 16px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+}
+
+.viz-progress-circle-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.viz-progress-center-txt {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.viz-progress-val {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 1.1rem;
+  color: var(--viz-teal-deep);
+  line-height: 1;
+}
+
+.viz-progress-kwh-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.viz-kwh-metric-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 11.5px;
+  gap: 0.4rem;
+}
+
+.viz-kwh-label {
+  color: var(--viz-text-muted);
+  font-weight: 600;
+}
+
+.viz-kwh-val {
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--viz-text-main);
+  white-space: nowrap;
+}
+
+/* Bottom 2-Column Bento Info Strip */
+.viz-session-footer-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  padding-top: 0.65rem;
+  border-top: 1px dashed var(--viz-border);
+}
+
+.viz-session-subkpi {
+  display: flex;
+  flex-direction: column;
+}
+
+.viz-subkpi-label {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: var(--viz-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.viz-subkpi-val {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--viz-text-main);
+  margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Empty State Card */
+.viz-empty-card {
+  background: var(--viz-white);
+  border: 1.5px dashed var(--viz-border);
+  border-radius: 20px;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   4. RESPONSIVE TUNING (< 480px)
+   ========================================================================== */
+
+@media (max-width: 640px) {
+  .viz-live-top-header {
+    padding: 0.75rem 0.85rem !important;
+  }
+
+  .viz-live-header-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+  }
+
+  .viz-live-brand-block {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .viz-live-top-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .viz-live-container {
+    padding: 0 0.75rem;
+    margin-top: 0.65rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .viz-live-container {
+    padding: 0 0.6rem;
+  }
+
+  .viz-live-stat-pills {
+    gap: 0.25rem;
+  }
+
+  .viz-live-stat-pill {
+    padding: 5px 1px;
+    border-radius: 10px;
+  }
+
+  .viz-live-stat-num {
+    font-size: 0.92rem;
+  }
+
+  .viz-live-stat-lbl {
+    font-size: 8.5px;
+  }
+
+  .viz-session-card-light {
+    padding: 0.95rem;
+    border-radius: 16px;
+  }
+
+  .viz-session-progress-hero {
+    padding: 0.75rem 0.85rem;
+  }
+}
