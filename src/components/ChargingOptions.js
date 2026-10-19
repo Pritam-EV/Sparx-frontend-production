@@ -75,6 +75,8 @@ function ChargingOptions() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [showPaymentSheet, setShowPaymentSheet] = useState(false);
   const [walletPayLoading, setWalletPayLoading] = useState(false);
+  const [cashfreePayLoading, setCashfreePayLoading] = useState(false);
+  const cashfreePayInProgressRef = useRef(false);
 
   const [toast, setToast] = useState({
     open: false,
@@ -356,6 +358,7 @@ function ChargingOptions() {
       showToast(`Device is not available. Current status: ${currentDeviceStatus}`, "error");
       return;
     }
+    if (showPaymentSheet || cashfreePayLoading || walletPayLoading) return;
     setShowPaymentSheet(true);
   };
 
@@ -423,31 +426,55 @@ function ChargingOptions() {
   };
 
   const handlePayWithCashfree = async () => {
-    const payable = couponApplied && discountedPrice !== null ? discountedPrice : estimatedCost;
-    const payableNum = Number(payable || 0);
+    // A ref locks synchronously, before React has time to render the disabled UI.
+    if (cashfreePayInProgressRef.current) return;
+    cashfreePayInProgressRef.current = true;
+    setCashfreePayLoading(true);
+    setPaymentError(null);
 
-    if (payableNum === 0) {
-      const fakeOrderId = shortId(10);
-      localStorage.setItem(
-        "pendingPayment",
-        JSON.stringify({
-          deviceId,
-          amountPaid: 0,
-          amountSelected: originalSelectedAmount,
-          discountApplied: originalSelectedAmount,
-          chargingOption: selectedOption,
-          energySelected: selectedOption === "energy" ? sliderValue : estimatedEnergy,
-          couponCode: appliedCouponObj?.code || null,
-          paymentGateway: "free",
-        })
-      );
-      setShowPaymentSheet(false);
-      navigate(`/payment-success?order_id=${fakeOrderId}`);
-      return;
-    }
+    let checkoutStarted = false;
+
+    const recoverCheckoutError = (err) => {
+      const msg =
+        typeof err === "string"
+          ? err
+          : err?.message || "Unable to open Cashfree checkout. Please try again.";
+
+      console.error("Cashfree checkout launch error:", err);
+      cashfreePayInProgressRef.current = false;
+      setCashfreePayLoading(false);
+      setShowPaymentSheet(true);
+      setPaymentError(msg);
+      showToast(msg, "error");
+    };
 
     try {
-      setPaymentError(null);
+      const payable =
+        couponApplied && discountedPrice !== null
+          ? discountedPrice
+          : estimatedCost;
+      const payableNum = Number(payable || 0);
+
+      if (payableNum === 0) {
+        const fakeOrderId = shortId(10);
+        localStorage.setItem(
+          "pendingPayment",
+          JSON.stringify({
+            deviceId,
+            amountPaid: 0,
+            amountSelected: originalSelectedAmount,
+            discountApplied: originalSelectedAmount,
+            chargingOption: selectedOption,
+            energySelected: selectedOption === "energy" ? sliderValue : estimatedEnergy,
+            couponCode: appliedCouponObj?.code || null,
+            paymentGateway: "free",
+          })
+        );
+        setShowPaymentSheet(false);
+        navigate(`/payment-success?order_id=${fakeOrderId}`);
+        return;
+      }
+
       const orderResp = await fetch(
         `${process.env.REACT_APP_Backend_API_Base_URL}/api/payment/order`,
         {
@@ -475,18 +502,18 @@ function ChargingOptions() {
 
       if (!orderResp.ok) {
         const alertObj = orderData?.alert;
-        const msg = alertObj?.message || orderData?.message || "Kindly login to continue.";
-        setPaymentError(msg);
-        showToast(msg, "error");
-        return;
+        throw new Error(
+          alertObj?.message ||
+          orderData?.message ||
+          "Kindly login to continue."
+        );
       }
 
-        const paymentSessionId = orderData?.paymentSessionId;
-        const orderId = orderData?.orderId;
+      const paymentSessionId = orderData?.paymentSessionId;
+      const orderId = orderData?.orderId;
 
       if (!paymentSessionId || !orderId) {
-        showToast("Invalid response from payment server.", "error");
-        return;
+        throw new Error("Invalid response from payment server. Please try again.");
       }
 
       localStorage.setItem("cashfreeOrderId", orderId);
@@ -506,20 +533,41 @@ function ChargingOptions() {
       localStorage.setItem("deviceId", deviceId);
 
       if (typeof window.Cashfree === "undefined") {
-        throw new Error("Cashfree SDK not loaded");
+        throw new Error("Cashfree SDK not loaded. Please refresh and try again.");
       }
 
       const cashfree = new window.Cashfree({ mode: "production" });
+
+      // Keep the page locked while the browser transitions to Cashfree.
       setShowPaymentSheet(false);
-      cashfree.checkout({
+      const checkoutPromise = cashfree.checkout({
         paymentSessionId,
         returnUrl: `${window.location.origin}/payment-success?order_id={order_id}`,
         redirectTarget: "_self",
       });
+      checkoutStarted = true;
+
+      // Redirect checkout normally navigates the current tab away. If the SDK
+      // reports/rejects an error instead, unlock the button and let the user retry.
+      if (checkoutPromise && typeof checkoutPromise.then === "function") {
+        checkoutPromise
+          .then((result) => {
+            if (result?.error) {
+              recoverCheckoutError(
+                result.error.message || "Cashfree could not open the payment page."
+              );
+            }
+          })
+          .catch(recoverCheckoutError);
+      }
     } catch (err) {
-      const msg = err?.message || "Payment failed. Please try again.";
-      setPaymentError(msg);
-      showToast(msg, "error");
+      recoverCheckoutError(err);
+    } finally {
+      // A successful checkout launch deliberately remains locked until navigation.
+      if (!checkoutStarted) {
+        cashfreePayInProgressRef.current = false;
+        setCashfreePayLoading(false);
+      }
     }
   };
 
@@ -963,6 +1011,13 @@ function ChargingOptions() {
           background: #fffdf9;
           border-color: #ffe8d6;
         }
+        .co-method-tile.gateway.processing {
+          background: #f0fbf9;
+          border-color: #9bded2;
+          cursor: wait;
+          opacity: 0.9;
+          pointer-events: none;
+        }
         .co-method-tile:active {
           transform: scale(0.985);
         }
@@ -1333,13 +1388,33 @@ function ChargingOptions() {
           <button
             type="button"
             className="co-btn-proceed"
-            disabled={!selectedOption || sliderValue === 0 || isOccupied}
+            disabled={
+              !selectedOption ||
+              sliderValue === 0 ||
+              isOccupied ||
+              showPaymentSheet ||
+              cashfreePayLoading ||
+              walletPayLoading
+            }
             onClick={handleProceedToPayment}
           >
-            <span>
-              {isOccupied ? "Device Occupied" : `Pay ₹${finalPayable.toFixed(2)} & Start`}
-            </span>
-            {!isOccupied && <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />}
+            {cashfreePayLoading ? (
+              <Box sx={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
+                <CircularProgress size={17} sx={{ color: "#ffffff" }} />
+                <span>Opening Cashfree Checkout…</span>
+              </Box>
+            ) : (
+              <span>
+                {isOccupied
+                  ? "Device Occupied"
+                  : showPaymentSheet
+                  ? "Choose Payment Method"
+                  : `Pay ₹${finalPayable.toFixed(2)} & Start`}
+              </span>
+            )}
+            {!isOccupied && !showPaymentSheet && !cashfreePayLoading && (
+              <ArrowForwardRoundedIcon sx={{ fontSize: 18 }} />
+            )}
           </button>
 
         </div>
@@ -1384,7 +1459,7 @@ function ChargingOptions() {
 
       {/* ── PAYMENT METHOD BOTTOM SHEET ── */}
       {showPaymentSheet && (
-        <div className="co-sheet-overlay" onClick={() => !walletPayLoading && setShowPaymentSheet(false)}>
+        <div className="co-sheet-overlay" onClick={() => !walletPayLoading && !cashfreePayLoading && setShowPaymentSheet(false)}>
           <div className="co-sheet" onClick={(e) => e.stopPropagation()}>
             <div className="co-sheet-handle" />
 
@@ -1415,7 +1490,7 @@ function ChargingOptions() {
             {/* Wallet Option */}
             <div
               className={`co-method-tile ${walletBalance >= finalPayable ? "wallet-ok" : "wallet-low"}`}
-              onClick={!walletPayLoading ? handlePayWithWallet : undefined}
+              onClick={!walletPayLoading && !cashfreePayLoading ? handlePayWithWallet : undefined}
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                 <Box
@@ -1464,8 +1539,21 @@ function ChargingOptions() {
 
             {/* UPI / Cards Gateway Option */}
             <div
-              className="co-method-tile gateway"
-              onClick={!walletPayLoading ? handlePayWithCashfree : undefined}
+              className={`co-method-tile gateway ${cashfreePayLoading ? "processing" : ""}`}
+              onClick={!walletPayLoading && !cashfreePayLoading ? handlePayWithCashfree : undefined}
+              aria-disabled={walletPayLoading || cashfreePayLoading}
+              role="button"
+              tabIndex={cashfreePayLoading || walletPayLoading ? -1 : 0}
+              onKeyDown={(event) => {
+                if (
+                  (event.key === "Enter" || event.key === " ") &&
+                  !walletPayLoading &&
+                  !cashfreePayLoading
+                ) {
+                  event.preventDefault();
+                  handlePayWithCashfree();
+                }
+              }}
             >
               <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
                 <Box
@@ -1485,14 +1573,44 @@ function ChargingOptions() {
                   <Typography sx={{ fontWeight: 750, fontSize: "14px", color: "#0e2e33" }}>
                     UPI / Credit / Debit Card
                   </Typography>
-                  <Typography sx={{ color: "#53757a", fontSize: "11px" }}>
-                    Google Pay, PhonePe, Cards, NetBanking
+                  <Typography sx={{ color: cashfreePayLoading ? "#00776b" : "#53757a", fontSize: "11px", fontWeight: cashfreePayLoading ? 700 : 400 }}>
+                    {cashfreePayLoading
+                      ? "Preparing secure checkout… Please wait."
+                      : "Google Pay, PhonePe, Cards, NetBanking"}
                   </Typography>
                 </Box>
               </Box>
 
-              <ArrowForwardRoundedIcon sx={{ color: "#ff8236", fontSize: 18 }} />
+              {cashfreePayLoading ? (
+                <CircularProgress size={20} sx={{ color: "#00a896", flexShrink: 0 }} />
+              ) : (
+                <ArrowForwardRoundedIcon sx={{ color: "#ff8236", fontSize: 18 }} />
+              )}
             </div>
+
+            {cashfreePayLoading && (
+              <Box
+                role="status"
+                aria-live="polite"
+                sx={{
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  gap: 1.2,
+                  my: 1.5,
+                  px: 2,
+                  py: 1.4,
+                  borderRadius: "14px",
+                  background: "#effbf8",
+                  border: "1px solid #cdeee7",
+                }}
+              >
+                <CircularProgress size={17} sx={{ color: "#00a896" }} />
+                <Typography sx={{ color: "#00776b", fontSize: "12px", fontWeight: 700 }}>
+                  Opening Cashfree securely. Please don’t tap again.
+                </Typography>
+              </Box>
+            )}
 
             {walletPayLoading && (
               <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 1.5, my: 1 }}>
@@ -1505,7 +1623,7 @@ function ChargingOptions() {
 
             <Button
               fullWidth
-              onClick={() => !walletPayLoading && setShowPaymentSheet(false)}
+              onClick={() => !walletPayLoading && !cashfreePayLoading && setShowPaymentSheet(false)}
               sx={{
                 mt: 1,
                 color: "#53757a",
