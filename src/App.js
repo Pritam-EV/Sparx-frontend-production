@@ -49,6 +49,7 @@ import UserActivity from "./features/admin/UserActivity";
 import TransactionsOverview from "./features/admin/TransactionsOverview";
 import Production from "./features/admin/Production";
 import AdminStartSession from "./features/admin/AdminStartSession";
+import AdminOwnerFinance from "./features/admin/AdminOwnerFinance";
 
 import AccountantDashboard from "./features/accountant/AccountantDashboard";
 
@@ -212,7 +213,7 @@ const AppContent = () => {
             path="eb-management"
             element={<EBManagement />}
           />
-
+          <Route path="owner-finance" element={<AdminOwnerFinance />} />
           <Route path="crud/users" element={<UserList />} />
           <Route
             path="crud/users/create"

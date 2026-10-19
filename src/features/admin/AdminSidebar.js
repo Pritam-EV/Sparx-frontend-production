@@ -73,6 +73,7 @@ const AdminSidebar = ({ isOpen, onClose }) => (
       <NavItem to="receipts" icon={<ReceiptIcon />} label="Receipts" onClick={onClose} />
       <NavItem to="analytics" icon={<QueryStatsIcon />} label="Analytics" onClick={onClose} />
       <NavItem to="transactions" icon={<PaymentsIcon />} label="Transactions" onClick={onClose} />
+      <NavItem to="owner-finance" icon={<PaymentsIcon />} label="Owner Finance & Settlement" onClick={onClose} />
       <NavItem to="eb-management"  icon={<ElectricBoltIcon />} label="EB Management"  onClick={onClose} />
       <NavItem to="user-activity"  icon={<TrackChangesIcon />} label="User Activity"  onClick={onClose} />
       <NavItem to="Production"  icon={<TrackChangesIcon />} label="Production"  onClick={onClose} />

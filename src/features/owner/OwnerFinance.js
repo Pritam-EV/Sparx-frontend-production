@@ -72,7 +72,12 @@ const getBillBadge = (status) => {
   return map[status] || { label: status || "Unknown", bg: "var(--viz-teal-wash)", fg: "var(--viz-text-muted)" };
 };
 
-export default function OwnerFinance() {
+export default function OwnerFinance({
+  adminMode = false,
+  ownerId = "",
+  ownerName = "",
+  onChangeOwner,
+}) {
   const navigate = useNavigate();
   const [selectedMonth, setSelectedMonth] = useState(currentMonthKey());
   const [finance, setFinance] = useState(null);
@@ -85,8 +90,19 @@ export default function OwnerFinance() {
       if (manual) setRefreshing(true);
       else setLoading(true);
       setError("");
+      if (adminMode && !ownerId) {
+        setFinance(null);
+        return;
+      }
+
+      const endpoint = adminMode
+        ? `/api/admin/owners/${encodeURIComponent(
+            ownerId
+          )}/finance/monthly`
+        : "/api/owner/finance/monthly";
+
       const result = await apiFetch(
-        `/api/owner/finance/monthly?month=${encodeURIComponent(month)}`
+        `${endpoint}?month=${encodeURIComponent(month)}`
       );
       setFinance(result);
       if (result?.month && result.month !== month) {
@@ -99,7 +115,7 @@ export default function OwnerFinance() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [adminMode, ownerId]);
 
   useEffect(() => {
     loadFinance(selectedMonth);
@@ -164,14 +180,28 @@ export default function OwnerFinance() {
     totals.vjraMarginAmount,
   ]);
 
-  const handlePay = (project, month) => {
+const handlePay = (project, month) => {
+  const projectParam = encodeURIComponent(project);
+  const monthParam = encodeURIComponent(month);
+
+  if (adminMode) {
     navigate(
-      `/owner/reports?project=${encodeURIComponent(project)}&month=${encodeURIComponent(month)}`
+      `/admin/eb-management?project=${projectParam}&month=${monthParam}`
     );
-  };
+    return;
+  }
+
+  navigate(
+    `/owner/reports?project=${projectParam}&month=${monthParam}`
+  );
+};
 
   return (
-    <div className="viz-finance-shell">
+    <div
+  className={`viz-finance-shell${
+    adminMode ? " viz-finance-shell-admin" : ""
+  }`}
+>
       {/* ================================================================== */}
       {/* FLUSH TOP HEADER (ZERO SIDE GAPS)                                  */}
       {/* ================================================================== */}
@@ -185,13 +215,24 @@ export default function OwnerFinance() {
               <div className="viz-finance-header-title">
                 VIZ-Smart Charging <span className="viz-finance-cpo-tag">Settlement</span>
               </div>
-              <div className="viz-finance-header-sub">
-                Station revenue, electricity reconciliation &amp; payouts
-              </div>
+                <div className="viz-finance-header-sub">
+                  {adminMode
+                    ? `Admin view · ${ownerName || "Owner"} · ID: ${ownerId}`
+                    : "Station revenue, electricity reconciliation & payouts"}
+                </div>
             </div>
           </div>
 
           <div className="viz-finance-controls">
+            {adminMode && (
+                <button
+                  type="button"
+                  className="viz-btn-change-owner"
+                  onClick={onChangeOwner}
+                >
+                  Change owner
+                </button>
+              )}
             <div className="viz-month-pill">
               <CalendarMonthRoundedIcon sx={{ color: "var(--viz-aqua)", fontSize: 18 }} />
               <select
@@ -539,7 +580,9 @@ export default function OwnerFinance() {
                             className="viz-btn-pay-action"
                             onClick={() => handlePay(project.project, finance.month || selectedMonth)}
                           >
-                            Pay Fixed Charges
+                            {adminMode
+                          ? "Review in EB Management"
+                          : "Pay Fixed Charges"}
                           </button>
                         )}
                       </div>

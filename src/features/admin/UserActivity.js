@@ -1,653 +1,864 @@
 // src/features/admin/UserActivity.js
-import React, { useEffect, useState, useMemo } from 'react';
+// Focused, high-contrast User Activity, Journey & Location Dashboard
+
+import React, { useCallback, useEffect, useState, useRef, useMemo } from "react";
 import {
-  Box, Typography, Card, Table, TableHead, TableBody,
-  TableRow, TableCell, CircularProgress, Tabs, Tab, Chip,
-  TextField, InputAdornment, Avatar, Tooltip, Collapse,
-  Badge, IconButton, LinearProgress
-} from '@mui/material';
-import PeopleIcon            from '@mui/icons-material/People';
-import TrendingDownIcon      from '@mui/icons-material/TrendingDown';
-import LocationOnIcon        from '@mui/icons-material/LocationOn';
-import BarChartIcon          from '@mui/icons-material/BarChart';
-import TimelineIcon          from '@mui/icons-material/Timeline';
-import SearchIcon            from '@mui/icons-material/Search';
-import ExpandMoreIcon        from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon        from '@mui/icons-material/ExpandLess';
-import RefreshIcon           from '@mui/icons-material/Refresh';
-import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
-import OpenInNewIcon         from '@mui/icons-material/OpenInNew';
-import ArrowBackIcon         from '@mui/icons-material/ArrowBack';
-import AccessTimeIcon        from '@mui/icons-material/AccessTime';
-import RouteIcon             from '@mui/icons-material/Route';
-import { apiFetch }          from '../../utils/apiFetch';
+  Box,
+  Typography,
+  Grid,
+  Stack,
+  Drawer,
+  IconButton,
+  Tooltip,
+  CircularProgress,
+  Collapse,
+  Card,
+  CardContent,
+  useMediaQuery,
+  useTheme,
+  InputAdornment,
+  TextField,
+  Chip,
+  LinearProgress,
+} from "@mui/material";
+import {
+  Refresh,
+  Close,
+  PeopleAlt,
+  LocationOn,
+  Timeline,
+  Search,
+  ExpandMore,
+  ExpandLess,
+  AccessTime,
+  OpenInNew,
+  Autorenew,
+  Navigation,
+  ChevronRight,
+  MapOutlined,
+  QueryStats,
+} from "@mui/icons-material";
+import { apiFetch } from "../../utils/apiFetch";
 
-// ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
-const T = {
-  bg:           '#08191c',
-  surface:      '#0b2126',
-  surface2:     '#0d2830',
-  border:       '#163038',
-  border2:      '#1e4048',
-  teal:         '#04bfbf',
-  tealDim:      '#04bfbf22',
-  tealMid:      '#04bfbf44',
-  green:        '#22c55e',
-  greenDim:     '#22c55e1a',
-  orange:       '#f97316',
-  orangeDim:    '#f9731622',
-  red:          '#ef4444',
-  textPrimary:  '#e8f6f8',
-  textSecondary:'#7ab8be',
-  textFaint:    '#3e7278',
-  fontMono:     'SFMono-Regular, Consolas, monospace',
-};
+// ─── Constants & Formatters ──────────────────────────────────────────────────
+const ACCENT = "#1d4ed8"; // High-contrast vivid blue
+const GREEN = "#15803d";
+const AMBER = "#b45309";
+const LIVE_REFRESH_MS = 15000;
 
-// ─── SHARED STYLES ────────────────────────────────────────────────────────────
-const card = {
-  bgcolor: T.surface,
-  border: `1px solid ${T.border}`,
-  borderRadius: 3,
-  color: T.textPrimary,
-  overflow: 'hidden',
-};
-const headCell = {
-  color: T.teal, borderColor: T.border, fontWeight: 700,
-  fontSize: 11, textTransform: 'uppercase', letterSpacing: 0.8,
-  py: 1.5, whiteSpace: 'nowrap', bgcolor: T.surface2,
-};
-const bodyCell = {
-  color: T.textPrimary, borderColor: T.border, fontSize: 13, py: 1.4,
-};
-const row = { '&:hover': { bgcolor: '#0d2830' }, transition: 'background 150ms' };
+const COLOR_PALETTE = [
+  "#2563eb",
+  "#7c3aed",
+  "#059669",
+  "#d97706",
+  "#dc2626",
+  "#0891b2",
+];
 
-const EmptyState = ({ colSpan, msg = 'No data yet' }) => (
-  <TableRow>
-    <TableCell colSpan={colSpan} sx={{ ...bodyCell, textAlign: 'center', py: 6, color: T.textFaint, borderBottom: 'none' }}>
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-        <Typography sx={{ fontSize: 28, lineHeight: 1 }}>📭</Typography>
-        <Typography sx={{ fontSize: 13 }}>{msg}</Typography>
-      </Box>
-    </TableCell>
-  </TableRow>
-);
-
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
 const PAGE_LABELS = {
-  '/home': '🏠 Home', '/profile': '👤 Profile', '/sessions': '⚡ Sessions',
-  '/transactions': '💳 Transactions', '/wallet/topup': '💰 Wallet Top-up',
-  '/qr-scanner': '📷 QR Scanner', '/session-summary': '📋 Session Summary',
-  '/welcome': '👋 Welcome', '/login': '🔐 Login',
+  "/home": "Home",
+  "/profile": "Profile",
+  "/sessions": "Sessions",
+  "/transactions": "Transactions",
+  "/wallet/topup": "Wallet Top-up",
+  "/qr-scanner": "QR Scanner",
+  "/session-summary": "Session Summary",
+  "/welcome": "Welcome",
+  "/login": "Login",
 };
-const friendlyPage = (p) => {
-  if (!p) return '—';
-  if (PAGE_LABELS[p]) return PAGE_LABELS[p];
-  if (p.startsWith('/charging-options/')) return '🔌 Charging Options';
-  if (p.startsWith('/live-session/'))     return '⚡ Live Session';
-  if (p.startsWith('/session-start/'))    return '▶️ Session Start';
-  if (p.startsWith('/admin/'))            return '🛠 Admin › ' + p.split('/admin/')[1];
-  if (p.startsWith('/owner/'))            return '👷 Owner › ' + p.split('/owner/')[1];
-  return p;
-};
-const fmtTime = (sec) => {
-  if (!sec || sec < 1) return '< 1s';
-  if (sec < 60) return `${sec}s`;
-  const m = Math.floor(sec / 60), s = sec % 60;
-  if (m < 60) return `${m}m${s > 0 ? ` ${s}s` : ''}`;
-  return `${Math.floor(m / 60)}h ${m % 60}m`;
-};
-const fmtDate = (d) => d
-  ? new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-  : '—';
-const fmtDateShort = (d) => d
-  ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })
-  : '—';
-const isOnline    = (d) => d && (Date.now() - new Date(d).getTime()) < 5 * 60 * 1000;
-const initials    = (n) => n ? n.split(' ').map(x => x[0]).join('').toUpperCase().slice(0, 2) : '??';
-const avatarBg    = (n) => ['#04bfbf33','#22c55e22','#f9731622','#a855f722','#3b82f622'][n ? n.charCodeAt(0) % 5 : 0];
-const avatarColor = (n) => ['#04bfbf','#22c55e','#f97316','#a855f7','#3b82f6'][n ? n.charCodeAt(0) % 5 : 0];
 
-// ─── KPI CARD ─────────────────────────────────────────────────────────────────
-const KpiCard = ({ icon, label, value, color = T.teal, sub }) => (
-  <Card sx={{ ...card, p: 2.5, flex: 1, minWidth: 130 }}>
-    <Box sx={{ bgcolor: `${color}18`, borderRadius: 2, p: 0.8, lineHeight: 0, width: 'fit-content', mb: 1.5 }}>
-      {icon}
-    </Box>
-    <Typography sx={{ fontSize: 24, fontWeight: 800, color, lineHeight: 1, mb: 0.3 }}>{value}</Typography>
-    <Typography sx={{ fontSize: 11, color: T.textSecondary, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.6 }}>{label}</Typography>
-    {sub && <Typography sx={{ fontSize: 10, color: T.textFaint, mt: 0.3 }}>{sub}</Typography>}
-  </Card>
-);
+function friendlyPage(path) {
+  if (!path) return "Unknown Screen";
+  if (PAGE_LABELS[path]) return PAGE_LABELS[path];
+  if (path.startsWith("/charging-options/")) return "Charging Options";
+  if (path.startsWith("/live-session/")) return "Live Charging Session";
+  if (path.startsWith("/session-start/")) return "Session Start";
+  if (path.startsWith("/owner/")) return `Owner · ${path.split("/owner/")[1]}`;
+  if (path.startsWith("/admin/")) return `Admin · ${path.split("/admin/")[1]}`;
+  return path;
+}
 
-// ─── PAGE BAR (Top Pages) ─────────────────────────────────────────────────────
-const PageBar = ({ rank, page, visits, maxVisits, uniqueUsers, avgTimeSec, lastSeen }) => {
-  const pct = maxVisits ? Math.round((visits / maxVisits) * 100) : 0;
+function fmtTime(totalSeconds) {
+  const sec = Number(totalSeconds || 0);
+  if (!Number.isFinite(sec) || sec < 1) return "< 1s";
+  if (sec < 60) return `${Math.round(sec)}s`;
+  const minutes = Math.floor(sec / 60);
+  const seconds = Math.floor(sec % 60);
+  if (minutes < 60) return `${minutes}m ${seconds ? `${seconds}s` : ""}`;
+  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+
+function fmtDt(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function isOnline(lastSeen) {
+  if (!lastSeen) return false;
+  const timestamp = new Date(lastSeen).getTime();
+  return Number.isFinite(timestamp) && Date.now() - timestamp < 5 * 60 * 1000;
+}
+
+function hasCoordinates(location) {
   return (
-    <Box sx={{ py: 1.8, borderBottom: `1px solid ${T.border}`, '&:last-child': { borderBottom: 'none' } }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.8 }}>
-        <Typography sx={{ fontSize: 11, color: T.textFaint, fontFamily: T.fontMono, minWidth: 22, textAlign: 'right' }}>{rank}</Typography>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13, color: T.textPrimary, fontWeight: 600, lineHeight: 1.3, mb: 0.2 }}>{friendlyPage(page)}</Typography>
-          <Typography sx={{ fontSize: 10, color: T.teal, opacity: 0.5, fontFamily: T.fontMono, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{page}</Typography>
-        </Box>
-        <Chip label={visits} size="small" sx={{ bgcolor: T.tealDim, color: T.teal, fontWeight: 800, fontSize: 12, minWidth: 38, height: 22 }} />
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box sx={{ width: 22 }} />
-        <Box sx={{ flex: 1 }}>
-          <LinearProgress variant="determinate" value={pct} sx={{ height: 4, borderRadius: 99, bgcolor: T.border2, '& .MuiLinearProgress-bar': { bgcolor: T.teal, borderRadius: 99 } }} />
-        </Box>
-        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-          <Tooltip title="Unique users" arrow><Typography sx={{ fontSize: 11, color: T.textSecondary }}>👥 {uniqueUsers}</Typography></Tooltip>
-          <Tooltip title="Avg time" arrow><Typography sx={{ fontSize: 11, color: T.orange }}>⏱ {fmtTime(avgTimeSec)}</Typography></Tooltip>
-          <Typography sx={{ fontSize: 11, color: T.textFaint, display: { xs: 'none', md: 'block' } }}>{fmtDate(lastSeen)}</Typography>
-        </Box>
-      </Box>
+    location &&
+    Number.isFinite(Number(location.lat)) &&
+    Number.isFinite(Number(location.lng))
+  );
+}
+
+function mapUrl(lat, lng) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${lat},${lng}`)}`;
+}
+
+// ─── Status Badge Component ──────────────────────────────────────────────────
+function HighContrastStatus({ online }) {
+  return (
+    <Box
+      sx={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 0.8,
+        px: 1.5,
+        py: 0.5,
+        borderRadius: "20px",
+        fontSize: 13,
+        fontWeight: 700,
+        background: online ? "#dcfce7" : "#f1f5f9",
+        color: online ? "#14532d" : "#475569",
+        border: online ? "1px solid #86efac" : "1px solid #cbd5e1",
+      }}
+    >
+      <Box
+        sx={{
+          width: 9,
+          height: 9,
+          borderRadius: "50%",
+          background: online ? "#16a34a" : "#64748b",
+          boxShadow: online ? "0 0 0 3px rgba(22, 163, 74, 0.3)" : "none",
+        }}
+      />
+      {online ? "Active Now" : "Offline"}
     </Box>
   );
-};
+}
 
-// ─── DROPOFF ROW ──────────────────────────────────────────────────────────────
-const DropoffRow = ({ rank, page, count, maxCount, lastSeen }) => {
-  const pct      = maxCount ? Math.round((count / maxCount) * 100) : 0;
-  const severity = pct > 60 ? T.red : pct > 30 ? T.orange : T.textSecondary;
+// ─── Visual Distribution Bar ─────────────────────────────────────────────────
+function ScreenDistributionBar({ pages }) {
+  const aggregated = useMemo(() => {
+    if (!pages || pages.length === 0) return [];
+    const map = {};
+    let totalSec = 0;
+    pages.forEach((p) => {
+      const name = friendlyPage(p.page);
+      const sec = Number(p.timeSpentSec || 1);
+      map[name] = (map[name] || 0) + sec;
+      totalSec += sec;
+    });
+
+    return Object.entries(map)
+      .map(([name, time], idx) => ({
+        name,
+        time,
+        pct: Math.round((time / (totalSec || 1)) * 100),
+        color: COLOR_PALETTE[idx % COLOR_PALETTE.length],
+      }))
+      .sort((a, b) => b.time - a.time)
+      .slice(0, 5);
+  }, [pages]);
+
+  if (aggregated.length === 0) return null;
+
   return (
-    <Box sx={{ py: 1.8, borderBottom: `1px solid ${T.border}`, '&:last-child': { borderBottom: 'none' } }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.8 }}>
-        <Typography sx={{ fontSize: 11, color: T.textFaint, fontFamily: T.fontMono, minWidth: 22, textAlign: 'right' }}>{rank}</Typography>
-        <Typography sx={{ fontSize: 13, color: T.textPrimary, fontWeight: 600, flex: 1 }}>{friendlyPage(page)}</Typography>
-        <Chip label={`${count} exits`} size="small" sx={{ bgcolor: `${severity}1a`, color: severity, fontWeight: 700, fontSize: 11, height: 22 }} />
-      </Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-        <Box sx={{ width: 22 }} />
-        <Box sx={{ flex: 1 }}>
-          <LinearProgress variant="determinate" value={pct} sx={{ height: 4, borderRadius: 99, bgcolor: T.border2, '& .MuiLinearProgress-bar': { bgcolor: severity, borderRadius: 99 } }} />
-        </Box>
-        <Typography sx={{ fontSize: 11, color: T.textFaint, display: { xs: 'none', sm: 'block' } }}>Last: {fmtDate(lastSeen)}</Typography>
-      </Box>
-    </Box>
-  );
-};
-
-// ─── USER ROW ─────────────────────────────────────────────────────────────────
-const UserRow = ({ u, onViewJourney }) => {
-  const online = isOnline(u.lastSeen);
-  return (
-    <TableRow sx={row}>
-      {/* User */}
-      <TableCell sx={{ ...bodyCell, minWidth: 160 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.2 }}>
-          <Box sx={{ position: 'relative', flexShrink: 0 }}>
-            <Avatar sx={{ width: 34, height: 34, bgcolor: avatarBg(u.name), color: avatarColor(u.name), fontSize: 12, fontWeight: 700 }}>
-              {initials(u.name)}
-            </Avatar>
-            {online && <Box sx={{ position: 'absolute', bottom: 0, right: 0, width: 9, height: 9, bgcolor: T.green, borderRadius: '50%', border: `2px solid ${T.surface}` }} />}
-          </Box>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ fontSize: 13, fontWeight: 600, color: T.textPrimary, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 130 }}>
-              {u.name || '—'}
-            </Typography>
-            <Typography sx={{ fontSize: 11, color: T.textFaint, fontFamily: T.fontMono }}>
-              {u.mobile || u.email || '—'}
-            </Typography>
-          </Box>
-        </Box>
-      </TableCell>
-
-      {/* Status */}
-      <TableCell sx={{ ...bodyCell, display: { xs: 'none', sm: 'table-cell' } }} align="center">
-        <Chip
-          icon={<FiberManualRecordIcon sx={{ fontSize: '9px !important', color: `${online ? T.green : T.textFaint} !important` }} />}
-          label={online ? 'Online' : 'Offline'} size="small"
-          sx={{ bgcolor: online ? T.greenDim : '#ffffff08', color: online ? T.green : T.textFaint, fontSize: 11, height: 22, fontWeight: 600 }}
-        />
-      </TableCell>
-
-      {/* Last Seen */}
-      <TableCell sx={{ ...bodyCell, fontSize: 11, color: T.textSecondary, display: { xs: 'none', md: 'table-cell' } }} align="right">
-        {fmtDate(u.lastSeen)}
-      </TableCell>
-
-      {/* Last Page */}
-      <TableCell sx={{ ...bodyCell, display: { xs: 'none', lg: 'table-cell' } }} align="right">
-        <Typography sx={{ fontSize: 12, color: '#a3d9dd', maxWidth: 140, ml: 'auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'right' }}>
-          {friendlyPage(u.lastPage?.page)}
+    <Box sx={{ background: "#fff", p: 2, borderRadius: "12px", border: "1px solid #cbd5e1", mb: 2.5 }}>
+      <Stack direction="row" alignItems="center" spacing={1} mb={1.5}>
+        <QueryStats sx={{ fontSize: 18, color: ACCENT }} />
+        <Typography fontSize={13} fontWeight={700} color="#0f172a" textTransform="uppercase">
+          Screen Time Breakdown
         </Typography>
-      </TableCell>
+      </Stack>
 
-      {/* Visits */}
-      <TableCell sx={{ ...bodyCell, display: { xs: 'none', sm: 'table-cell' } }} align="right">
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.3 }}>
-          <Chip label={u.totalPages} size="small" sx={{ bgcolor: T.tealDim, color: T.teal, fontWeight: 700, fontSize: 11, height: 20 }} />
-          <Typography sx={{ fontSize: 10, color: T.textFaint }}>{u.activeDays}d active</Typography>
-        </Box>
-      </TableCell>
+      {/* Stacked bar */}
+      <Box sx={{ display: "flex", height: 10, borderRadius: 5, overflow: "hidden", mb: 1.5, background: "#f1f5f9" }}>
+        {aggregated.map((item, idx) => (
+          <Box
+            key={idx}
+            sx={{
+              width: `${item.pct}%`,
+              background: item.color,
+              transition: "width 0.4s ease",
+            }}
+          />
+        ))}
+      </Box>
 
-      {/* Time */}
-      <TableCell sx={{ ...bodyCell, color: T.orange, fontSize: 12, display: { xs: 'none', md: 'table-cell' } }} align="right">
-        {fmtTime(u.totalTimeSec)}
-      </TableCell>
-
-      {/* Last Location */}
-      <TableCell sx={{ ...bodyCell, display: { xs: 'none', xl: 'table-cell' } }} align="right">
-        {u.lastLocation?.lat ? (
-          <Tooltip title={`GPS accuracy: ~${u.lastLocation.accuracy || '?'}m`} arrow>
-            <Box sx={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.3 }}>
-              <Typography sx={{ fontSize: 11, color: '#a3d9dd', fontFamily: T.fontMono }}>
-                {u.lastLocation.lat.toFixed(4)}, {u.lastLocation.lng.toFixed(4)}
-              </Typography>
-              <Box component="a"
-                href={`https://maps.google.com/?q=${u.lastLocation.lat},${u.lastLocation.lng}`}
-                target="_blank" rel="noopener noreferrer"
-                sx={{ display: 'flex', alignItems: 'center', gap: 0.3, fontSize: 10, color: T.teal, textDecoration: 'none', '&:hover': { textDecoration: 'underline' } }}
-              >
-                📍 Maps <OpenInNewIcon sx={{ fontSize: 9 }} />
-              </Box>
-            </Box>
-          </Tooltip>
-        ) : (
-          <Typography sx={{ fontSize: 11, color: T.textFaint }}>No GPS</Typography>
-        )}
-      </TableCell>
-
-      {/* Nearest Charger */}
-      <TableCell sx={{ ...bodyCell, display: { xs: 'none', lg: 'table-cell' } }} align="right">
-        {u.nearestCharger ? (
-          <Box sx={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-end', gap: 0.4 }}>
-            <Typography sx={{ fontSize: 12, color: T.textPrimary, fontWeight: 600, lineHeight: 1.2, maxWidth: 160, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {u.nearestCharger.location}
+      {/* Legend */}
+      <Stack direction="row" flexWrap="wrap" gap={1.2}>
+        {aggregated.map((item, idx) => (
+          <Box key={idx} sx={{ display: "inline-flex", alignItems: "center", gap: 0.6 }}>
+            <Box sx={{ width: 8, height: 8, borderRadius: "50%", background: item.color }} />
+            <Typography fontSize={12} fontWeight={600} color="#334155">
+              {item.name} ({item.pct}%)
             </Typography>
-            <Typography sx={{ fontSize: 10, color: T.textSecondary }}>{u.nearestCharger.area}, {u.nearestCharger.city}</Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <Chip
-                label={u.nearestCharger.distanceM >= 1000 ? `${(u.nearestCharger.distanceM / 1000).toFixed(1)} km` : `${u.nearestCharger.distanceM} m`}
-                size="small"
-                sx={{
-                  fontSize: 10, height: 18, fontWeight: 700,
-                  bgcolor: u.nearestCharger.distanceM < 500 ? T.greenDim : u.nearestCharger.distanceM < 2000 ? T.tealDim : '#ffffff0a',
-                  color:   u.nearestCharger.distanceM < 500 ? T.green   : u.nearestCharger.distanceM < 2000 ? T.teal    : T.textSecondary,
-                }}
-              />
-              <Chip label={u.nearestCharger.status} size="small"
-                sx={{ fontSize: 10, height: 18, bgcolor: u.nearestCharger.status === 'available' ? T.greenDim : T.orangeDim, color: u.nearestCharger.status === 'available' ? T.green : T.orange }}
-              />
-            </Box>
           </Box>
-        ) : (
-          <Typography sx={{ fontSize: 11, color: T.textFaint }}>—</Typography>
-        )}
-      </TableCell>
-
-      {/* Journey */}
-      <TableCell sx={bodyCell} align="center">
-        <Tooltip title="View full journey" arrow>
-          <IconButton size="small" onClick={() => onViewJourney(u._id, u.name)}
-            sx={{ color: T.teal, bgcolor: T.tealDim, borderRadius: 1.5, width: 30, height: 30, '&:hover': { bgcolor: T.tealMid } }}>
-            <RouteIcon sx={{ fontSize: 15 }} />
-          </IconButton>
-        </Tooltip>
-      </TableCell>
-    </TableRow>
-  );
-};
-
-// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
-export default function UserActivity() {
-  const [tab,         setTab]         = useState(0);
-  const [summary,     setSummary]     = useState([]);
-  const [dropoffs,    setDropoffs]    = useState([]);
-  const [users,       setUsers]       = useState([]);
-  const [heatmap,     setHeatmap]     = useState({ chargerStats: [], pings: [] });
-  const [journey,     setJourney]     = useState(null);
-  const [journeyData, setJourneyData] = useState([]);
-  const [loading,     setLoading]     = useState(true);
-  const [refreshing,  setRefreshing]  = useState(false);
-  const [search,      setSearch]      = useState('');
-  const [expanded,    setExpanded]    = useState(null);
-
-  const fetchData = (isRefresh = false) => {
-    isRefresh ? setRefreshing(true) : setLoading(true);
-    Promise.all([
-      apiFetch('/api/activity/summary'),
-      apiFetch('/api/activity/dropoffs'),
-      apiFetch('/api/activity/users'),
-      apiFetch('/api/activity/location-heatmap'),
-    ]).then(([s, d, u, h]) => {
-      setSummary(Array.isArray(s) ? s : []);
-      setDropoffs(Array.isArray(d) ? d : []);
-      setUsers(Array.isArray(u) ? u : []);
-      setHeatmap(h?.chargerStats ? h : { chargerStats: [], pings: [] });
-    }).catch(console.error)
-      .finally(() => { setLoading(false); setRefreshing(false); });
-  };
-
-  useEffect(() => { fetchData(); }, []);
-
-  const loadJourney = async (userId, userName) => {
-    setJourney(userName);
-    setJourneyData([]);
-    setTab(3);
-    const data = await apiFetch(`/api/activity/user/${userId}`);
-    setJourneyData(Array.isArray(data) ? data : []);
-  };
-
-  const filteredUsers = useMemo(() =>
-    users.filter(u =>
-      u.name?.toLowerCase().includes(search.toLowerCase()) ||
-      u.mobile?.includes(search) ||
-      u.email?.toLowerCase().includes(search.toLowerCase())
-    ), [users, search]);
-
-  const onlineCount = useMemo(() => users.filter(u => isOnline(u.lastSeen)).length, [users]);
-  const maxVisits   = useMemo(() => summary.reduce((m, r) => Math.max(m, r.visits), 0), [summary]);
-  const maxDropoffs = useMemo(() => dropoffs.reduce((m, r) => Math.max(m, r.count), 0), [dropoffs]);
-  const totalTime   = useMemo(() => users.reduce((s, u) => s + (u.totalTimeSec || 0), 0), [users]);
-
-  if (loading) return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: 2 }}>
-      <CircularProgress sx={{ color: T.teal }} size={36} thickness={3} />
-      <Typography sx={{ color: T.textSecondary, fontSize: 13 }}>Loading activity data…</Typography>
+        ))}
+      </Stack>
     </Box>
   );
+}
 
-  const TABS = [
-    { icon: <BarChartIcon sx={{ fontSize: 15 }} />,     label: 'Top Pages' },
-    { icon: <TrendingDownIcon sx={{ fontSize: 15 }} />, label: 'Drop-offs' },
-    { icon: <PeopleIcon sx={{ fontSize: 15 }} />,       label: 'Users', badge: onlineCount },
-    { icon: <TimelineIcon sx={{ fontSize: 15 }} />,     label: journey ? journey.split(' ')[0] : 'Journey' },
-    { icon: <LocationOnIcon sx={{ fontSize: 15 }} />,   label: 'Heatmap' },
-  ];
+// ─── Modern User Journey Drawer ──────────────────────────────────────────────
+function UserJourneyDrawer({ user, journeyData, loadingJourney, errorJourney, onClose }) {
+  const [expandedDay, setExpandedDay] = useState(null);
+
+  useEffect(() => {
+    if (journeyData.length > 0) {
+      setExpandedDay(journeyData[0].date || "day-0");
+    }
+  }, [journeyData]);
+
+  const allPages = useMemo(() => {
+    return journeyData.flatMap((d) => (Array.isArray(d.pages) ? d.pages : []));
+  }, [journeyData]);
 
   return (
-    <Box sx={{ maxWidth: 1280, mx: 'auto', px: { xs: 1.5, sm: 3 }, py: { xs: 2, sm: 3 }, bgcolor: T.bg, minHeight: '100vh' }}>
+    <Box sx={{ height: "100%", display: "flex", flexDirection: "column", background: "#f1f5f9" }}>
+      {/* Sticky High-Contrast Drawer Header */}
+      <Box
+        sx={{
+          p: 2.5,
+          background: "#0f172a",
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          borderBottom: "2px solid #1e293b",
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+        }}
+      >
+        <Stack spacing={0.5}>
+          <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Typography fontSize={18} fontWeight={800} color="#f8fafc">
+              {user?.name || "Unnamed User"}
+            </Typography>
+            <HighContrastStatus online={isOnline(user?.lastSeen)} />
+          </Stack>
+          <Typography fontSize={13} color="#94a3b8" fontFamily="monospace">
+            {user?.mobile || user?.email || user?._id}
+          </Typography>
+        </Stack>
 
-      {/* ── HEADER ── */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3, flexWrap: 'wrap', gap: 2 }}>
+        <IconButton
+          onClick={onClose}
+          aria-label="Close sidebar"
+          sx={{
+            background: "#1e293b",
+            color: "#f8fafc",
+            border: "1px solid #334155",
+            "&:hover": { background: "#ef4444", color: "#fff", borderColor: "#dc2626" },
+          }}
+        >
+          <Close fontSize="medium" />
+        </IconButton>
+      </Box>
+
+      {/* Quick Summary Metric Strip */}
+      <Box sx={{ px: 3, py: 2, background: "#fff", borderBottom: "1px solid #cbd5e1" }}>
+        <Grid container spacing={2}>
+          <Grid item xs={4}>
+            <Typography fontSize={12} fontWeight={700} color="#64748b" textTransform="uppercase">
+              Screens
+            </Typography>
+            <Typography fontSize={18} fontWeight={800} color="#0f172a">
+              {user?.totalPages || 0}
+            </Typography>
+          </Grid>
+          <Grid item xs={4}>
+            <Typography fontSize={12} fontWeight={700} color="#64748b" textTransform="uppercase">
+              Tracked Time
+            </Typography>
+            <Typography fontSize={18} fontWeight={800} color={ACCENT}>
+              {fmtTime(user?.totalTimeSec)}
+            </Typography>
+          </Grid>
+          <Grid item xs={4}>
+            <Typography fontSize={12} fontWeight={700} color="#64748b" textTransform="uppercase">
+              Last Observed
+            </Typography>
+            <Typography fontSize={13} fontWeight={700} color="#0f172a">
+              {fmtDt(user?.lastSeen)}
+            </Typography>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* Drawer Body */}
+      <Box sx={{ flex: 1, overflowY: "auto", p: { xs: 2, sm: 3 } }}>
+        {/* Visualization Component */}
+        <ScreenDistributionBar pages={allPages} />
+
+        <Typography fontSize={13} fontWeight={800} color="#334155" textTransform="uppercase" letterSpacing={0.5} mb={1.5}>
+          Timeline Logs ({journeyData.length} active sessions)
+        </Typography>
+
+        {loadingJourney ? (
+          <Box py={8} textAlign="center">
+            <CircularProgress size={32} sx={{ color: ACCENT }} />
+          </Box>
+        ) : errorJourney ? (
+          <Box p={2.5} sx={{ background: "#fee2e2", borderRadius: 2, border: "1px solid #fca5a5" }}>
+            <Typography color="#991b1b" fontSize={14} fontWeight={600}>{errorJourney}</Typography>
+          </Box>
+        ) : journeyData.length === 0 ? (
+          <Box py={8} textAlign="center">
+            <Typography color="#64748b" fontSize={14} fontWeight={500}>No user navigation steps found.</Typography>
+          </Box>
+        ) : (
+          <Stack spacing={2}>
+            {journeyData.map((day, dIdx) => {
+              const dayKey = day.date || `day-${dIdx}`;
+              const dayPages = Array.isArray(day.pages) ? day.pages : [];
+              const isExpanded = expandedDay === dayKey;
+              const totalDaySec = dayPages.reduce((sum, p) => sum + Number(p.timeSpentSec || 0), 0);
+
+              return (
+                <Box
+                  key={dayKey}
+                  sx={{
+                    background: "#fff",
+                    borderRadius: "12px",
+                    border: "1px solid #cbd5e1",
+                    overflow: "hidden",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                  }}
+                >
+                  {/* Day Accordion Header */}
+                  <Box
+                    onClick={() => setExpandedDay(isExpanded ? null : dayKey)}
+                    sx={{
+                      p: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      cursor: "pointer",
+                      background: isExpanded ? "#f8fafc" : "#fff",
+                      borderBottom: isExpanded ? "1px solid #e2e8f0" : "none",
+                    }}
+                  >
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                      <Typography fontSize={15} fontWeight={800} color="#0f172a">
+                        {day.date || "Today"}
+                      </Typography>
+                      <Chip
+                        label={`${dayPages.length} routes`}
+                        size="small"
+                        sx={{ fontSize: 11, fontWeight: 700, background: "#e2e8f0", color: "#1e293b" }}
+                      />
+                    </Stack>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography fontSize={13} fontWeight={700} color={AMBER}>
+                        {fmtTime(totalDaySec)}
+                      </Typography>
+                      {isExpanded ? <ExpandLess sx={{ color: "#334155" }} /> : <ExpandMore sx={{ color: "#334155" }} />}
+                    </Stack>
+                  </Box>
+
+                  {/* Day Steps */}
+                  <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                    <Box sx={{ p: 2, background: "#fff" }}>
+                      <Stack spacing={2}>
+                        {dayPages.map((step, sIdx) => {
+                          const validLoc = hasCoordinates(step.location);
+                          return (
+                            <Box
+                              key={sIdx}
+                              sx={{
+                                position: "relative",
+                                pl: 3,
+                                "&:before": {
+                                  content: '""',
+                                  position: "absolute",
+                                  left: 6,
+                                  top: 10,
+                                  bottom: sIdx === dayPages.length - 1 ? 10 : -22,
+                                  width: 2,
+                                  background: "#cbd5e1",
+                                },
+                                "&:after": {
+                                  content: '""',
+                                  position: "absolute",
+                                  left: 2,
+                                  top: 10,
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: "50%",
+                                  background: ACCENT,
+                                  boxShadow: "0 0 0 2px #fff",
+                                },
+                              }}
+                            >
+                              <Box sx={{ background: "#f8fafc", p: 1.5, borderRadius: 2, border: "1px solid #e2e8f0" }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                  <Typography fontSize={14} fontWeight={800} color="#0f172a">
+                                    {friendlyPage(step.page)}
+                                  </Typography>
+                                  <Typography
+                                    fontSize={12}
+                                    fontWeight={700}
+                                    sx={{ background: "#fef3c7", color: "#92400e", px: 1, py: 0.2, borderRadius: 1 }}
+                                  >
+                                    {fmtTime(step.timeSpentSec)}
+                                  </Typography>
+                                </Stack>
+
+                                <Stack direction="row" alignItems="center" spacing={1} mt={0.75}>
+                                  <AccessTime sx={{ fontSize: 14, color: "#64748b" }} />
+                                  <Typography fontSize={12} fontWeight={600} color="#475569">
+                                    {fmtDt(step.visitedAt)}
+                                  </Typography>
+                                </Stack>
+
+                                {validLoc && (
+                                  <Stack direction="row" justifyContent="space-between" alignItems="center" mt={1} pt={1} borderTop="1px dashed #cbd5e1">
+                                    <Stack direction="row" spacing={0.5} alignItems="center">
+                                      <LocationOn sx={{ fontSize: 15, color: ACCENT }} />
+                                      <Typography fontSize={12} color="#0f172a" fontWeight={700} fontFamily="monospace">
+                                        {Number(step.location.lat).toFixed(4)}, {Number(step.location.lng).toFixed(4)}
+                                      </Typography>
+                                    </Stack>
+                                    <a
+                                      href={mapUrl(step.location.lat, step.location.lng)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      style={{
+                                        fontSize: 12,
+                                        color: ACCENT,
+                                        fontWeight: 800,
+                                        textDecoration: "none",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 2,
+                                      }}
+                                    >
+                                      View Map <OpenInNew sx={{ fontSize: 12 }} />
+                                    </a>
+                                  </Stack>
+                                )}
+                              </Box>
+                            </Box>
+                          );
+                        })}
+                      </Stack>
+                    </Box>
+                  </Collapse>
+                </Box>
+              );
+            })}
+          </Stack>
+        )}
+      </Box>
+    </Box>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MAIN COMPONENT
+// ─────────────────────────────────────────────────────────────────────────────
+export default function UserActivity() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
+
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState("");
+  const [autoRefresh, setAutoRefresh] = useState(true);
+
+  // Drawer states
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [journeyData, setJourneyData] = useState([]);
+  const [loadingJourney, setLoadingJourney] = useState(false);
+  const [errorJourney, setErrorJourney] = useState("");
+
+  const timerRef = useRef(null);
+
+  const fetchData = useCallback(async (manual = false) => {
+    if (manual) setRefreshing(true);
+    else setLoading(true);
+
+    try {
+      const activityUsers = await apiFetch("/api/activity/users");
+      setUsers(Array.isArray(activityUsers) ? activityUsers : []);
+    } catch (err) {
+      console.error("Failed to load user activity:", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  useEffect(() => {
+    clearInterval(timerRef.current);
+    if (autoRefresh) {
+      timerRef.current = setInterval(() => fetchData(true), LIVE_REFRESH_MS);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [autoRefresh, fetchData]);
+
+  const handleOpenJourney = async (user) => {
+    setSelectedUser(user);
+    setDrawerOpen(true);
+    setJourneyData([]);
+    setErrorJourney("");
+    setLoadingJourney(true);
+
+    try {
+      const data = await apiFetch(`/api/activity/user/${encodeURIComponent(user._id)}`);
+      setJourneyData(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setErrorJourney("Unable to load activity history for this user.");
+    } finally {
+      setLoadingJourney(false);
+    }
+  };
+
+  const filteredUsers = users.filter((u) => {
+    if (!search.trim()) return true;
+    const term = search.toLowerCase();
+    return [u.name, u.mobile, u.email, u._id]
+      .filter(Boolean)
+      .some((field) => String(field).toLowerCase().includes(term));
+  });
+
+  const totalOnline = users.filter((u) => isOnline(u.lastSeen)).length;
+  const totalWithLoc = users.filter((u) => hasCoordinates(u.lastLocation)).length;
+
+  return (
+    <Box sx={{ background: "#f8fafc", minHeight: "100vh", p: { xs: 2, sm: 3, md: 4 } }}>
+      {/* Top Header */}
+      <Stack
+        direction={{ xs: "column", sm: "row" }}
+        justifyContent="space-between"
+        alignItems={{ xs: "flex-start", sm: "center" }}
+        spacing={2}
+        mb={3.5}
+      >
         <Box>
-          <Typography sx={{ fontSize: { xs: 18, sm: 22 }, fontWeight: 800, color: T.teal, lineHeight: 1.2 }}>User Activity</Typography>
-          <Typography sx={{ fontSize: 12, color: T.textFaint, mt: 0.3 }}>Real-time tracking · Page visits · Drop-offs · Locations</Typography>
+          <Typography fontSize={24} fontWeight={900} color="#0f172a" letterSpacing={-0.5}>
+            User Navigation & Activity
+          </Typography>
+          <Typography fontSize={14} fontWeight={500} color="#475569" mt={0.5}>
+            Live user presence, page journey paths, and GPS coordinates.
+          </Typography>
         </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-          <Tooltip title={refreshing ? 'Refreshing…' : 'Refresh data'} arrow>
-            <IconButton onClick={() => fetchData(true)} disabled={refreshing} size="small"
-              sx={{ color: T.teal, border: `1px solid ${T.border}`, borderRadius: 1.5, width: 34, height: 34, '&:hover': { bgcolor: T.tealDim, borderColor: T.teal }, '&.Mui-disabled': { opacity: 0.4 } }}>
-              <RefreshIcon sx={{ fontSize: 17, animation: refreshing ? 'ua-spin 0.8s linear infinite' : 'none', '@keyframes ua-spin': { '0%': { transform: 'rotate(0deg)' }, '100%': { transform: 'rotate(360deg)' } } }} />
+
+        <Stack direction="row" spacing={1.5} alignItems="center">
+          <Chip
+            icon={<Autorenew sx={{ fontSize: "18px !important" }} />}
+            label={autoRefresh ? "Live Sync (15s)" : "Paused"}
+            onClick={() => setAutoRefresh(!autoRefresh)}
+            sx={{
+              fontWeight: 700,
+              fontSize: 13,
+              py: 2,
+              px: 0.5,
+              borderColor: autoRefresh ? "#86efac" : "#cbd5e1",
+              background: autoRefresh ? "#ecfdf5" : "#fff",
+              color: autoRefresh ? "#166534" : "#475569",
+            }}
+            variant="outlined"
+            clickable
+          />
+          <Tooltip title="Refresh data">
+            <IconButton
+              onClick={() => fetchData(true)}
+              disabled={refreshing}
+              sx={{
+                background: "#fff",
+                border: "1px solid #cbd5e1",
+                p: 1.2,
+                "&:hover": { background: "#f1f5f9" },
+              }}
+            >
+              {refreshing ? <CircularProgress size={20} /> : <Refresh fontSize="small" sx={{ color: "#0f172a" }} />}
             </IconButton>
           </Tooltip>
-          <Chip icon={<FiberManualRecordIcon sx={{ color: `${T.green} !important`, fontSize: '10px !important' }} />}
-            label={`${onlineCount} Online`} size="small"
-            sx={{ bgcolor: T.greenDim, color: T.green, border: `1px solid ${T.green}33`, fontWeight: 600, fontSize: 11 }} />
-          <Chip label={`${users.length} Tracked`} size="small"
-            sx={{ bgcolor: T.tealDim, color: T.teal, border: `1px solid ${T.teal}33`, fontWeight: 600, fontSize: 11 }} />
-        </Box>
-      </Box>
+        </Stack>
+      </Stack>
 
-      {/* ── KPI CARDS ── */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, overflowX: 'auto', pb: 0.5, '&::-webkit-scrollbar': { height: 3 }, '&::-webkit-scrollbar-thumb': { bgcolor: T.border2, borderRadius: 99 } }}>
-        <KpiCard icon={<PeopleIcon sx={{ fontSize: 18, color: T.teal }} />}         label="Total Users"   value={users.length}       color={T.teal}   sub={`${onlineCount} online now`} />
-        <KpiCard icon={<BarChartIcon sx={{ fontSize: 18, color: '#a855f7' }} />}    label="Pages Tracked" value={summary.length}     color="#a855f7"  sub="unique routes" />
-        <KpiCard icon={<TrendingDownIcon sx={{ fontSize: 18, color: T.orange }} />} label="Exit Points"   value={dropoffs.length}    color={T.orange} sub="pages users left from" />
-        <KpiCard icon={<AccessTimeIcon sx={{ fontSize: 18, color: T.green }} />}    label="Total Time"    value={fmtTime(totalTime)} color={T.green}  sub="all users combined" />
-        <KpiCard icon={<LocationOnIcon sx={{ fontSize: 18, color: '#3b82f6' }} />}  label="Chargers"      value={heatmap.chargerStats?.length || 0} color="#3b82f6" sub="with location data" />
-      </Box>
-
-      {/* ── TABS ── */}
-      <Box sx={{ bgcolor: T.surface, border: `1px solid ${T.border}`, borderRadius: 2.5, p: 0.6, mb: 3, overflowX: 'auto', '&::-webkit-scrollbar': { display: 'none' } }}>
-        <Tabs value={tab} onChange={(_, v) => setTab(v)} variant="scrollable" scrollButtons={false}
-          sx={{
-            minHeight: 38,
-            '& .MuiTabs-flexContainer': { gap: 0.5 },
-            '& .MuiTab-root': { color: T.textSecondary, minHeight: 38, fontSize: 12, fontWeight: 600, textTransform: 'none', borderRadius: 1.5, px: 1.8, py: 0, minWidth: 'auto', transition: 'all 150ms', '&:hover': { color: T.teal, bgcolor: T.tealDim }, '&.Mui-selected': { color: T.teal, bgcolor: T.tealDim } },
-            '& .MuiTabs-indicator': { display: 'none' },
-          }}>
-          {TABS.map((t, i) => (
-            <Tab key={i} icon={t.icon} iconPosition="start"
-              label={t.badge > 0
-                ? <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
-                    {t.label}
-                    <Badge badgeContent={t.badge} color="success" sx={{ '& .MuiBadge-badge': { fontSize: 8, minWidth: 14, height: 14, right: -6, top: -1 } }} />
-                  </Box>
-                : t.label}
-            />
-          ))}
-        </Tabs>
-      </Box>
-
-      {/* ══ TAB 0 — TOP PAGES ══════════════════════════════════════════════════ */}
-      {tab === 0 && (
-        <Card sx={{ ...card, p: 0 }}>
-          <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: `1px solid ${T.border}` }}>
-            <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.textPrimary }}>Most Visited Pages</Typography>
-            <Typography sx={{ fontSize: 12, color: T.textSecondary, mt: 0.3 }}>Ranked by total visits · {summary.length} unique routes tracked</Typography>
-          </Box>
-          <Box sx={{ px: { xs: 2, sm: 3 }, py: 1 }}>
-            {summary.length === 0
-              ? <Box sx={{ py: 6, textAlign: 'center' }}><Typography sx={{ fontSize: 28 }}>📭</Typography><Typography sx={{ fontSize: 13, color: T.textFaint, mt: 1 }}>No page visit data yet</Typography></Box>
-              : summary.map((r, i) => <PageBar key={r._id} rank={i + 1} page={r._id} visits={r.visits} maxVisits={maxVisits} uniqueUsers={r.uniqueUsers} avgTimeSec={r.avgTimeSec} lastSeen={r.lastSeen} />)
-            }
-          </Box>
-        </Card>
-      )}
-
-      {/* ══ TAB 1 — DROP-OFFS ══════════════════════════════════════════════════ */}
-      {tab === 1 && (
-        <Card sx={{ ...card, p: 0 }}>
-          <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: `1px solid ${T.border}` }}>
-            <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.textPrimary }}>User Drop-off Points</Typography>
-            <Typography sx={{ fontSize: 12, color: T.textSecondary, mt: 0.3 }}>Last page before users exited — <span style={{ color: T.orange }}>high numbers = UX friction</span></Typography>
-          </Box>
-          <Box sx={{ px: { xs: 2, sm: 3 }, py: 1 }}>
-            {dropoffs.length === 0
-              ? <Box sx={{ py: 6, textAlign: 'center' }}><Typography sx={{ fontSize: 28 }}>📭</Typography><Typography sx={{ fontSize: 13, color: T.textFaint, mt: 1 }}>No drop-off data yet</Typography></Box>
-              : dropoffs.map((r, i) => <DropoffRow key={r._id} rank={i + 1} page={r._id} count={r.count} maxCount={maxDropoffs} lastSeen={r.lastSeen} />)
-            }
-          </Box>
-        </Card>
-      )}
-
-      {/* ══ TAB 2 — USERS ══════════════════════════════════════════════════════ */}
-      {tab === 2 && (
-        <Card sx={{ ...card, p: 0 }}>
-          <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: `1px solid ${T.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
-            <Box>
-              <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.textPrimary }}>All Tracked Users</Typography>
-              <Typography sx={{ fontSize: 12, color: T.textSecondary, mt: 0.3 }}>{filteredUsers.length} of {users.length} users shown</Typography>
-            </Box>
-            <TextField size="small" placeholder="Search name, mobile, email…"
-              value={search} onChange={e => setSearch(e.target.value)}
-              sx={{ width: { xs: '100%', sm: 260 } }}
-              InputProps={{
-                startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: T.textSecondary, fontSize: 17 }} /></InputAdornment>,
-                sx: {
-                  bgcolor: T.surface2, color: T.textPrimary, borderRadius: 2, fontSize: 13,
-                  '& .MuiOutlinedInput-notchedOutline': { borderColor: T.border },
-                  '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: T.border2 },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: T.teal },
-                  '& input': { color: T.textPrimary },
-                  '& input::placeholder': { color: T.textFaint, opacity: 1 },
-                }
-              }}
-            />
-          </Box>
-          <Box sx={{ overflowX: 'auto' }}>
-            <Table size="small" sx={{ minWidth: 700 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={headCell}>User</TableCell>
-                  <TableCell sx={{ ...headCell, display: { xs: 'none', sm: 'table-cell' } }} align="center">Status</TableCell>
-                  <TableCell sx={{ ...headCell, display: { xs: 'none', md: 'table-cell' } }} align="right">Last Seen</TableCell>
-                  <TableCell sx={{ ...headCell, display: { xs: 'none', lg: 'table-cell' } }} align="right">Last Page</TableCell>
-                  <TableCell sx={{ ...headCell, display: { xs: 'none', sm: 'table-cell' } }} align="right">Visits</TableCell>
-                  <TableCell sx={{ ...headCell, display: { xs: 'none', md: 'table-cell' } }} align="right">Time</TableCell>
-                  <TableCell sx={{ ...headCell, display: { xs: 'none', xl: 'table-cell' } }} align="right">Last Location</TableCell>
-                  <TableCell sx={{ ...headCell, display: { xs: 'none', lg: 'table-cell' } }} align="right">Nearest Charger</TableCell>
-                  <TableCell sx={headCell} align="center">Journey</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredUsers.length > 0
-                  ? filteredUsers.map(u => <UserRow key={u._id} u={u} onViewJourney={loadJourney} />)
-                  : <EmptyState colSpan={9} msg={search ? `No users matching "${search}"` : 'No user data yet'} />
-                }
-              </TableBody>
-            </Table>
-          </Box>
-          {filteredUsers.length > 0 && filteredUsers.every(u => !u.lastLocation?.lat) && (
-            <Box sx={{ p: 2, borderTop: `1px solid ${T.border}`, textAlign: 'center' }}>
-              <Typography sx={{ fontSize: 11, color: T.textFaint }}>📍 Location columns populate once users grant GPS permission</Typography>
-            </Box>
-          )}
-        </Card>
-      )}
-
-      {/* ══ TAB 3 — USER JOURNEY ═══════════════════════════════════════════════ */}
-      {tab === 3 && (
-        <Card sx={{ ...card, p: 0 }}>
-          {!journey ? (
-            <Box sx={{ textAlign: 'center', py: 10, px: 3 }}>
-              <RouteIcon sx={{ fontSize: 52, color: T.tealDim, mb: 2 }} />
-              <Typography sx={{ fontSize: 15, color: T.textPrimary, fontWeight: 600, mb: 1 }}>No user selected</Typography>
-              <Typography sx={{ fontSize: 13, color: T.textSecondary }}>
-                Go to <b style={{ color: T.teal }}>Users</b> tab and click the <RouteIcon sx={{ fontSize: 13, verticalAlign: 'middle', color: T.teal }} /> icon
-              </Typography>
-            </Box>
-          ) : (
-            <>
-              <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: `1px solid ${T.border}`, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-                <IconButton size="small" onClick={() => { setJourney(null); setTab(2); }}
-                  sx={{ color: T.teal, bgcolor: T.tealDim, borderRadius: 1.5, '&:hover': { bgcolor: T.tealMid } }}>
-                  <ArrowBackIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-                <Box sx={{ flex: 1 }}>
-                  <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.textPrimary }}>
-                    Journey · <span style={{ color: T.teal }}>{journey}</span>
-                  </Typography>
-                  <Typography sx={{ fontSize: 12, color: T.textSecondary, mt: 0.2 }}>Last 30 days · newest first · click a day to expand</Typography>
+      {/* Metrics Row */}
+      <Grid container spacing={2.5} mb={3.5}>
+        <Grid item xs={12} sm={4}>
+          <Card sx={{ borderRadius: 3, border: "1px solid #cbd5e1", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            <CardContent sx={{ p: 2.5 }}>
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <Box sx={{ p: 1.5, borderRadius: 2.5, background: "#eff6ff", color: ACCENT }}>
+                  <PeopleAlt fontSize="medium" />
                 </Box>
-                {journeyData.length > 0 && (
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Chip label={`${journeyData.length} days`} size="small" sx={{ bgcolor: T.tealDim, color: T.teal, fontWeight: 700, fontSize: 11 }} />
-                    <Chip label={fmtTime(journeyData.reduce((s, d) => s + (d.pages || []).reduce((a, p) => a + (p.timeSpentSec || 0), 0), 0))}
-                      size="small" sx={{ bgcolor: `${T.orange}1a`, color: T.orange, fontWeight: 700, fontSize: 11 }} />
-                  </Box>
-                )}
-              </Box>
+                <Box>
+                  <Typography fontSize={12} fontWeight={700} color="#64748b" textTransform="uppercase">
+                    Total Tracked Users
+                  </Typography>
+                  <Typography fontSize={24} fontWeight={900} color="#0f172a">
+                    {users.length}
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
 
-              <Box sx={{ p: { xs: 1.5, sm: 2.5 } }}>
-                {journeyData.length === 0
-                  ? <Box sx={{ textAlign: 'center', py: 5 }}><CircularProgress sx={{ color: T.teal }} size={24} /><Typography sx={{ fontSize: 12, color: T.textSecondary, mt: 1.5 }}>Loading…</Typography></Box>
-                  : journeyData.map((day) => {
-                      const dayTime = (day.pages || []).reduce((a, p) => a + (p.timeSpentSec || 0), 0);
-                      const isExp   = expanded === day.date;
-                      return (
-                        <Box key={day.date} sx={{ mb: 1.5 }}>
-                          <Box onClick={() => setExpanded(isExp ? null : day.date)}
-                            sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', bgcolor: T.surface2, borderRadius: isExp ? '12px 12px 0 0' : 2, px: 2, py: 1.4, cursor: 'pointer', border: `1px solid ${isExp ? T.border2 : T.border}`, transition: 'all 150ms', '&:hover': { borderColor: T.teal, bgcolor: '#0f2d34' } }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                              <Typography sx={{ color: T.teal, fontWeight: 700, fontSize: 13, fontFamily: T.fontMono }}>{fmtDateShort(day.date)}</Typography>
-                              <Chip label={`${day.pages?.length || 0} pages`} size="small" sx={{ bgcolor: T.tealDim, color: T.teal, fontSize: 10, height: 20 }} />
-                            </Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                              <Typography sx={{ color: T.orange, fontSize: 11, fontWeight: 600 }}>{fmtTime(dayTime)}</Typography>
-                              {isExp ? <ExpandLessIcon sx={{ color: T.textSecondary, fontSize: 17 }} /> : <ExpandMoreIcon sx={{ color: T.textSecondary, fontSize: 17 }} />}
-                            </Box>
-                          </Box>
-                          <Collapse in={isExp}>
-                            <Box sx={{ bgcolor: T.surface, border: `1px solid ${T.border2}`, borderTop: 'none', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
-                              <Table size="small">
-                                <TableHead>
-                                  <TableRow>
-                                    <TableCell sx={{ ...headCell, fontSize: 10 }}>#</TableCell>
-                                    <TableCell sx={{ ...headCell, fontSize: 10 }}>Page</TableCell>
-                                    <TableCell sx={{ ...headCell, fontSize: 10, display: { xs: 'none', sm: 'table-cell' } }} align="right">Visited At</TableCell>
-                                    <TableCell sx={{ ...headCell, fontSize: 10 }} align="right">Duration</TableCell>
-                                  </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                  {(day.pages || []).map((p, i) => (
-                                    <TableRow key={i} sx={row}>
-                                      <TableCell sx={{ ...bodyCell, color: T.textFaint, width: 36, fontSize: 11 }}>{i + 1}</TableCell>
-                                      <TableCell sx={bodyCell}>
-                                        <Typography sx={{ fontSize: 13, color: T.textPrimary }}>{friendlyPage(p.page)}</Typography>
-                                        <Typography sx={{ fontSize: 10, color: T.teal, opacity: 0.45, fontFamily: T.fontMono }}>{p.page}</Typography>
-                                      </TableCell>
-                                      <TableCell sx={{ ...bodyCell, fontSize: 11, color: T.textSecondary, display: { xs: 'none', sm: 'table-cell' } }} align="right">{fmtDate(p.visitedAt)}</TableCell>
-                                      <TableCell sx={{ ...bodyCell, color: T.orange, fontSize: 12, fontWeight: 600 }} align="right">{fmtTime(p.timeSpentSec)}</TableCell>
-                                    </TableRow>
-                                  ))}
-                                </TableBody>
-                              </Table>
-                            </Box>
-                          </Collapse>
-                        </Box>
-                      );
-                    })
-                }
-              </Box>
-            </>
-          )}
-        </Card>
-      )}
+        <Grid item xs={12} sm={4}>
+          <Card sx={{ borderRadius: 3, border: "1px solid #cbd5e1", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            <CardContent sx={{ p: 2.5 }}>
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <Box sx={{ p: 1.5, borderRadius: 2.5, background: "#ecfdf5", color: GREEN }}>
+                  <Navigation fontSize="medium" />
+                </Box>
+                <Box>
+                  <Typography fontSize={12} fontWeight={700} color="#64748b" textTransform="uppercase">
+                    Active (Within 5m)
+                  </Typography>
+                  <Typography fontSize={24} fontWeight={900} color="#0f172a">
+                    {totalOnline}
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
 
-      {/* ══ TAB 4 — HEATMAP ════════════════════════════════════════════════════ */}
-      {tab === 4 && (
-        <Card sx={{ ...card, p: 0 }}>
-          <Box sx={{ p: { xs: 2, sm: 3 }, borderBottom: `1px solid ${T.border}` }}>
-            <Typography sx={{ fontSize: 15, fontWeight: 700, color: T.textPrimary }}>Charger Location Heatmap</Typography>
-            <Typography sx={{ fontSize: 12, color: T.textSecondary, mt: 0.3 }}>
-              Ranked by nearby user opens within 500m · last 30 days · <span style={{ color: T.orange }}>high nearby + low sessions = investigate</span>
-            </Typography>
-          </Box>
-          <Box sx={{ overflowX: 'auto' }}>
-            <Table size="small" sx={{ minWidth: 460 }}>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={headCell}>#</TableCell>
-                  <TableCell sx={headCell}>Charger / Location</TableCell>
-                  <TableCell sx={headCell} align="right">Nearby Users</TableCell>
-                  <TableCell sx={{ ...headCell, display: { xs: 'none', sm: 'table-cell' } }} align="center">Status</TableCell>
-                  <TableCell sx={{ ...headCell, display: { xs: 'none', md: 'table-cell' } }} align="right">Last User Nearby</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {heatmap.chargerStats?.length > 0
-                  ? heatmap.chargerStats.map((c, i) => (
-                      <TableRow key={c.chargerId} sx={row}>
-                        <TableCell sx={{ ...bodyCell, color: T.textFaint, width: 40, fontFamily: T.fontMono }}>{i + 1}</TableCell>
-                        <TableCell sx={bodyCell}>
-                          <Typography sx={{ fontSize: 13, fontWeight: 600, color: T.textPrimary }}>{c.location}</Typography>
-                          <Typography sx={{ fontSize: 11, color: T.textSecondary }}>{c.area}, {c.city}</Typography>
-                          <Typography sx={{ fontSize: 10, color: T.textFaint, fontFamily: T.fontMono }}>ID: {c.deviceId}</Typography>
-                        </TableCell>
-                        <TableCell sx={bodyCell} align="right">
-                          <Chip label={c.nearbyUsers || '0'} size="small"
-                            sx={{ bgcolor: c.nearbyUsers > 10 ? T.greenDim : c.nearbyUsers > 0 ? T.tealDim : '#ffffff08', color: c.nearbyUsers > 10 ? T.green : c.nearbyUsers > 0 ? T.teal : T.textFaint, fontWeight: 800, fontSize: 12, minWidth: 36, height: 24 }}
-                          />
-                        </TableCell>
-                        <TableCell sx={{ ...bodyCell, display: { xs: 'none', sm: 'table-cell' } }} align="center">
-                          <Chip label={c.status} size="small"
-                            sx={{ bgcolor: c.status === 'available' ? T.greenDim : T.orangeDim, color: c.status === 'available' ? T.green : T.orange, fontSize: 11, fontWeight: 600, height: 22 }}
-                          />
-                        </TableCell>
-                        <TableCell sx={{ ...bodyCell, fontSize: 11, color: T.textSecondary, display: { xs: 'none', md: 'table-cell' } }} align="right">
-                          {fmtDate(c.lastUserSeen)}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  : <EmptyState colSpan={5} msg="No charger data — GPS pings appear once users share location" />
-                }
-              </TableBody>
-            </Table>
-          </Box>
-          {heatmap.chargerStats?.length > 0 && heatmap.chargerStats.every(c => c.nearbyUsers === 0) && (
-            <Box sx={{ p: 2, borderTop: `1px solid ${T.border}`, textAlign: 'center' }}>
-              <Typography sx={{ fontSize: 11, color: T.textFaint }}>📍 Chargers loaded. Nearby counts appear once users open the app with GPS enabled.</Typography>
+        <Grid item xs={12} sm={4}>
+          <Card sx={{ borderRadius: 3, border: "1px solid #cbd5e1", boxShadow: "0 1px 3px rgba(0,0,0,0.05)" }}>
+            <CardContent sx={{ p: 2.5 }}>
+              <Stack direction="row" alignItems="center" spacing={2}>
+                <Box sx={{ p: 1.5, borderRadius: 2.5, background: "#fffbeb", color: AMBER }}>
+                  <LocationOn fontSize="medium" />
+                </Box>
+                <Box>
+                  <Typography fontSize={12} fontWeight={700} color="#64748b" textTransform="uppercase">
+                    With Saved Coordinates
+                  </Typography>
+                  <Typography fontSize={24} fontWeight={900} color="#0f172a">
+                    {totalWithLoc}
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+
+      {/* Search Input */}
+      <Box mb={2.5}>
+        <TextField
+          fullWidth
+          placeholder="Filter by name, mobile, email or system ID…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search sx={{ color: "#475569", fontSize: 24 }} />
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            background: "#fff",
+            borderRadius: 2.5,
+            "& .MuiOutlinedInput-root": {
+              fontSize: 15,
+              fontWeight: 500,
+              "& fieldset": { borderColor: "#cbd5e1", borderWidth: "1.5px" },
+              "&:hover fieldset": { borderColor: "#94a3b8" },
+              "&.Mui-focused fieldset": { borderColor: ACCENT },
+            },
+          }}
+        />
+      </Box>
+
+      {/* Main Content: Desktop Table or Mobile Cards */}
+      {loading && users.length === 0 ? (
+        <Box py={8} textAlign="center">
+          <CircularProgress size={36} sx={{ color: ACCENT }} />
+        </Box>
+      ) : filteredUsers.length === 0 ? (
+        <Box py={6} textAlign="center" sx={{ background: "#fff", borderRadius: 3, border: "2px dashed #cbd5e1" }}>
+          <Typography color="#475569" fontSize={15} fontWeight={600}>No user activity matches your query.</Typography>
+        </Box>
+      ) : isMobile ? (
+        /* Mobile List Cards */
+        <Stack spacing={2}>
+          {filteredUsers.map((u) => {
+            const hasGps = hasCoordinates(u.lastLocation);
+            return (
+              <Card
+                key={u._id}
+                onClick={() => handleOpenJourney(u)}
+                sx={{
+                  borderRadius: 3,
+                  border: "1px solid #cbd5e1",
+                  cursor: "pointer",
+                  "&:active": { background: "#f1f5f9" },
+                }}
+              >
+                <CardContent sx={{ p: 2 }}>
+                  <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                    <Box>
+                      <Typography fontWeight={800} fontSize={16} color="#0f172a">
+                        {u.name || "Unnamed User"}
+                      </Typography>
+                      <Typography fontSize={13} color="#475569" fontFamily="monospace">
+                        {u.mobile || u.email || "No contact info"}
+                      </Typography>
+                    </Box>
+                    <HighContrastStatus online={isOnline(u.lastSeen)} />
+                  </Stack>
+
+                  <Stack direction="row" justifyContent="space-between" alignItems="center" mt={2} pt={1.5} borderTop="1px solid #e2e8f0">
+                    <Typography fontSize={13} color="#334155" fontWeight={600}>
+                      {u.totalPages || 0} screens · {fmtTime(u.totalTimeSec)}
+                    </Typography>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {hasGps && (
+                        <Chip
+                          icon={<LocationOn sx={{ fontSize: "14px !important" }} />}
+                          label="GPS"
+                          size="small"
+                          sx={{ fontWeight: 700, fontSize: 11, background: "#dbeafe", color: ACCENT }}
+                        />
+                      )}
+                      <ChevronRight sx={{ color: "#94a3b8" }} />
+                    </Stack>
+                  </Stack>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </Stack>
+      ) : (
+        /* Desktop High-Contrast Table View */
+        <Box sx={{ background: "#fff", borderRadius: 3, border: "1px solid #cbd5e1", overflow: "hidden" }}>
+          <Box component="table" sx={{ width: "100%", borderCollapse: "collapse" }}>
+            <Box component="thead" sx={{ background: "#f8fafc", borderBottom: "2px solid #e2e8f0" }}>
+              <tr>
+                <th style={{ textAlign: "left", padding: "14px 20px", fontSize: 12, color: "#475569", fontWeight: 800, textTransform: "uppercase" }}>User Profile</th>
+                <th style={{ textAlign: "left", padding: "14px 20px", fontSize: 12, color: "#475569", fontWeight: 800, textTransform: "uppercase" }}>Status</th>
+                <th style={{ textAlign: "right", padding: "14px 20px", fontSize: 12, color: "#475569", fontWeight: 800, textTransform: "uppercase" }}>Screen Views</th>
+                <th style={{ textAlign: "right", padding: "14px 20px", fontSize: 12, color: "#475569", fontWeight: 800, textTransform: "uppercase" }}>Time Spent</th>
+                <th style={{ textAlign: "left", padding: "14px 20px", fontSize: 12, color: "#475569", fontWeight: 800, textTransform: "uppercase" }}>Last GPS Fix</th>
+                <th style={{ textAlign: "right", padding: "14px 20px", fontSize: 12, color: "#475569", fontWeight: 800, textTransform: "uppercase" }}>Inspect</th>
+              </tr>
             </Box>
-          )}
-        </Card>
+            <Box component="tbody">
+              {filteredUsers.map((u) => {
+                const hasGps = hasCoordinates(u.lastLocation);
+                return (
+                  <tr
+                    key={u._id}
+                    onClick={() => handleOpenJourney(u)}
+                    style={{ borderBottom: "1px solid #e2e8f0", cursor: "pointer", transition: "background 0.15s" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#f8fafc")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <td style={{ padding: "16px 20px" }}>
+                      <Typography fontSize={15} fontWeight={800} color="#0f172a">{u.name || "Unnamed User"}</Typography>
+                      <Typography fontSize={13} color="#475569" fontFamily="monospace">{u.mobile || u.email || u._id}</Typography>
+                    </td>
+                    <td style={{ padding: "16px 20px" }}>
+                      <HighContrastStatus online={isOnline(u.lastSeen)} />
+                    </td>
+                    <td style={{ padding: "16px 20px", textAlign: "right" }}>
+                      <Typography fontSize={15} fontWeight={800} color="#0f172a">{u.totalPages || 0}</Typography>
+                    </td>
+                    <td style={{ padding: "16px 20px", textAlign: "right" }}>
+                      <Typography fontSize={15} fontWeight={800} color={ACCENT}>{fmtTime(u.totalTimeSec)}</Typography>
+                    </td>
+                    <td style={{ padding: "16px 20px" }}>
+                      {hasGps ? (
+                        <a
+                          href={mapUrl(u.lastLocation.lat, u.lastLocation.lng)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            color: ACCENT,
+                            fontSize: 13,
+                            textDecoration: "none",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontWeight: 700,
+                          }}
+                        >
+                          <LocationOn sx={{ fontSize: 16 }} />
+                          {Number(u.lastLocation.lat).toFixed(4)}, {Number(u.lastLocation.lng).toFixed(4)}
+                        </a>
+                      ) : (
+                        <Typography fontSize={13} color="#94a3b8" fontWeight={500}>No GPS</Typography>
+                      )}
+                    </td>
+                    <td style={{ padding: "16px 20px", textAlign: "right" }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 800,
+                          color: "#fff",
+                          padding: "6px 14px",
+                          borderRadius: 8,
+                          background: ACCENT,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        Journey <Timeline sx={{ fontSize: 16 }} />
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </Box>
+          </Box>
+        </Box>
       )}
 
-      <Box sx={{ height: { xs: 32, sm: 0 } }} />
+      {/* Redesigned Journey Drawer */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        PaperProps={{
+          sx: {
+            width: { xs: "100%", sm: 540 },
+            borderLeft: "2px solid #cbd5e1",
+          },
+        }}
+      >
+        <UserJourneyDrawer
+          user={selectedUser}
+          journeyData={journeyData}
+          loadingJourney={loadingJourney}
+          errorJourney={errorJourney}
+          onClose={() => setDrawerOpen(false)}
+        />
+      </Drawer>
     </Box>
   );
 }

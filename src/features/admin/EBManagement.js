@@ -32,7 +32,7 @@ import RefreshIcon        from "@mui/icons-material/Refresh";
 import UploadFileIcon     from "@mui/icons-material/UploadFile";
 import CheckCircleIcon    from "@mui/icons-material/CheckCircle";
 import ElectricBoltIcon   from "@mui/icons-material/ElectricBolt";
-
+import { useSearchParams } from "react-router-dom";
 import PaymentsIcon       from "@mui/icons-material/Payments";
 import ReceiptLongIcon    from "@mui/icons-material/ReceiptLong";
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
@@ -159,15 +159,28 @@ function AmountField({ label, value, onChange, required }) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function EBManagement() {
+  const [searchParams] = useSearchParams();
+
+const requestedMonth = searchParams.get("month") || "";
+const monthMatch =
+  /^(\d{4})-(0[1-9]|1[0-2])$/.exec(requestedMonth);
   // ── List state ──
   const [records,     setRecords]     = useState([]);
   const [listLoading, setListLoading] = useState(false);
   const [listErr,     setListErr]     = useState(null);
 
   // ── Filter state for list ──
-  const [filterMonth,   setFilterMonth]   = useState("");
-  const [filterYear,    setFilterYear]    = useState("");
-  const [filterProject, setFilterProject] = useState("");
+const [filterMonth, setFilterMonth] = useState(() =>
+  monthMatch ? Number(monthMatch[2]) : ""
+);
+
+const [filterYear, setFilterYear] = useState(() =>
+  monthMatch ? Number(monthMatch[1]) : ""
+);
+
+const [filterProject, setFilterProject] = useState(() =>
+  searchParams.get("project") || ""
+);
 
   // ── Owners & projects (for dropdowns) ──
   const [projects, setProjects] = useState([]);
