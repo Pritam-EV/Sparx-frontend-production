@@ -223,8 +223,8 @@ const handleStartSession = async () => {
       {
         method: "POST",
         body: {
-          amountPaid: 100,
-          selectedEnergy: 100,
+          amountPaid: 0,
+          selectedEnergy: 10,
         },
       }
     );
@@ -323,7 +323,7 @@ if (onRefreshDevice) {
       <Typography variant="caption" color="text.secondary">
         {hasActiveSession
           ? `Session: ${device.current_session_id}`
-          : "Amount: ₹100 • Energy: 100 kWh"}
+          : "Amount: ₹0 • Energy: 10 kWh"}
       </Typography>
     </Box>
 
@@ -396,11 +396,11 @@ if (onRefreshDevice) {
             </Stack>
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="caption" color="text.secondary">Amount:</Typography>
-              <Typography variant="body2" fontWeight={600}>₹100</Typography>
+              <Typography variant="body2" fontWeight={600}>₹0</Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="caption" color="text.secondary">Energy:</Typography>
-              <Typography variant="body2" fontWeight={600}>100 kWh</Typography>
+              <Typography variant="body2" fontWeight={600}>10 kWh</Typography>
             </Stack>
             <Stack direction="row" justifyContent="space-between">
               <Typography variant="caption" color="text.secondary">User:</Typography>

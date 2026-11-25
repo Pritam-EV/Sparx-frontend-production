@@ -1401,7 +1401,7 @@ function ChargingOptions() {
             {cashfreePayLoading ? (
               <Box sx={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 1 }}>
                 <CircularProgress size={17} sx={{ color: "#ffffff" }} />
-                <span>Opening Cashfree Checkout…</span>
+                <span>Opening Checkout…</span>
               </Box>
             ) : (
               <span>
@@ -1607,7 +1607,7 @@ function ChargingOptions() {
               >
                 <CircularProgress size={17} sx={{ color: "#00a896" }} />
                 <Typography sx={{ color: "#00776b", fontSize: "12px", fontWeight: 700 }}>
-                  Opening Cashfree securely. Please don’t tap again.
+                  Opening paymnet gateway securely.
                 </Typography>
               </Box>
             )}
