@@ -295,6 +295,7 @@ export default {
   getCalibrationSession,
   createCalibrationSession,
   captureCalibrationPoint,
+  captureVerificationPoint,
   applyCalibration,
   verifyCalibration,
   cancelCalibration,

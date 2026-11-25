@@ -301,8 +301,22 @@ export default function ProductionV3Calibration() {
   );
 
   const missingPoints = requiredPoints.filter(
-    (point) => !capturedCodes.has(point.code)
-  );
+  (point) => !capturedCodes.has(point.code)
+);
+
+// Session state
+const sessionStatus = selectedSession?.status || "";
+
+const canCapture =
+  sessionStatus === "in_progress";
+
+const canCaptureVerification =
+  sessionStatus === "awaiting_verification";
+
+// Allow device operations during both stages
+const canOperateDevice =
+  canCapture || canCaptureVerification;
+
 const verificationCapturedCodes = new Set(
   (selectedSession?.verificationCaptures || []).map(
     (capture) => capture.pointCode
@@ -313,16 +327,11 @@ const missingVerificationPoints = requiredPoints.filter(
   (point) => !verificationCapturedCodes.has(point.code)
 );
 
-const canCaptureVerification =
-  sessionStatus === "awaiting_verification";
+const canApply =
+  canCapture &&
+  missingPoints.length === 0 &&
+  requiredPoints.length > 0;
 
-  const sessionStatus = selectedSession?.status || "";
-
-  const canCapture = sessionStatus === "in_progress";
-  const canApply =
-    canCapture &&
-    missingPoints.length === 0 &&
-    requiredPoints.length > 0;
 
   const selectedPointNoLoad = isNoLoadPoint(selectedPoint);
 
@@ -936,7 +945,7 @@ const capturePoint = async () => {
                       setTelemetryRequestId("");
                       setTelemetry([]);
                     }}
-                    disabled={!canCapture}
+                    disabled={!canOperateDevice}
                   >
                     <MenuItem value="">Select reference point</MenuItem>
 
@@ -1010,7 +1019,7 @@ const capturePoint = async () => {
                           variant="outlined"
                           startIcon={<PlayArrowRoundedIcon />}
                           onClick={sendRelayTest}
-                          disabled={!canCapture || busy === "relay"}
+                          disabled={!canOperateDevice || busy === "relay"}
                           sx={P3.secondaryButton}
                         >
                           {busy === "relay" ? "Sending..." : "Start relay test"}
@@ -1021,11 +1030,11 @@ const capturePoint = async () => {
                         variant="outlined"
                         startIcon={<BoltRoundedIcon />}
                         onClick={beginFastTelemetry}
-                        disabled={
-                          !canCapture ||
-                          busy === "telemetry" ||
-                          (!selectedPointNoLoad && !relayStartAccepted)
-                        }
+                          disabled={
+                            !canOperateDevice ||
+                            busy === "telemetry" ||
+                            (!selectedPointNoLoad && !relayStartAccepted)
+                          }
                         sx={P3.secondaryButton}
                       >
                         {busy === "telemetry" ? "Starting..." : "Start fast telemetry"}
@@ -1036,7 +1045,7 @@ const capturePoint = async () => {
                         color="error"
                         startIcon={<StopRoundedIcon />}
                         onClick={sendRelayStop}
-                        disabled={!canCapture || busy === "relayStop"}
+                        disabled={!canOperateDevice || busy === "relayStop"}
                         sx={{
                           ...P3.secondaryButton,
                           color: "#b91c1c",
