@@ -56,6 +56,9 @@ const path = {
 
   cancelCalibration: (sessionId) =>
     `${BASE}/calibration/sessions/${encode(sessionId)}/cancel`,
+
+  verificationCaptures: (sessionId) =>
+  `${BASE}/calibration/sessions/${encode(sessionId)}/verification-captures`,
 };
 
 /**
@@ -168,7 +171,14 @@ export const cancelCalibration = (sessionId, reason = "") =>
   api.post(path.cancelCalibration(sessionId), {
     reason,
   });
-
+export const captureVerificationPoint = (
+  sessionId,
+  payload
+) =>
+  api.post(
+    path.verificationCaptures(sessionId),
+    payload
+  );
 /**
  * DEVICE DISPATCH
  */

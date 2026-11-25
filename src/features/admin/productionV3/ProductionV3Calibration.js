@@ -31,7 +31,10 @@ import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
 import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import StopRoundedIcon from "@mui/icons-material/StopRounded";
-
+import {
+  captureVerificationPoint,
+  verifyCalibration,
+} from "./productionV3Api";
 import {
   listCalibrationSessions,
   getCalibrationSession,
@@ -300,6 +303,18 @@ export default function ProductionV3Calibration() {
   const missingPoints = requiredPoints.filter(
     (point) => !capturedCodes.has(point.code)
   );
+const verificationCapturedCodes = new Set(
+  (selectedSession?.verificationCaptures || []).map(
+    (capture) => capture.pointCode
+  )
+);
+
+const missingVerificationPoints = requiredPoints.filter(
+  (point) => !verificationCapturedCodes.has(point.code)
+);
+
+const canCaptureVerification =
+  sessionStatus === "awaiting_verification";
 
   const sessionStatus = selectedSession?.status || "";
 
@@ -477,60 +492,100 @@ export default function ProductionV3Calibration() {
     }
   };
 
-  const capturePoint = async () => {
-    if (!selectedSession || !selectedPoint) return;
+const capturePoint = async () => {
+  if (!selectedSession || !selectedPoint) return;
 
-    if (!telemetryRequestId) {
-      notify("Start fast telemetry before capturing.", "warning");
-      return;
-    }
+  if (!telemetryRequestId) {
+    notify("Start fresh fast telemetry before capturing.", "warning");
+    return;
+  }
 
+  const isVerification =
+    selectedSession.status === "awaiting_verification";
+
+  const referencePayload = {};
+
+  if (!isVerification) {
     const requiredChannels = requiredChannelsFor(selectedPoint);
-    const referencePayload = {};
 
     for (const channel of requiredChannels) {
       const value = reference[channel];
 
-      if (value === "" || !Number.isFinite(Number(value)) || Number(value) < 0) {
-        notify(
-          `Enter a valid non-negative reference ${channel}.`,
-          "warning"
-        );
+      if (
+        value === "" ||
+        !Number.isFinite(Number(value)) ||
+        Number(value) < 0
+      ) {
+        notify(`Enter a valid reference ${channel}.`, "warning");
         return;
       }
 
       referencePayload[channel] = Number(value);
     }
+  }
 
-    setBusy("capture");
+  setBusy("capture");
 
-    try {
-      const response = await captureCalibrationPoint(
-        selectedSession._id,
-        {
+  try {
+    const payload = isVerification
+      ? {
+          pointCode: selectedPoint.code,
+          telemetryRequestId,
+        }
+      : {
           pointCode: selectedPoint.code,
           telemetryRequestId,
           reference: referencePayload,
-        }
-      );
+        };
 
-      notify(
-        response?.data?.message ||
-          "Reference point captured successfully."
-      );
+    const response = isVerification
+      ? await captureVerificationPoint(selectedSession._id, payload)
+      : await captureCalibrationPoint(selectedSession._id, payload);
 
-      await loadSession(selectedSession._id);
-    } catch (captureError) {
-      const detail = captureError?.response?.data?.data;
-      const suffix = detail
-        ? ` Required samples: ${detail.requiredSamples ?? "—"}, available: ${detail.availableSamples ?? "—"}.`
-        : "";
+    notify(
+      response?.data?.message || "Measurement captured successfully."
+    );
 
-      notify(`${errorMessage(captureError)}${suffix}`, "error");
-    } finally {
-      setBusy("");
-    }
-  };
+    await loadSession(selectedSession._id);
+
+  } catch (captureError) {
+    notify(errorMessage(captureError), "error");
+  } finally {
+    setBusy("");
+  }
+};
+
+  const runVerification = async () => {
+  if (!selectedSession) return;
+
+  if (missingVerificationPoints.length > 0) {
+    notify(
+      "Capture all required post-calibration points first.",
+      "warning"
+    );
+    return;
+  }
+
+  setBusy("verify");
+
+  try {
+    const response = await verifyCalibration(
+      selectedSession._id
+    );
+
+    notify(
+      response?.data?.message || "Calibration verification completed."
+    );
+
+    await loadSession(selectedSession._id);
+    await loadSessions();
+
+  } catch (verificationError) {
+    notify(errorMessage(verificationError), "error");
+  } finally {
+    setBusy("");
+  }
+};
 
   const applyConstants = async () => {
     if (!selectedSession) return;
@@ -615,8 +670,39 @@ export default function ProductionV3Calibration() {
             </Button>
           </Stack>
         }
+        
       />
+{canCaptureVerification && (
+  <Box sx={{ mt: 2 }}>
+    <Alert severity="warning" sx={{ mb: 1.5 }}>
+      Calibration has been acknowledged. Start a new telemetry
+      request and recapture every required reference point
+      using the calibrated measurements.
+    </Alert>
 
+    <Typography sx={{ fontSize: 11, fontWeight: 800 }}>
+      Post-calibration verification
+    </Typography>
+
+    <Typography sx={{ fontSize: 10, color: "#64748b", mt: 0.5 }}>
+      {verificationCapturedCodes.size} of {requiredPoints.length} points captured
+    </Typography>
+
+    <Button
+      variant="contained"
+      onClick={runVerification}
+      disabled={
+        missingVerificationPoints.length > 0 ||
+        busy === "verify"
+      }
+      sx={{ ...P3.primaryButton, mt: 1.5 }}
+    >
+      {busy === "verify"
+        ? "Verifying..."
+        : "Verify calibration"}
+    </Button>
+  </Box>
+)}
       {error ? <Alert severity="error">{error}</Alert> : null}
 
       <Grid container spacing={1.5}>
@@ -1107,11 +1193,11 @@ export default function ProductionV3Calibration() {
                       variant="contained"
                       startIcon={<CameraAltRoundedIcon />}
                       onClick={capturePoint}
-                      disabled={
-                        !canCapture ||
-                        !telemetryRequestId ||
-                        busy === "capture"
-                      }
+                        disabled={
+                          !(canCapture || canCaptureVerification) ||
+                          !telemetryRequestId ||
+                          busy === "capture"
+                        }
                       sx={{
                         ...P3.primaryButton,
                         alignSelf: {
@@ -1120,7 +1206,11 @@ export default function ProductionV3Calibration() {
                         },
                       }}
                     >
-                      {busy === "capture" ? "Capturing..." : "Capture reference point"}
+                      {busy === "capture"
+                        ? "Capturing..."
+                        : canCaptureVerification
+                        ? "Capture verification point"
+                        : "Capture reference point"}
                     </Button>
                   </Stack>
                 ) : (
