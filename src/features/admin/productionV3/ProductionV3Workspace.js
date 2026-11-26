@@ -277,22 +277,6 @@ function SummaryCard({
   );
 }
 
-const hasPendingProvisioning = rows.some(
-  (device) =>
-    device.stage === "group_b" &&
-    device.groupB?.provisionStatus === "sent"
-);
-
-useEffect(() => {
-  if (!hasPendingProvisioning) return undefined;
-
-  const timer = setInterval(() => {
-    loadDevices();
-    loadSummary();
-  }, 5000);
-
-  return () => clearInterval(timer);
-}, [hasPendingProvisioning, loadDevices, loadSummary]);
 
 // --------------------------------------------------
 // MAIN WORKSPACE
@@ -453,6 +437,33 @@ export default function ProductionV3Workspace() {
   useEffect(() => {
     loadSummary();
   }, [loadSummary]);
+
+
+  // ------------------------------------------------
+// AUTO REFRESH WHILE PROVISIONING IS PENDING
+// ------------------------------------------------
+
+const hasPendingProvisioning = rows.some(
+  (device) =>
+    device.stage === "group_b" &&
+    device.groupB?.provisionStatus === "sent"
+);
+
+useEffect(() => {
+  if (!hasPendingProvisioning) return undefined;
+
+  const timer = setInterval(() => {
+    void loadDevices();
+    void loadSummary();
+  }, 5000);
+
+  return () => clearInterval(timer);
+}, [
+  hasPendingProvisioning,
+  loadDevices,
+  loadSummary,
+]);
+
 
   // ------------------------------------------------
   // SEARCH AND FILTERS
