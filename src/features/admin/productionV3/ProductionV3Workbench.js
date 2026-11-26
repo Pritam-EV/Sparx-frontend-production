@@ -7,6 +7,9 @@ import React, {
 } from "react";
 
 import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
   Alert,
   Box,
   Button,
@@ -34,7 +37,7 @@ import CalculateRoundedIcon from "@mui/icons-material/CalculateRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
 import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
 import RadioButtonUncheckedRoundedIcon from "@mui/icons-material/RadioButtonUnchecked";
-
+import ExpandMoreRoundedIcon from "@mui/icons-material/ExpandMoreRounded";
 import { productionV3Api } from "./productionV3Api";
 
 // --------------------------------------------------
@@ -238,6 +241,16 @@ const [manualCompletionReason, setManualCompletionReason] =
 
   const isCalibrationStage =
     record?.stage === "calibration";
+
+    const isSubmitted =
+  calibration.status === "submitted";
+
+const canCaptureCalibration = [
+  "not_started",
+  "capturing",
+  "calculated",
+  "failed",
+].includes(calibration.status);
 
   const isApplied =
     calibration.status === "applied";
@@ -940,6 +953,27 @@ const manuallyCompleteCalibration = async () => {
                 </Paper>
 
                 {/* DEVICE CONTROLS */}
+<Accordion
+  disableGutters
+  elevation={0}
+  className="production-workbench-accordion"
+>
+  <AccordionSummary
+    expandIcon={<ExpandMoreRoundedIcon />}
+  >
+    <Box>
+      <Typography fontWeight={700} fontSize={14}>
+        Device controls
+      </Typography>
+      <Typography color="text.secondary" fontSize={11}>
+        Fast telemetry and maintenance relay test
+      </Typography>
+    </Box>
+  </AccordionSummary>
+
+  <AccordionDetails>
+    {/* Keep the existing Device controls content here,
+        starting from the fast telemetry buttons. */}
 
                 <Paper
                   elevation={0}
@@ -998,9 +1032,6 @@ const manuallyCompleteCalibration = async () => {
                     Maintenance relay test
                   </Typography>
 
-                  <Alert severity="warning" sx={{ mb: 1.5 }}>
-                    Connect the approved test load before switching the relay ON. Firmware safety interlocks still apply.
-                  </Alert>
 
                   <Stack
                     direction={{ xs: "column", sm: "row" }}
@@ -1061,7 +1092,8 @@ const manuallyCompleteCalibration = async () => {
                     Firmware limit: 1–120 seconds for the maintenance relay test.
                   </Typography>
                 </Paper>
-
+  </AccordionDetails>
+</Accordion>
                 {/* ER300P REFERENCE INPUT */}
 
                 <Paper
@@ -1097,7 +1129,7 @@ const manuallyCompleteCalibration = async () => {
 
                 {/* INITIAL CALIBRATION */}
 
-                {!isApplied && (
+                {canCaptureCalibration && (
                   <>
                     <Paper
                       elevation={0}
@@ -1352,7 +1384,7 @@ const manuallyCompleteCalibration = async () => {
 
                 {/* POST-CALIBRATION VERIFICATION */}
 
-                {isApplied && (
+                {canCaptureCalibration && (
                   <Paper
                     elevation={0}
                     className="production-workbench-card"

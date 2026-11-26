@@ -133,11 +133,22 @@ function stageColor(stage) {
   }
 }
 
+function getConnection(device) {
+  return device.stage === "group_a"
+    ? device.groupA?.connection
+    : device.groupB?.connection;
+}
+
 function getDeviceStatus(device) {
   if (device.stage === "group_a") {
+    const online =
+      getConnection(device)?.status === "online";
+
     return {
-      label: "Awaiting Device ID",
-      color: "default",
+      label: online
+        ? "Ready for provisioning"
+        : "Waiting for device signal",
+      color: online ? "success" : "default",
     };
   }
 
@@ -145,41 +156,30 @@ function getDeviceStatus(device) {
     const status = device.groupB?.provisionStatus;
 
     if (status === "acknowledged") {
-      return {
-        label: "Provisioned",
-        color: "success",
-      };
+      return { label: "Provisioned", color: "success" };
     }
 
     if (status === "failed") {
-      return {
-        label: "Provisioning failed",
-        color: "error",
-      };
+      return { label: "Provisioning failed", color: "error" };
     }
 
     if (status === "sent") {
-      return {
-        label: "Waiting for ACK",
-        color: "warning",
-      };
+      return { label: "Provisioning", color: "warning" };
     }
 
-    return {
-      label: "Not provisioned",
-      color: "default",
-    };
+    return { label: "Not provisioned", color: "default" };
   }
 
   if (device.stage === "calibration") {
     const status = device.calibration?.status;
 
     const labels = {
-      not_started: "Not started",
-      capturing: "Capturing",
+      not_started: "Calibration pending",
+      capturing: "Calibrating",
       calculated: "Coefficients ready",
-      submitted: "Waiting for firmware ACK",
+      submitted: "Awaiting firmware ACK",
       applied: "Calibration applied",
+      manually_completed: "Manual completion · Testing skipped",
       failed: "Calibration failed",
     };
 
@@ -189,6 +189,7 @@ function getDeviceStatus(device) {
       calculated: "info",
       submitted: "warning",
       applied: "success",
+      manually_completed: "warning",
       failed: "error",
     };
 
@@ -203,15 +204,27 @@ function getDeviceStatus(device) {
       label:
         device.dispatch?.status === "completed"
           ? "Dispatched"
-          : "Dispatch-ready",
+          : "Dispatch ready",
       color: "success",
     };
   }
 
-  return {
-    label: "Unknown",
-    color: "default",
-  };
+  return { label: "Unknown", color: "default" };
+}
+
+function formatLastSeen(value) {
+  if (!value) return "Never connected";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function primaryAction(device) {
@@ -463,6 +476,17 @@ useEffect(() => {
   loadDevices,
   loadSummary,
 ]);
+
+// Refresh connection state so stale devices become Offline.
+useEffect(() => {
+  if (rows.length === 0) return undefined;
+
+  const timer = setInterval(() => {
+    void loadDevices();
+  }, 15000);
+
+  return () => clearInterval(timer);
+}, [rows.length, loadDevices]);
 
 
   // ------------------------------------------------
@@ -924,13 +948,16 @@ useEffect(() => {
             <TableHead>
               <TableRow>
                 <TableCell>Serial number</TableCell>
+                <TableCell>Device ID</TableCell>
+                <TableCell>Stage</TableCell>
+                <TableCell>Production status</TableCell>
+                <TableCell>Connection</TableCell>
                 <TableCell>Batch</TableCell>
                 <TableCell>PCB batch</TableCell>
                 <TableCell>Metering hardware</TableCell>
-                <TableCell>Device ID</TableCell>
-                <TableCell>Stage</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Updated</TableCell>
+                 <TableCell>Last seen</TableCell>
+                {/* <TableCell>Status</TableCell>
+                <TableCell>Updated</TableCell> */}
                 <TableCell align="right">Action</TableCell>
               </TableRow>
             </TableHead>
@@ -938,7 +965,7 @@ useEffect(() => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={9}>
+                  <TableCell colSpan={8}>
                     <Box className="production-table-loading">
                       <CircularProgress size={28} />
                       <Typography>
@@ -949,7 +976,7 @@ useEffect(() => {
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9}>
+                  <TableCell colSpan={8}>
                     <Box className="production-table-empty">
                       <DevicesRoundedIcon
                         sx={{
@@ -984,86 +1011,105 @@ useEffect(() => {
                     getDeviceStatus(device);
 
                   return (
-                    <TableRow
-                      key={device._id}
-                      hover
-                      className="production-table-row"
-                      onDoubleClick={() => openWorkbench(device)}
-                    >
-                      <TableCell>
-                        <Typography className="production-serial">
-                          {device.serialNumber}
-                        </Typography>
+<TableRow
+  key={device._id}
+  hover
+  className="production-table-row"
+  onDoubleClick={() => openWorkbench(device)}
+>
+  <TableCell>
+    <Typography className="production-serial">
+      {device.serialNumber}
+    </Typography>
+    <Typography className="production-row-subtext">
+      {device.groupA?.sequenceNumber ?? "—"}
+    </Typography>
+  </TableCell>
 
-                        <Typography className="production-row-subtext">
-                          {device.groupA?.sequenceNumber ?? "—"}
-                        </Typography>
-                      </TableCell>
+  <TableCell>
+    <Typography className="production-device-id">
+      {device.groupB?.deviceId || "—"}
+    </Typography>
+  </TableCell>
 
-                      <TableCell>
-                        <Typography className="production-cell-primary">
-                          {device.groupA?.batchName || "—"}
-                        </Typography>
-                      </TableCell>
+  <TableCell>
+    <Typography className="production-cell-primary">
+      {device.groupA?.batchName || "—"}
+    </Typography>
+    <Typography className="production-row-subtext">
+      {device.groupA?.pcbBatch || "—"}
+      {" · "}
+      {device.groupA?.meteringHardware || "—"}
+    </Typography>
+  </TableCell>
 
-                      <TableCell>
-                        {device.groupA?.pcbBatch || "—"}
-                      </TableCell>
+  <TableCell>
+    <Chip
+      size="small"
+      label={stageLabel(device.stage)}
+      color={stageColor(device.stage)}
+      variant="outlined"
+    />
+  </TableCell>
 
-                      <TableCell>
-                        {device.groupA?.meteringHardware || "—"}
-                      </TableCell>
+  <TableCell>
+    <Chip
+      size="small"
+      label={currentStatus.label}
+      color={currentStatus.color}
+    />
+  </TableCell>
 
-                      <TableCell>
-                        <Typography className="production-device-id">
-                          {device.groupB?.deviceId || "—"}
-                        </Typography>
-                      </TableCell>
+  <TableCell>
+    {(() => {
+      const connection = getConnection(device);
+      const online = connection?.status === "online";
 
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          label={stageLabel(device.stage)}
-                          color={stageColor(device.stage)}
-                          variant="outlined"
-                        />
-                      </TableCell>
+      return (
+        <Chip
+          size="small"
+          className={
+            online
+              ? "production-connection-online"
+              : "production-connection-offline"
+          }
+          label={online ? "Online" : "Offline"}
+          icon={
+            <Box
+              component="span"
+              className="production-connection-dot"
+            />
+          }
+        />
+      );
+    })()}
+  </TableCell>
 
-                      <TableCell>
-                        <Chip
-                          size="small"
-                          label={currentStatus.label}
-                          color={currentStatus.color}
-                        />
-                      </TableCell>
+  <TableCell>
+    <Typography className="production-date">
+      {formatLastSeen(getConnection(device)?.lastSeen)}
+    </Typography>
+  </TableCell>
 
-                      <TableCell>
-                        <Typography className="production-date">
-                          {formatDate(device.updatedAt)}
-                        </Typography>
-                      </TableCell>
-
-                      <TableCell align="right">
-                        <Button
-                          size="small"
-                          variant={
-                            device.stage === "group_a" ||
-                            (
-                              device.stage === "group_b" &&
-                              device.groupB?.provisionStatus === "failed"
-                            )
-                              ? "contained"
-                              : "outlined"
-                          }
-                          onClick={() =>
-                            handlePrimaryAction(device)
-                          }
-                          className="production-row-action"
-                        >
-                          {primaryAction(device)}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
+  <TableCell align="right">
+    <Button
+      size="small"
+      variant={
+        device.stage === "group_a" ||
+        (
+          device.stage === "group_b" &&
+          device.groupB?.provisionStatus === "failed"
+        )
+          ? "contained"
+          : "outlined"
+      }
+      onClick={() => handlePrimaryAction(device)}
+      className="production-row-action"
+    >
+      {primaryAction(device)}
+    </Button>
+  </TableCell>
+</TableRow>
                   );
                 })
               )}

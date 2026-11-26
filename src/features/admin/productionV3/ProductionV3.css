@@ -719,3 +719,115 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* --------------------------------------------------
+   PRODUCTION CONNECTIVITY
+-------------------------------------------------- */
+
+.production-connection-online {
+  color: #16734a !important;
+  background: #e9f7ef !important;
+  font-weight: 700 !important;
+}
+
+.production-connection-offline {
+  color: #b42318 !important;
+  background: #fff0ef !important;
+  font-weight: 700 !important;
+}
+
+.production-connection-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.production-connection-online .MuiChip-icon,
+.production-connection-offline .MuiChip-icon {
+  color: inherit;
+  margin-left: 9px;
+  margin-right: -3px;
+}
+
+/* --------------------------------------------------
+   CLEANER WORKBENCH ACCORDIONS
+-------------------------------------------------- */
+
+.production-workbench-accordion {
+  border: 1px solid #e5eaee !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  overflow: hidden;
+}
+
+.production-workbench-accordion::before {
+  display: none;
+}
+
+.production-workbench-accordion .MuiAccordionSummary-root {
+  min-height: 62px;
+  padding: 0 17px;
+}
+
+.production-workbench-accordion .MuiAccordionSummary-content {
+  margin: 12px 0;
+}
+
+.production-workbench-accordion .MuiAccordionDetails-root {
+  padding: 0 17px 17px;
+}
+
+.production-workbench-accordion .MuiPaper-root {
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
+/* --------------------------------------------------
+   TABLE REFINEMENTS
+-------------------------------------------------- */
+
+.production-table-container .MuiTable-root {
+  min-width: 1180px;
+}
+
+.production-table-row .MuiChip-root {
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.production-table-row .MuiTableCell-body {
+  vertical-align: middle;
+}
+
+.production-device-id {
+  letter-spacing: 0.35px;
+}
+
+/* --------------------------------------------------
+   WORKBENCH SPACING
+-------------------------------------------------- */
+
+.production-workbench-content {
+  gap: 11px;
+}
+
+.production-workbench-card {
+  padding: 15px;
+}
+
+.production-card-title {
+  margin-bottom: 8px !important;
+}
+
+@media (max-width: 600px) {
+  .production-workbench-accordion .MuiAccordionSummary-root {
+    padding: 0 13px;
+  }
+
+  .production-workbench-accordion .MuiAccordionDetails-root {
+    padding: 0 13px 13px;
+  }
+}
