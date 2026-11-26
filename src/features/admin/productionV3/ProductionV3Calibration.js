@@ -744,10 +744,7 @@ const capturePoint = async () => {
     try {
       // The backend applies its persisted calculation result; the browser
       // no longer supplies or overrides calibration coefficients.
-      const response = await applyCalibration(
-        selectedSession._id,
-        {}
-      );
+      const response = await applyCalibration(selectedSession._id);
 
       notify(
         response?.data?.message ||
