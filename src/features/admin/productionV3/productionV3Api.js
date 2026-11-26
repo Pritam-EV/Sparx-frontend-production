@@ -167,8 +167,8 @@ export const captureCalibrationPoint = (sessionId, payload) =>
 export const calculateCalibration = (sessionId) =>
   api.post(path.calculateCalibration(sessionId), {});
 
-export const applyCalibration = (sessionId, constants) =>
-  api.post(path.applyCalibration(sessionId), constants);
+export const applyCalibration = (sessionId) =>
+  api.post(path.applyCalibration(sessionId), {});
 
 export const verifyCalibration = (sessionId) =>
   api.post(path.verifyCalibration(sessionId));
