@@ -214,7 +214,7 @@ export const stopFastTelemetry = (serialNumber) =>
 export const startRelayTest = (
   serialNumber,
   {
-    durationSeconds = 10,
+    durationSeconds = 60,
   } = {}
 ) =>
   sendAdminCommand(serialNumber, {

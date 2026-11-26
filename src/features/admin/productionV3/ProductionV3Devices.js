@@ -340,7 +340,7 @@ export default function ProductionV3Devices() {
 
         case "startRelay":
           response = await startRelayTest(serial, {
-            durationSeconds: 10,
+            durationSeconds: 60,
           });
           break;
 

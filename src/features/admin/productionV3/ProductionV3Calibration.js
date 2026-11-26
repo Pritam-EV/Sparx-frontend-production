@@ -44,6 +44,7 @@ import {
   startFastTelemetry,
   startRelayTest,
   stopRelayTest,
+  listProfiles,
   getDeviceCommands,
   getDeviceTelemetry,
 } from "./productionV3Api";
@@ -136,13 +137,20 @@ export default function ProductionV3Calibration() {
   const [selectedSession, setSelectedSession] = useState(null);
   const [sessionLoading, setSessionLoading] = useState(false);
 
+  const [calibrationProfiles, setCalibrationProfiles] =
+  useState([]);
+
+const [profilesLoading, setProfilesLoading] =
+  useState(false);
+
   const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    serialNumber: "",
-    stationName: "",
-    operatorName: "",
-    notes: "",
-  });
+const [createForm, setCreateForm] = useState({
+  serialNumber: "",
+  calibrationProfileId: "",
+  stationName: "",
+  operatorName: "",
+  notes: "",
+});
 
   const [selectedPointCode, setSelectedPointCode] = useState("");
   const [reference, setReference] = useState({
@@ -167,6 +175,34 @@ export default function ProductionV3Calibration() {
 
   const notify = (message, severity = "success") =>
     setToast({ open: true, message, severity });
+
+  const loadCalibrationProfiles = useCallback(async () => {
+  setProfilesLoading(true);
+
+  try {
+    const response = await listProfiles(
+      "calibration",
+      {
+        page: 1,
+        limit: 100,
+        status: "active",
+      }
+    );
+
+    setCalibrationProfiles(
+      unwrap(response) || []
+    );
+
+  } catch (profileError) {
+    setError(errorMessage(profileError));
+  } finally {
+    setProfilesLoading(false);
+  }
+}, []);
+
+useEffect(() => {
+  loadCalibrationProfiles();
+}, [loadCalibrationProfiles]);
 
   const loadSessions = useCallback(async () => {
     setLoading(true);
@@ -243,14 +279,22 @@ export default function ProductionV3Calibration() {
     setBusy("create");
 
     try {
-      const response = await createCalibrationSession(
-        createForm.serialNumber.trim().toUpperCase(),
-        {
-          stationName: createForm.stationName.trim(),
-          operatorName: createForm.operatorName.trim(),
-          notes: createForm.notes.trim(),
-        }
-      );
+const response = await createCalibrationSession(
+  createForm.serialNumber.trim().toUpperCase(),
+  {
+    calibrationProfileId:
+      createForm.calibrationProfileId,
+
+    stationName:
+      createForm.stationName.trim(),
+
+    operatorName:
+      createForm.operatorName.trim(),
+
+    notes:
+      createForm.notes.trim(),
+  }
+);
 
       const session = unwrap(response);
 
@@ -260,12 +304,13 @@ export default function ProductionV3Calibration() {
       );
 
       setCreateOpen(false);
-      setCreateForm({
-        serialNumber: "",
-        stationName: "",
-        operatorName: "",
-        notes: "",
-      });
+setCreateForm({
+  serialNumber: "",
+  calibrationProfileId: "",
+  stationName: "",
+  operatorName: "",
+  notes: "",
+});
 
       await loadSessions();
 
@@ -280,7 +325,11 @@ export default function ProductionV3Calibration() {
   };
 
   const profile = selectedSession?.profileSnapshot || {};
-  const referencePoints = profile.referencePoints || [];
+  const referencePoints = Array.isArray(
+  profile.referencePoints
+)
+  ? profile.referencePoints
+  : [];
 
   const selectedPoint = useMemo(
     () =>
@@ -378,7 +427,7 @@ const canApply =
     try {
       const response = await startRelayTest(
         selectedSession.serialNumber,
-        { durationSeconds: 10 }
+        { durationSeconds: 60 }
       );
 
       notify(
@@ -1021,7 +1070,7 @@ const capturePoint = async () => {
                           onClick={sendRelayTest}
                           disabled={!canOperateDevice || busy === "relay"}
                           sx={P3.secondaryButton}
-                        >
+                         >
                           {busy === "relay" ? "Sending..." : "Start relay test"}
                         </Button>
                       ) : null}
@@ -1458,6 +1507,42 @@ const capturePoint = async () => {
                 }))
               }
             />
+            <TextField
+  {...fieldProps}
+  select
+  label="Calibration Profile *"
+  value={createForm.calibrationProfileId}
+  disabled={profilesLoading}
+  onChange={(event) =>
+    setCreateForm((current) => ({
+      ...current,
+      calibrationProfileId: event.target.value,
+    }))
+  }
+  helperText="Only active calibration profiles are available."
+>
+  <MenuItem value="">
+    Select Calibration Profile
+  </MenuItem>
+
+  {calibrationProfiles.map((profile) => (
+    <MenuItem
+      key={profile._id}
+      value={profile._id}
+    >
+      {profile.profileName} · {profile.meteringHardware} ·
+      v{profile.profileVersion}
+    </MenuItem>
+  ))}
+</TextField>
+
+{!profilesLoading && !calibrationProfiles.length && (
+  <Alert severity="warning">
+    No active Calibration Profiles found.
+    Create a Calibration Profile with status
+    active in the Profiles section.
+  </Alert>
+)}
 
             <TextField
               {...fieldProps}
@@ -1507,7 +1592,12 @@ const capturePoint = async () => {
           <Button
             variant="contained"
             onClick={createSession}
-            disabled={busy === "create" || !createForm.serialNumber.trim()}
+            disabled={
+              busy === "create" ||
+              !createForm.serialNumber.trim() ||
+              !createForm.calibrationProfileId ||
+              profilesLoading
+            }
             sx={P3.primaryButton}
           >
             {busy === "create" ? "Creating..." : "Create session"}
