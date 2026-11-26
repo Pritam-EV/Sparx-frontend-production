@@ -48,6 +48,9 @@ const path = {
   calibrationCaptures: (sessionId) =>
     `${BASE}/calibration/sessions/${encode(sessionId)}/captures`,
 
+  calculateCalibration: (sessionId) =>
+    `${BASE}/calibration/sessions/${encode(sessionId)}/calculate`,
+
   applyCalibration: (sessionId) =>
     `${BASE}/calibration/sessions/${encode(sessionId)}/apply`,
 
@@ -160,6 +163,9 @@ export const createCalibrationSession = (serialNumber, payload) =>
 
 export const captureCalibrationPoint = (sessionId, payload) =>
   api.post(path.calibrationCaptures(sessionId), payload);
+
+export const calculateCalibration = (sessionId) =>
+  api.post(path.calculateCalibration(sessionId), {});
 
 export const applyCalibration = (sessionId, constants) =>
   api.post(path.applyCalibration(sessionId), constants);
