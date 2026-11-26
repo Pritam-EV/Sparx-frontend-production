@@ -216,7 +216,8 @@ export default function ProductionV3Workbench({
 
   const [busyAction, setBusyAction] = useState("");
   const [alert, setAlert] = useState(null);
-
+const [manualCompletionReason, setManualCompletionReason] =
+  useState("");
   const [reference, setReference] = useState({
     voltage: "230",
     current: "0",
@@ -339,7 +340,7 @@ const refreshDetails = useCallback(async () => {
       setLive(null);
       setConnected(false);
       setAlert(null);
-
+        setManualCompletionReason("");
       setReference({
         voltage: "230",
         current: "0",
@@ -563,6 +564,38 @@ const refreshDetails = useCallback(async () => {
       };
     });
   };
+
+
+// --------------------------------------------------
+// MANUAL CALIBRATION COMPLETION
+// --------------------------------------------------
+
+const manuallyCompleteCalibration = async () => {
+  const reason = manualCompletionReason.trim();
+
+  if (!reason) {
+    setAlert({
+      severity: "warning",
+      message: "Enter a reason for manually completing calibration.",
+    });
+    return;
+  }
+
+  return runAction("manual-complete", async () => {
+    const response =
+      await productionV3Api.manualCompleteCalibration(
+        serialNumber,
+        { reason }
+      );
+
+    return {
+      message:
+        response.data?.message ||
+        "Device moved to Dispatch-ready through manual completion.",
+    };
+  });
+};
+
 
   // ------------------------------------------------
   // POST-CALIBRATION VERIFICATION
@@ -1257,11 +1290,48 @@ const refreshDetails = useCallback(async () => {
                           Submit calibration to device
                         </Button>
 
-                        {calibration.status === "submitted" && (
-                          <Alert severity="warning">
-                            Waiting for firmware ACK. The next test step becomes available only after calibration is acknowledged.
-                          </Alert>
-                        )}
+
+{calibration.status === "submitted" && (
+  <>
+    <Alert severity="warning" sx={{ mb: 1.5 }}>
+      Waiting for firmware ACK. You can continue waiting or
+      manually complete calibration and move this device
+      directly to Dispatch, skipping independent testing.
+      This does not confirm that firmware applied the coefficients.
+    </Alert>
+
+    <TextField
+      fullWidth
+      multiline
+      minRows={2}
+      label="Reason for manual completion"
+      placeholder="Example: Firmware ACK unavailable during production testing."
+      value={manualCompletionReason}
+      onChange={(event) =>
+        setManualCompletionReason(event.target.value)
+      }
+      disabled={Boolean(busyAction)}
+      inputProps={{ maxLength: 1000 }}
+      helperText="Required for the production audit record."
+    />
+
+    <Button
+      fullWidth
+      variant="contained"
+      color="warning"
+      startIcon={<CheckCircleRoundedIcon />}
+      onClick={manuallyCompleteCalibration}
+      disabled={
+        Boolean(busyAction) ||
+        !manualCompletionReason.trim()
+      }
+      sx={{ mt: 1.5 }}
+    >
+      Mark Calibration Complete & Move to Dispatch
+    </Button>
+  </>
+)}
+
 
                         {calibration.status === "failed" && (
                           <Alert severity="error">

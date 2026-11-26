@@ -45,7 +45,12 @@ export const productionV3Api = {
   submitCalibration(id) {
     return api.post(`${devicePath(id)}/calibration/submit`);
   },
-
+  manualCompleteCalibration(id, payload) {
+    return api.post(
+      `${devicePath(id)}/calibration/manual-complete`,
+      payload
+    );
+  },
   calibrationTest(id, payload) {
     return api.post(`${devicePath(id)}/calibration/test`, payload);
   },
