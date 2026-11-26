@@ -939,27 +939,152 @@ useEffect(() => {
           </Alert>
         )}
 
-        <TableContainer className="production-table-container">
+{/* MOBILE DEVICE LIST */}
+<Box className="production-mobile-device-list">
+  {loading ? (
+    <Box className="production-mobile-loading">
+      <CircularProgress size={26} />
+      <Typography>Loading devices...</Typography>
+    </Box>
+  ) : rows.length === 0 ? (
+    <Paper className="production-mobile-empty" elevation={0}>
+      <DevicesRoundedIcon sx={{ fontSize: 34, color: "#9AA6B2" }} />
+      <Typography fontWeight={700}>
+        No devices found
+      </Typography>
+      <Typography color="text.secondary" fontSize={12}>
+        Change the filter or create a new batch.
+      </Typography>
+    </Paper>
+  ) : (
+    <Stack spacing={1.2}>
+      {rows.map((device) => {
+        const currentStatus = getDeviceStatus(device);
+        const connection = getConnection(device);
+        const online = connection?.status === "online";
+
+        return (
+          <Paper
+            key={device._id}
+            elevation={0}
+            className="production-mobile-device-card"
+          >
+            <Stack
+              direction="row"
+              alignItems="flex-start"
+              justifyContent="space-between"
+              spacing={1}
+            >
+              <Box sx={{ minWidth: 0 }}>
+                <Typography className="production-mobile-serial">
+                  {device.serialNumber}
+                </Typography>
+
+                <Typography className="production-mobile-device-id">
+                  Device ID: {device.groupB?.deviceId || "Not assigned"}
+                </Typography>
+              </Box>
+
+              <Chip
+                size="small"
+                label={online ? "Online" : "Offline"}
+                className={
+                  online
+                    ? "production-connection-online"
+                    : "production-connection-offline"
+                }
+                icon={
+                  <Box
+                    component="span"
+                    className="production-connection-dot"
+                  />
+                }
+              />
+            </Stack>
+
+            <Divider sx={{ my: 1.3 }} />
+
+            <Stack
+              direction="row"
+              justifyContent="space-between"
+              alignItems="center"
+              flexWrap="wrap"
+              gap={1}
+            >
+              <Chip
+                size="small"
+                label={stageLabel(device.stage)}
+                color={stageColor(device.stage)}
+                variant="outlined"
+              />
+
+              <Chip
+                size="small"
+                label={currentStatus.label}
+                color={currentStatus.color}
+              />
+            </Stack>
+
+            <Box className="production-mobile-device-meta">
+              <Box>
+                <Typography>Batch</Typography>
+                <strong>{device.groupA?.batchName || "—"}</strong>
+              </Box>
+
+              <Box>
+                <Typography>PCB batch</Typography>
+                <strong>{device.groupA?.pcbBatch || "—"}</strong>
+              </Box>
+
+              <Box>
+                <Typography>Metering hardware</Typography>
+                <strong>{device.groupA?.meteringHardware || "—"}</strong>
+              </Box>
+
+              <Box>
+                <Typography>Last seen</Typography>
+                <strong>
+                  {formatLastSeen(connection?.lastSeen)}
+                </strong>
+              </Box>
+            </Box>
+
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={() => handlePrimaryAction(device)}
+              className="production-mobile-open-button"
+            >
+              {primaryAction(device)}
+            </Button>
+          </Paper>
+        );
+      })}
+    </Stack>
+  )}
+</Box>
+
+        <TableContainer
+  className="production-table-container production-desktop-table"
+>
           <Table
             stickyHeader
             size="medium"
             aria-label="Production units"
           >
             <TableHead>
-              <TableRow>
-                <TableCell>Serial number</TableCell>
-                <TableCell>Device ID</TableCell>
-                <TableCell>Stage</TableCell>
-                <TableCell>Production status</TableCell>
-                <TableCell>Connection</TableCell>
-                <TableCell>Batch</TableCell>
-                <TableCell>PCB batch</TableCell>
-                <TableCell>Metering hardware</TableCell>
-                 <TableCell>Last seen</TableCell>
-                {/* <TableCell>Status</TableCell>
-                <TableCell>Updated</TableCell> */}
-                <TableCell align="right">Action</TableCell>
-              </TableRow>
+            <TableRow>
+                <TableCell sx={{ minWidth: 165 }}>Serial number</TableCell>
+                <TableCell sx={{ minWidth: 130 }}>Device ID</TableCell>
+                <TableCell sx={{ minWidth: 205 }}>Batch / PCB / Hardware</TableCell>
+                <TableCell sx={{ minWidth: 105 }}>Stage</TableCell>
+                <TableCell sx={{ minWidth: 175 }}>Production status</TableCell>
+                <TableCell sx={{ minWidth: 100 }}>Connection</TableCell>
+                <TableCell sx={{ minWidth: 145 }}>Last seen</TableCell>
+                <TableCell align="right" sx={{ minWidth: 155 }}>
+                Action
+                </TableCell>
+            </TableRow>
             </TableHead>
 
             <TableBody>
@@ -1017,32 +1142,37 @@ useEffect(() => {
   className="production-table-row"
   onDoubleClick={() => openWorkbench(device)}
 >
+  {/* 1. SERIAL NUMBER */}
   <TableCell>
     <Typography className="production-serial">
       {device.serialNumber}
     </Typography>
     <Typography className="production-row-subtext">
-      {device.groupA?.sequenceNumber ?? "—"}
+      Sequence: {device.groupA?.sequenceNumber ?? "—"}
     </Typography>
   </TableCell>
 
+  {/* 2. DEVICE ID */}
   <TableCell>
     <Typography className="production-device-id">
       {device.groupB?.deviceId || "—"}
     </Typography>
   </TableCell>
 
+  {/* 3. BATCH / PCB / METERING HARDWARE */}
   <TableCell>
     <Typography className="production-cell-primary">
       {device.groupA?.batchName || "—"}
     </Typography>
     <Typography className="production-row-subtext">
-      {device.groupA?.pcbBatch || "—"}
-      {" · "}
-      {device.groupA?.meteringHardware || "—"}
+      PCB: {device.groupA?.pcbBatch || "—"}
+    </Typography>
+    <Typography className="production-row-subtext">
+      Meter: {device.groupA?.meteringHardware || "—"}
     </Typography>
   </TableCell>
 
+  {/* 4. STAGE */}
   <TableCell>
     <Chip
       size="small"
@@ -1052,6 +1182,7 @@ useEffect(() => {
     />
   </TableCell>
 
+  {/* 5. PRODUCTION STATUS */}
   <TableCell>
     <Chip
       size="small"
@@ -1060,6 +1191,7 @@ useEffect(() => {
     />
   </TableCell>
 
+  {/* 6. CONNECTION */}
   <TableCell>
     {(() => {
       const connection = getConnection(device);
@@ -1085,15 +1217,18 @@ useEffect(() => {
     })()}
   </TableCell>
 
+  {/* 7. LAST SEEN */}
   <TableCell>
     <Typography className="production-date">
       {formatLastSeen(getConnection(device)?.lastSeen)}
     </Typography>
   </TableCell>
 
+  {/* 8. ACTION */}
   <TableCell align="right">
     <Button
       size="small"
+      fullWidth
       variant={
         device.stage === "group_a" ||
         (

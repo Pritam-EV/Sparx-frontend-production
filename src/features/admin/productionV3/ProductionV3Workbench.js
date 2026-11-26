@@ -694,11 +694,9 @@ const manuallyCompleteCalibration = async () => {
 
           <Box className="production-workbench-header">
             <Box sx={{ minWidth: 0 }}>
-              <Typography
-                className="production-workbench-title"
-              >
-                Device workbench
-              </Typography>
+<Typography className="production-workbench-title">
+  {isCalibrationStage ? "Device calibration" : "Device information"}
+</Typography>
 
               <Typography className="production-workbench-serial">
                 {serialNumber}
@@ -729,89 +727,69 @@ const manuallyCompleteCalibration = async () => {
           <Box className="production-workbench-content">
             {/* DEVICE IDENTITY */}
 
-            <Paper
-              elevation={0}
-              className="production-workbench-card"
-            >
-              <Stack
-                direction="row"
-                alignItems="center"
-                justifyContent="space-between"
-                spacing={1}
-              >
-                <Box>
-                  <Typography className="production-card-kicker">
-                    PRODUCTION STATUS
-                  </Typography>
+{/* COMPACT DEVICE INFORMATION */}
 
-                  <Typography fontSize={15} fontWeight={700}>
-                    {record?.groupA?.batchName || "Unnamed batch"}
-                  </Typography>
+<Paper
+  elevation={0}
+  className="production-workbench-card production-device-summary"
+>
+  <Stack
+    direction="row"
+    alignItems="center"
+    justifyContent="space-between"
+    spacing={1}
+  >
+    <Box sx={{ minWidth: 0 }}>
+      <Typography className="production-card-kicker">
+        DEVICE INFORMATION
+      </Typography>
 
-                  <Typography
-                    color="text.secondary"
-                    fontSize={12}
-                  >
-                    PCB batch: {record?.groupA?.pcbBatch || "—"}
-                    {" · "}
-                    Meter: {record?.groupA?.meteringHardware || "—"}
-                  </Typography>
-                </Box>
+      <Typography className="production-device-summary-serial">
+        {serialNumber}
+      </Typography>
 
-                <Chip
-                  label={
-                    record?.stage
-                      ? record.stage.replace("_", " ").toUpperCase()
-                      : "—"
-                  }
-                  color={
-                    record?.stage === "dispatch"
-                      ? "success"
-                      : record?.stage === "calibration"
-                        ? "warning"
-                        : "default"
-                  }
-                />
-              </Stack>
+      <Typography
+        color="text.secondary"
+        fontSize={12}
+      >
+        Device ID: {record?.groupB?.deviceId || "Not assigned"}
+      </Typography>
+    </Box>
 
-              <Box className="production-mini-stage-track">
-                {[
-                  ["group_a", "Group A"],
-                  ["group_b", "Group B"],
-                  ["calibration", "Calibration"],
-                  ["dispatch", "Dispatch"],
-                ].map(([key, label], index) => {
-                  const order = [
-                    "group_a",
-                    "group_b",
-                    "calibration",
-                    "dispatch",
-                  ];
+    <Chip
+      size="small"
+      label={
+        record?.stage
+          ? record.stage.replace("_", " ").toUpperCase()
+          : "—"
+      }
+      color={
+        record?.stage === "dispatch"
+          ? "success"
+          : record?.stage === "calibration"
+            ? "warning"
+            : "default"
+      }
+    />
+  </Stack>
 
-                  const currentIndex = order.indexOf(
-                    record?.stage
-                  );
+  <Box className="production-device-meta-grid">
+    <Box>
+      <Typography>Batch</Typography>
+      <strong>{record?.groupA?.batchName || "—"}</strong>
+    </Box>
 
-                  const completed = index < currentIndex;
-                  const current = index === currentIndex;
+    <Box>
+      <Typography>PCB batch</Typography>
+      <strong>{record?.groupA?.pcbBatch || "—"}</strong>
+    </Box>
 
-                  return (
-                    <Box
-                      key={key}
-                      className={`production-mini-stage ${
-                        completed ? "completed" : ""
-                      } ${current ? "current" : ""}`}
-                    >
-                      <Box className="production-mini-stage-dot">
-                        {completed ? "✓" : index + 1}
-                      </Box>
-
-                      <Typography>{label}</Typography>
-                    </Box>
-                  );
-                })}
-              </Box>
-            </Paper>
+    <Box>
+      <Typography>Metering hardware</Typography>
+      <strong>{record?.groupA?.meteringHardware || "—"}</strong>
+    </Box>
+  </Box>
+</Paper>
 
             {/* NON-CALIBRATION STAGES */}
 
@@ -1384,7 +1362,7 @@ const manuallyCompleteCalibration = async () => {
 
                 {/* POST-CALIBRATION VERIFICATION */}
 
-                {canCaptureCalibration && (
+                {isApplied && (
                   <Paper
                     elevation={0}
                     className="production-workbench-card"
@@ -1491,54 +1469,58 @@ const manuallyCompleteCalibration = async () => {
 
             {/* COMMAND ACKNOWLEDGEMENT */}
 
-            <Paper
-              elevation={0}
-              className="production-workbench-card"
-            >
-              <Typography className="production-card-title">
-                Latest device command
-              </Typography>
+{/* ADVANCED COMMAND DIAGNOSTICS */}
 
-              {command?.requestId ? (
-                <Stack spacing={0.75}>
-                  <Stack
-                    direction="row"
-                    alignItems="center"
-                    justifyContent="space-between"
-                  >
-                    <Typography fontSize={13} fontWeight={600}>
-                      {command.action}
-                    </Typography>
+{command?.requestId && (
+  <Accordion
+    disableGutters
+    elevation={0}
+    className="production-workbench-accordion"
+  >
+    <AccordionSummary
+      expandIcon={<ExpandMoreRoundedIcon />}
+    >
+      <Box>
+        <Typography fontWeight={700} fontSize={13}>
+          Advanced diagnostics
+        </Typography>
+        <Typography color="text.secondary" fontSize={11}>
+          Latest device command and acknowledgement
+        </Typography>
+      </Box>
+    </AccordionSummary>
 
-                    <Chip
-                      size="small"
-                      label={command.status || "unknown"}
-                      color={statusColor(command.status)}
-                    />
-                  </Stack>
+    <AccordionDetails>
+      <Stack spacing={1}>
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+        >
+          <Typography fontSize={13} fontWeight={600}>
+            {command.action}
+          </Typography>
 
-                  <Typography
-                    color="text.secondary"
-                    fontSize={11}
-                  >
-                    Request: {command.requestId}
-                  </Typography>
+          <Chip
+            size="small"
+            label={command.status || "unknown"}
+            color={statusColor(command.status)}
+          />
+        </Stack>
 
-                  {command.message && (
-                    <Typography fontSize={12}>
-                      {command.message}
-                    </Typography>
-                  )}
-                </Stack>
-              ) : (
-                <Typography
-                  color="text.secondary"
-                  fontSize={13}
-                >
-                  No command has been sent from this workbench.
-                </Typography>
-              )}
-            </Paper>
+        <Typography color="text.secondary" fontSize={11}>
+          Request ID: {command.requestId}
+        </Typography>
+
+        {command.message && (
+          <Typography fontSize={12}>
+            {command.message}
+          </Typography>
+        )}
+      </Stack>
+    </AccordionDetails>
+  </Accordion>
+)}
 
             {alert && (
               <Alert
