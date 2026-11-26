@@ -30,6 +30,7 @@ import PlayArrowRoundedIcon from "@mui/icons-material/PlayArrowRounded";
 import BoltRoundedIcon from "@mui/icons-material/BoltRounded";
 import CameraAltRoundedIcon from "@mui/icons-material/CameraAltRounded";
 import SendRoundedIcon from "@mui/icons-material/SendRounded";
+import AutoFixHighRoundedIcon from "@mui/icons-material/AutoFixHighRounded";
 import StopRoundedIcon from "@mui/icons-material/StopRounded";
 import {
   captureVerificationPoint,
@@ -41,6 +42,7 @@ import {
   createCalibrationSession,
   captureCalibrationPoint,
   applyCalibration,
+  calculateCalibration,
   startFastTelemetry,
   startRelayTest,
   stopRelayTest,
@@ -104,16 +106,18 @@ const requiredChannelsFor = (point) =>
     : CHANNELS;
 
 const constantDefaults = (session) => {
-  const values = session?.profileSnapshot?.calibrationValues || [];
+  const calculated = session?.calculatedConstants || {};
   const result = {};
 
-  values.forEach((item) => {
+  CONSTANT_KEYS.forEach((key) => {
+    const value = calculated[key];
+
     if (
-      CONSTANT_KEYS.includes(item.firmwareKey) &&
-      item.defaultValue !== null &&
-      item.defaultValue !== undefined
+      value !== null &&
+      value !== undefined &&
+      Number.isFinite(Number(value))
     ) {
-      result[item.firmwareKey] = String(item.defaultValue);
+      result[key] = String(value);
     }
   });
 
@@ -249,6 +253,8 @@ useEffect(() => {
       if (session?.serialNumber) {
         await loadDeviceActivity(session.serialNumber);
       }
+
+      return session;
     } catch (loadError) {
       setError(errorMessage(loadError));
     } finally {
@@ -396,13 +402,6 @@ const canApply =
 
   const changeReference = (field) => (event) => {
     setReference((current) => ({
-      ...current,
-      [field]: event.target.value,
-    }));
-  };
-
-  const changeConstant = (field) => (event) => {
-    setConstants((current) => ({
       ...current,
       [field]: event.target.value,
     }));
@@ -558,6 +557,7 @@ const capturePoint = async () => {
     return;
   }
 
+  const sessionId = selectedSession._id;
   const isVerification =
     selectedSession.status === "awaiting_verification";
 
@@ -597,21 +597,90 @@ const capturePoint = async () => {
         };
 
     const response = isVerification
-      ? await captureVerificationPoint(selectedSession._id, payload)
-      : await captureCalibrationPoint(selectedSession._id, payload);
+      ? await captureVerificationPoint(sessionId, payload)
+      : await captureCalibrationPoint(sessionId, payload);
 
-    notify(
-      response?.data?.message || "Measurement captured successfully."
+    const refreshedSession = await loadSession(sessionId);
+
+    if (isVerification) {
+      notify(
+        response?.data?.message || "Verification measurement captured."
+      );
+      return;
+    }
+
+    const requiredCodes = (
+      refreshedSession?.profileSnapshot?.referencePoints || []
+    )
+      .filter((point) => point.required !== false)
+      .map((point) => String(point.code));
+
+    const capturedCodesNow = new Set(
+      (refreshedSession?.captures || []).map(
+        (capture) => String(capture.pointCode)
+      )
     );
 
-    await loadSession(selectedSession._id);
+    const allRequiredCaptured =
+      requiredCodes.length > 0 &&
+      requiredCodes.every((code) => capturedCodesNow.has(code));
 
+    if (!allRequiredCaptured) {
+      notify(
+        response?.data?.message || "Reference measurement captured successfully."
+      );
+      return;
+    }
+
+    // Calculate and persist the coefficient proposal as soon as the final
+    // required reference point has been captured.
+    setBusy("calculate");
+
+    try {
+      await calculateCalibration(sessionId);
+      await loadSession(sessionId);
+      notify(
+        "All required reference points captured. Calibration constants were calculated automatically."
+      );
+    } catch (calculationError) {
+      notify(
+        `Reference capture was saved, but automatic calculation needs attention: ${errorMessage(calculationError)}`,
+        "warning"
+      );
+    }
   } catch (captureError) {
     notify(errorMessage(captureError), "error");
   } finally {
     setBusy("");
   }
 };
+
+  const calculateCalibrationValues = async () => {
+    if (!selectedSession) return;
+
+    if (!canApply) {
+      notify(
+        "Capture all required reference points before calculating constants.",
+        "warning"
+      );
+      return;
+    }
+
+    setBusy("calculate");
+
+    try {
+      await calculateCalibration(selectedSession._id);
+      await loadSession(selectedSession._id);
+
+      notify(
+        "Calibration constants recalculated from the saved raw telemetry and reference-meter readings."
+      );
+    } catch (calculationError) {
+      notify(errorMessage(calculationError), "error");
+    } finally {
+      setBusy("");
+    }
+  };
 
   const runVerification = async () => {
   if (!selectedSession) return;
@@ -648,26 +717,6 @@ const capturePoint = async () => {
   const applyConstants = async () => {
     if (!selectedSession) return;
 
-    const payload = {};
-
-    for (const key of CONSTANT_KEYS) {
-      const raw = constants[key];
-
-      if (
-        raw === undefined ||
-        raw === "" ||
-        !Number.isFinite(Number(raw))
-      ) {
-        notify(
-          `Enter a valid numeric value for ${CONSTANT_LABELS[key]}.`,
-          "warning"
-        );
-        return;
-      }
-
-      payload[key] = Number(raw);
-    }
-
     if (!canApply) {
       notify(
         "Capture all required reference points before applying calibration.",
@@ -676,17 +725,30 @@ const capturePoint = async () => {
       return;
     }
 
+    const hasCalculatedConstants = CONSTANT_KEYS.every((key) => {
+      const value = selectedSession.calculatedConstants?.[key];
+      return value !== null && value !== undefined &&
+        Number.isFinite(Number(value));
+    });
+
+    if (!hasCalculatedConstants) {
+      notify(
+        "Calculate and review all five constants before applying calibration.",
+        "warning"
+      );
+      return;
+    }
+
     setBusy("apply");
 
     try {
-      const response = await applyCalibration(
-        selectedSession._id,
-        payload
-      );
+      // The backend applies its persisted calculation result; the browser
+      // no longer supplies or overrides calibration coefficients.
+      const response = await applyCalibration(selectedSession._id);
 
       notify(
         response?.data?.message ||
-          "Calibration command submitted. Waiting for the device acknowledgement."
+          "Calculated calibration constants submitted. Waiting for device acknowledgement."
       );
 
       await loadSession(selectedSession._id);
@@ -1334,19 +1396,68 @@ const capturePoint = async () => {
               {/* CALIBRATION CONSTANTS */}
               <Paper elevation={0} sx={P3.panel}>
                 <P3SectionTitle
-                  title="Apply calibration constants"
-                  subtitle="Enter the five exact firmware calibration fields. Values are validated again by the backend against the assigned Calibration Profile."
+                  title="Calculated calibration constants"
+                  subtitle="The backend derives the five firmware coefficients from the captured raw HLW8032 telemetry and reference-meter readings."
                 />
 
-                <Alert severity="warning" sx={{ mt: 1.25, borderRadius: 2, fontSize: 11 }}>
-                  Do not use legacy CF/VF calculations here. The Production 3.0 firmware calibration payload uses `vf`, `currentZero`, `currentGain`, `powerZero` and `powerGain`.
-                </Alert>
+                <Stack
+                  direction={{ xs: "column", sm: "row" }}
+                  spacing={1}
+                  alignItems={{ xs: "stretch", sm: "center" }}
+                  sx={{ mt: 1.25 }}
+                >
+                  <Button
+                    variant="outlined"
+                    startIcon={<AutoFixHighRoundedIcon />}
+                    onClick={calculateCalibrationValues}
+                    disabled={!canApply || busy === "calculate"}
+                    sx={P3.secondaryButton}
+                  >
+                    {busy === "calculate"
+                      ? "Calculating..."
+                      : selectedSession.calculatedConstants
+                      ? "Recalculate constants"
+                      : "Calculate constants"}
+                  </Button>
+
+                  {selectedSession.calculation?.calculatedAt ? (
+                    <Chip
+                      size="small"
+                      color="success"
+                      label={`Calculated ${formatDate(selectedSession.calculation.calculatedAt)}`}
+                    />
+                  ) : null}
+                </Stack>
+
+                {selectedSession.calculatedConstants ? (
+                  <Alert severity="success" sx={{ mt: 1.25, borderRadius: 2, fontSize: 11 }}>
+                    Constants were calculated from {selectedSession.calculation?.referencePointCount ?? "the captured"} reference points and {selectedSession.calculation?.totalSamplesUsed ?? "the available"} raw telemetry samples. Review the values and fit details before applying them.
+                  </Alert>
+                ) : (
+                  <Alert severity="info" sx={{ mt: 1.25, borderRadius: 2, fontSize: 11 }}>
+                    Once all required reference points are captured, the system calculates and prefills these values automatically. You can also use Calculate constants to run the calculation again.
+                  </Alert>
+                )}
+
+                {selectedSession.calculation?.warnings?.length ? (
+                  <Alert severity="warning" sx={{ mt: 1, borderRadius: 2, fontSize: 11 }}>
+                    {selectedSession.calculation.warnings.map((warning, index) => (
+                      <Typography key={index} component="div" sx={{ fontSize: 11 }}>
+                        {warning}
+                      </Typography>
+                    ))}
+                  </Alert>
+                ) : null}
 
                 <Grid container spacing={1.3} sx={{ mt: 0.4 }}>
                   {CONSTANT_KEYS.map((key) => {
                     const definition = (
                       profile.calibrationValues || []
                     ).find((item) => item.firmwareKey === key);
+
+                    const hasValue =
+                      selectedSession.calculatedConstants?.[key] !== null &&
+                      selectedSession.calculatedConstants?.[key] !== undefined;
 
                     return (
                       <Grid item xs={12} sm={6} md={4} key={key}>
@@ -1355,15 +1466,17 @@ const capturePoint = async () => {
                           type="number"
                           label={CONSTANT_LABELS[key]}
                           value={constants[key] ?? ""}
-                          onChange={changeConstant(key)}
-                          disabled={!canApply}
+                          disabled={!canApply || !hasValue}
+                          InputProps={{ readOnly: true }}
                           inputProps={{
                             step: "any",
                           }}
                           helperText={
-                            definition
-                              ? `Allowed: ${definition.minimumValue ?? "No minimum"} to ${definition.maximumValue ?? "No maximum"}`
-                              : `Profile does not define ${key}`
+                            hasValue
+                              ? definition
+                                ? `Auto-calculated. Profile range: ${definition.minimumValue ?? "No minimum"} to ${definition.maximumValue ?? "No maximum"}`
+                                : "Auto-calculated from reference captures"
+                              : "Waiting for automatic calculation"
                           }
                         />
                       </Grid>
@@ -1377,13 +1490,8 @@ const capturePoint = async () => {
                   onClick={applyConstants}
                   disabled={
                     !canApply ||
-                    busy === "apply" ||
-                    CONSTANT_KEYS.some(
-                      (key) =>
-                        constants[key] === undefined ||
-                        constants[key] === "" ||
-                        !Number.isFinite(Number(constants[key]))
-                    )
+                    !selectedSession.calculatedConstants ||
+                    busy === "apply"
                   }
                   sx={{
                     ...P3.primaryButton,
@@ -1393,9 +1501,15 @@ const capturePoint = async () => {
                   {busy === "apply" ? "Submitting..." : "Apply calibration"}
                 </Button>
 
+                {canApply && !selectedSession.calculatedConstants ? (
+                  <Typography sx={{ mt: 0.8, fontSize: 10, color: "#b45309" }}>
+                    Calculate the constants first. The Apply action uses only the backend-saved calculation result.
+                  </Typography>
+                ) : null}
+
                 {!canApply && sessionStatus === "in_progress" ? (
                   <Typography sx={{ mt: 0.8, fontSize: 10, color: "#b45309" }}>
-                    Capture all required reference points before applying calibration.
+                    Capture all required reference points before calculating or applying calibration.
                   </Typography>
                 ) : null}
 
