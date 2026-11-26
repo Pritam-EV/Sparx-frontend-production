@@ -14,7 +14,7 @@ const PASS_CHAR_UUID    = "abcd2222-1234-1234-1234-abcdefabcdef";
 const STATUS_CHAR_UUID  = "abcd3333-1234-1234-1234-abcdefabcdef";
 // Provisioning service UUID & service name from firmware
 const PROV_SERVICE_UUID = "b4df5a1c-3f6b-f4bf-ea4a-820304901a02"; // from firmware prov_uuid bytes
-const PROV_SERVICE_NAME_PREFIX = "VIZ_"; // firmware passes "VIZ_" as service name
+const PROV_SERVICE_NAME_PREFIX = "0308"; // firmware passes "VIZ_" as service name
 
 const [server, setServer] = useState(null);
 const [ssid, setSsid] = useState("");
