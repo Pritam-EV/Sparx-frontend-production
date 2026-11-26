@@ -13,7 +13,6 @@ import {
   Chip,
   CircularProgress,
   Divider,
-  Drawer,
   IconButton,
   Paper,
   Stack,
@@ -634,14 +633,16 @@ const refreshDetails = useCallback(async () => {
 
   return (
     <>
-      <Drawer
-        anchor="right"
-        open={open}
-        onClose={onClose}
-        PaperProps={{
-          className: "production-workbench-drawer",
-        }}
-      >
+
+<Dialog
+  fullScreen
+  open={open}
+  onClose={onClose}
+  PaperProps={{
+    className: "production-workbench-dialog",
+  }}
+>
+
         <Box className="production-workbench">
           {/* HEADER */}
 
@@ -1003,19 +1004,20 @@ const refreshDetails = useCallback(async () => {
                       Start relay test
                     </Button>
 
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      color="error"
-                      onClick={stopRelay}
-                      disabled={
-                        Boolean(busyAction) ||
-                        !connected ||
-                        relayOn === false
-                      }
-                    >
-                      Relay OFF
-                    </Button>
+
+                        <Button
+                        fullWidth
+                        variant="outlined"
+                        color="error"
+                        onClick={stopRelay}
+                        disabled={
+                            Boolean(busyAction) ||
+                            (liveFresh && relayOn === false)
+                        }
+                        >
+                        Relay OFF
+                        </Button>
+
                   </Stack>
 
                   <Typography
@@ -1446,7 +1448,7 @@ const refreshDetails = useCallback(async () => {
             )}
           </Box>
         </Box>
-      </Drawer>
+            </Dialog>
 
       {/* RELAY START CONFIRMATION */}
 

@@ -369,16 +369,22 @@
   width: min(440px, calc(100vw - 32px));
 }
 
+
 /* --------------------------------------------------
-   WORKBENCH DRAWER
+   FULL-SCREEN PRODUCTION WORKBENCH
 -------------------------------------------------- */
 
-.production-workbench-drawer {
-  width: min(760px, 100vw);
-  box-sizing: border-box;
-  border-left: 1px solid #e4e9ed;
+.production-workbench-dialog {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: none !important;
+  max-height: none !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
   background: #f6f8f9 !important;
+  overflow: hidden;
 }
+
 
 .production-workbench {
   display: flex;
@@ -675,9 +681,6 @@
     grid-template-columns: 1fr;
   }
 
-  .production-workbench-drawer {
-    width: 100vw;
-  }
 
   .production-workbench-header {
     padding: 14px;
