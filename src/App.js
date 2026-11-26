@@ -51,13 +51,7 @@ import Production from "./features/admin/Production";
 import AdminStartSession from "./features/admin/AdminStartSession";
 import AdminOwnerFinance from "./features/admin/AdminOwnerFinance";
 
-import ProductionV3Layout from "./features/admin/productionV3/ProductionV3Layout";
-import ProductionV3Overview from "./features/admin/productionV3/ProductionV3Overview";
-import ProductionV3Batches from "./features/admin/productionV3/ProductionV3Batches";
-import ProductionV3Devices from "./features/admin/productionV3/ProductionV3Devices";
-import ProductionV3Calibration from "./features/admin/productionV3/ProductionV3Calibration";
-import ProductionV3Profiles from "./features/admin/productionV3/ProductionV3Profiles";
-import ProductionV3Dispatch from "./features/admin/productionV3/ProductionV3Dispatch";
+import ProductionV3Workspace from "./features/admin/productionV3/ProductionV3Workspace";
 
 import AccountantDashboard from "./features/accountant/AccountantDashboard";
 
@@ -255,41 +249,11 @@ const AppContent = () => {
             path="start-session"
             element={<AdminStartSession />}
           />
-          {/* Production 3.0 — new manufacturing workflow */}
+        {/* Production 3.0 — integrated single workspace */}
 <Route
   path="production-v3"
-  element={<ProductionV3Layout />}
->
-  <Route
-    index
-    element={<ProductionV3Overview />}
-  />
-
-  <Route
-    path="batches"
-    element={<ProductionV3Batches />}
-  />
-
-  <Route
-    path="devices"
-    element={<ProductionV3Devices />}
-  />
-
-  <Route
-    path="calibration"
-    element={<ProductionV3Calibration />}
-  />
-
-  <Route
-    path="profiles"
-    element={<ProductionV3Profiles />}
-  />
-
-  <Route
-    path="dispatch"
-    element={<ProductionV3Dispatch />}
-  />
-</Route>
+  element={<ProductionV3Workspace />}
+/> 
 
 {/* Legacy production page — retained */}
 <Route path="Production" element={<Production />} />
