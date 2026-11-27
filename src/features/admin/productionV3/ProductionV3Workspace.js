@@ -247,7 +247,11 @@ function primaryAction(device) {
   if (device.stage === "calibration") {
     return "Open workbench";
   }
-
+if (device.stage === "dispatch") {
+  return device.dispatch?.status === "completed"
+    ? "View Live Device"
+    : "Complete Dispatch";
+}
   return "View details";
 }
 
@@ -307,6 +311,174 @@ export default function ProductionV3Workspace() {
     calibration: 0,
     dispatch: 0,
   });
+const [dispatchDevice, setDispatchDevice] = useState(null);
+
+const [dispatchForm, setDispatchForm] = useState(
+  EMPTY_DISPATCH_FORM
+);
+
+const [savingDispatch, setSavingDispatch] = useState(false);
+const [loadingDispatch, setLoadingDispatch] = useState(false);
+
+const updateDispatchField = (field, value) => {
+  setDispatchForm((current) => ({
+    ...current,
+    [field]: value,
+  }));
+};
+
+const updateDispatchCommercial = (field, value) => {
+  setDispatchForm((current) => ({
+    ...current,
+    commercial: {
+      ...current.commercial,
+      [field]: value,
+    },
+  }));
+};
+
+const openDispatchDialog = async (device) => {
+  setLoadingDispatch(true);
+  setDispatchDevice(device);
+
+  try {
+    const response = await productionV3Api.dispatchDetails(
+      device.serialNumber
+    );
+
+    const defaults = response.data?.data?.defaults || {};
+
+    setDispatchForm({
+      ...EMPTY_DISPATCH_FORM,
+      ...defaults,
+
+      commercial: {
+        ...EMPTY_DISPATCH_FORM.commercial,
+        ...(defaults.commercial || {}),
+      },
+    });
+
+  } catch (error) {
+    setDispatchDevice(null);
+
+    setSnackbar({
+      severity: "error",
+      message: getErrorMessage(error),
+    });
+
+  } finally {
+    setLoadingDispatch(false);
+  }
+};
+
+const closeDispatchDialog = () => {
+  if (savingDispatch || loadingDispatch) return;
+
+  setDispatchDevice(null);
+  setDispatchForm(EMPTY_DISPATCH_FORM);
+};
+
+const submitDispatch = async (event) => {
+  event.preventDefault();
+
+  if (!dispatchDevice) return;
+
+  const chargerType = dispatchForm.charger_type.trim();
+  const rate = Number(dispatchForm.rate);
+
+  if (!chargerType) {
+    setSnackbar({
+      severity: "warning",
+      message: "Enter the charger type.",
+    });
+    return;
+  }
+
+  if (!Number.isFinite(rate) || rate <= 0) {
+    setSnackbar({
+      severity: "warning",
+      message: "Enter a valid charging rate.",
+    });
+    return;
+  }
+
+  const hasLat = dispatchForm.lat !== "";
+  const hasLng = dispatchForm.lng !== "";
+
+  if (hasLat !== hasLng) {
+    setSnackbar({
+      severity: "warning",
+      message: "Enter both latitude and longitude, or leave both blank.",
+    });
+    return;
+  }
+
+  setSavingDispatch(true);
+
+  try {
+    const payload = {
+      ...dispatchForm,
+      rate,
+      lat: hasLat ? Number(dispatchForm.lat) : null,
+      lng: hasLng ? Number(dispatchForm.lng) : null,
+
+      commercial: {
+        ...dispatchForm.commercial,
+
+        userRatePerKwh:
+          dispatchForm.commercial.userRatePerKwh === ""
+            ? null
+            : Number(dispatchForm.commercial.userRatePerKwh),
+
+        vjraMarginPerKwh:
+          dispatchForm.commercial.vjraMarginPerKwh === ""
+            ? null
+            : Number(dispatchForm.commercial.vjraMarginPerKwh),
+
+        ownerSharePerKwh:
+          dispatchForm.commercial.ownerSharePerKwh === ""
+            ? null
+            : Number(dispatchForm.commercial.ownerSharePerKwh),
+
+        pgPercent:
+          dispatchForm.commercial.pgPercent === ""
+            ? null
+            : Number(dispatchForm.commercial.pgPercent),
+      },
+    };
+
+    // These credentials are displayed for confirmation,
+    // but remain controlled by Production 3.0.
+    delete payload.wifiSSID;
+    delete payload.wifiPassword;
+
+    await productionV3Api.completeDispatch(
+      dispatchDevice.serialNumber,
+      payload
+    );
+
+    const serial = dispatchDevice.serialNumber;
+
+    setDispatchDevice(null);
+    setDispatchForm(EMPTY_DISPATCH_FORM);
+
+    setSnackbar({
+      severity: "success",
+      message: `${serial} successfully migrated to Live Devices.`,
+    });
+
+    await refreshAll();
+
+  } catch (error) {
+    setSnackbar({
+      severity: "error",
+      message: getErrorMessage(error),
+    });
+
+  } finally {
+    setSavingDispatch(false);
+  }
+};
 
   const [stage, setStage] = useState("all");
   const [page, setPage] = useState(0);
@@ -694,6 +866,40 @@ useEffect(() => {
     }
   };
 
+  const EMPTY_DISPATCH_FORM = {
+  hardwareRevision: "",
+  project: "",
+  charger_type: "",
+
+  location: "",
+  lat: "",
+  lng: "",
+  area: "",
+  city: "",
+  state: "",
+
+  meterType: "",
+  meterConsumerNumber: "",
+
+  rate: 20,
+
+  commercial: {
+    electricityBearer: "OWNER",
+    userRatePerKwh: "",
+    vjraMarginPerKwh: "",
+    ownerSharePerKwh: "",
+    pgPercent: "",
+  },
+
+  targetFirmwareVersion: "",
+
+  wifiSSID: "",
+  wifiPassword: "",
+
+  notes: "",
+};
+
+
   // ------------------------------------------------
   // DEVICE WORKBENCH / DETAILS
   // ------------------------------------------------
@@ -708,20 +914,28 @@ useEffect(() => {
     setSelectedDevice(null);
   };
 
-  const handlePrimaryAction = (device) => {
-    if (
-      device.stage === "group_a" ||
-      (
-        device.stage === "group_b" &&
-        device.groupB?.provisionStatus === "failed"
-      )
-    ) {
-      openGroupBDialog(device);
-      return;
-    }
+const handlePrimaryAction = (device) => {
+  if (
+    device.stage === "group_a" ||
+    (
+      device.stage === "group_b" &&
+      device.groupB?.provisionStatus === "failed"
+    )
+  ) {
+    openGroupBDialog(device);
+    return;
+  }
 
-    openWorkbench(device);
-  };
+  if (
+    device.stage === "dispatch" &&
+    device.dispatch?.status === "ready"
+  ) {
+    openDispatchDialog(device);
+    return;
+  }
+
+  openWorkbench(device);
+};
 
   const handleWorkbenchUpdated = async (updatedDevice) => {
     if (updatedDevice) {
@@ -1538,6 +1752,327 @@ useEffect(() => {
           </DialogActions>
         </Box>
       </Dialog>
+
+
+{/* PRODUCTION 3.0 DISPATCH DIALOG */}
+
+<Dialog
+  open={Boolean(dispatchDevice)}
+  onClose={closeDispatchDialog}
+  fullWidth
+  maxWidth="md"
+>
+  <DialogTitle className="production-dialog-title">
+    <Box>
+      <Typography variant="h6" fontWeight={700}>
+        Dispatch and Live Device Setup
+      </Typography>
+
+      <Typography color="text.secondary" fontSize={13}>
+        {dispatchDevice?.serialNumber}
+        {" · "}
+        {dispatchDevice?.groupB?.deviceId}
+      </Typography>
+    </Box>
+
+    <IconButton
+      onClick={closeDispatchDialog}
+      disabled={savingDispatch || loadingDispatch}
+    >
+      <CloseRoundedIcon />
+    </IconButton>
+  </DialogTitle>
+
+  {loadingDispatch ? (
+    <DialogContent>
+      <Box display="flex" justifyContent="center" py={5}>
+        <CircularProgress />
+      </Box>
+    </DialogContent>
+  ) : (
+    <Box component="form" onSubmit={submitDispatch}>
+      <DialogContent dividers>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Review the prefilled values before dispatch. Values based
+          on previous Live Device configuration are editable.
+          Verify location and commercial settings for this device.
+        </Alert>
+
+        <Typography fontWeight={700} mb={1.5}>
+          1. Device information
+        </Typography>
+
+        <Box className="production-form-grid">
+          <TextField
+            label="Hardware revision"
+            value={dispatchForm.hardwareRevision}
+            onChange={(e) =>
+              updateDispatchField("hardwareRevision", e.target.value)
+            }
+          />
+
+          <TextField
+            label="Project"
+            value={dispatchForm.project}
+            onChange={(e) =>
+              updateDispatchField("project", e.target.value)
+            }
+          />
+
+          <TextField
+            label="Charger type"
+            value={dispatchForm.charger_type}
+            onChange={(e) =>
+              updateDispatchField("charger_type", e.target.value)
+            }
+            required
+            helperText="Enter the charger model/type manually."
+          />
+
+          <TextField
+            label="Target firmware version"
+            value={dispatchForm.targetFirmwareVersion}
+            onChange={(e) =>
+              updateDispatchField("targetFirmwareVersion", e.target.value)
+            }
+          />
+        </Box>
+
+        <Divider sx={{ my: 2.5 }} />
+
+        <Typography fontWeight={700} mb={1.5}>
+          2. Installation location
+        </Typography>
+
+        <Box className="production-form-grid">
+          <TextField
+            label="Location / Address"
+            value={dispatchForm.location}
+            onChange={(e) =>
+              updateDispatchField("location", e.target.value)
+            }
+          />
+
+          <TextField
+            label="Area"
+            value={dispatchForm.area}
+            onChange={(e) =>
+              updateDispatchField("area", e.target.value)
+            }
+          />
+
+          <TextField
+            label="City"
+            value={dispatchForm.city}
+            onChange={(e) =>
+              updateDispatchField("city", e.target.value)
+            }
+          />
+
+          <TextField
+            label="State"
+            value={dispatchForm.state}
+            onChange={(e) =>
+              updateDispatchField("state", e.target.value)
+            }
+          />
+
+          <TextField
+            label="Latitude"
+            type="number"
+            value={dispatchForm.lat}
+            onChange={(e) =>
+              updateDispatchField("lat", e.target.value)
+            }
+          />
+
+          <TextField
+            label="Longitude"
+            type="number"
+            value={dispatchForm.lng}
+            onChange={(e) =>
+              updateDispatchField("lng", e.target.value)
+            }
+          />
+        </Box>
+
+        <Typography color="text.secondary" fontSize={11} mt={1}>
+          All location fields are optional. Latitude and longitude
+          must either both be entered or both be left blank.
+        </Typography>
+
+        <Divider sx={{ my: 2.5 }} />
+
+        <Typography fontWeight={700} mb={1.5}>
+          3. Meter configuration
+        </Typography>
+
+        <Box className="production-form-grid">
+          <TextField
+            select
+            label="Meter type"
+            value={dispatchForm.meterType}
+            onChange={(e) =>
+              updateDispatchField("meterType", e.target.value)
+            }
+          >
+            <MenuItem value="">Not assigned</MenuItem>
+            <MenuItem value="Green Meter">Green Meter</MenuItem>
+            <MenuItem value="Commercial">Commercial</MenuItem>
+            <MenuItem value="Residential">Residential</MenuItem>
+          </TextField>
+
+          <TextField
+            label="Meter consumer number"
+            value={dispatchForm.meterConsumerNumber}
+            onChange={(e) =>
+              updateDispatchField("meterConsumerNumber", e.target.value)
+            }
+          />
+        </Box>
+
+        <Divider sx={{ my: 2.5 }} />
+
+        <Typography fontWeight={700} mb={1.5}>
+          4. Charging and commercial configuration
+        </Typography>
+
+        <Box className="production-form-grid">
+          <TextField
+            label="Charging rate (₹/kWh)"
+            type="number"
+            value={dispatchForm.rate}
+            onChange={(e) =>
+              updateDispatchField("rate", e.target.value)
+            }
+            required
+          />
+
+          <TextField
+            select
+            label="Electricity bearer"
+            value={dispatchForm.commercial.electricityBearer}
+            onChange={(e) =>
+              updateDispatchCommercial("electricityBearer", e.target.value)
+            }
+          >
+            <MenuItem value="OWNER">Owner</MenuItem>
+            <MenuItem value="VJRA">VJRA</MenuItem>
+          </TextField>
+
+          <TextField
+            label="User rate per kWh"
+            type="number"
+            value={dispatchForm.commercial.userRatePerKwh}
+            onChange={(e) =>
+              updateDispatchCommercial("userRatePerKwh", e.target.value)
+            }
+          />
+
+          <TextField
+            label="VJRA margin per kWh"
+            type="number"
+            value={dispatchForm.commercial.vjraMarginPerKwh}
+            onChange={(e) =>
+              updateDispatchCommercial("vjraMarginPerKwh", e.target.value)
+            }
+          />
+
+          <TextField
+            label="Owner share per kWh"
+            type="number"
+            value={dispatchForm.commercial.ownerSharePerKwh}
+            onChange={(e) =>
+              updateDispatchCommercial("ownerSharePerKwh", e.target.value)
+            }
+          />
+
+          <TextField
+            label="Payment gateway %"
+            type="number"
+            value={dispatchForm.commercial.pgPercent}
+            onChange={(e) =>
+              updateDispatchCommercial("pgPercent", e.target.value)
+            }
+          />
+        </Box>
+
+        <Divider sx={{ my: 2.5 }} />
+
+        <Typography fontWeight={700} mb={1.5}>
+          5. Wi-Fi credentials
+        </Typography>
+
+        <Alert severity="success" sx={{ mb: 1.5 }}>
+          Credentials are decrypted from Production 3.0 and will
+          be copied into the legacy Live Device fields.
+        </Alert>
+
+        <Stack spacing={2}>
+          <TextField
+            label="Wi-Fi SSID"
+            value={dispatchForm.wifiSSID}
+            InputProps={{ readOnly: true }}
+          />
+
+          <TextField
+            label="Wi-Fi password"
+            type="password"
+            value={dispatchForm.wifiPassword}
+            InputProps={{ readOnly: true }}
+          />
+        </Stack>
+
+        <Divider sx={{ my: 2.5 }} />
+
+        <Typography fontWeight={700} mb={1.5}>
+          6. Dispatch notes
+        </Typography>
+
+        <TextField
+          fullWidth
+          multiline
+          minRows={2}
+          label="Notes"
+          value={dispatchForm.notes}
+          onChange={(e) =>
+            updateDispatchField("notes", e.target.value)
+          }
+        />
+
+        <Alert severity="warning" sx={{ mt: 2 }}>
+          Completing dispatch creates a Live Device record.
+          The owner remains unassigned and onboarding remains pending.
+          This action cannot be used to create a second Live Device.
+        </Alert>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button
+          color="inherit"
+          onClick={closeDispatchDialog}
+          disabled={savingDispatch}
+        >
+          Cancel
+        </Button>
+
+        <Button
+          type="submit"
+          variant="contained"
+          disabled={savingDispatch}
+          startIcon={
+            savingDispatch
+              ? <CircularProgress size={16} color="inherit" />
+              : <LocalShippingRoundedIcon />
+          }
+        >
+          {savingDispatch ? "Migrating..." : "Complete Dispatch"}
+        </Button>
+      </DialogActions>
+    </Box>
+  )}
+</Dialog>
+
 
       {/* DEVICE WORKBENCH */}
 

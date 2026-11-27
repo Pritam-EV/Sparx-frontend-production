@@ -37,7 +37,18 @@ export const productionV3Api = {
       payload
     );
   },
+dispatchDetails(id) {
+  return api.get(
+    `${devicePath(id)}/dispatch`
+  );
+},
 
+completeDispatch(id, payload) {
+  return api.post(
+    `${devicePath(id)}/dispatch`,
+    payload
+  );
+},
   calculateCalibration(id) {
     return api.post(`${devicePath(id)}/calibration/calculate`);
   },
