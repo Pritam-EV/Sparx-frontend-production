@@ -79,6 +79,39 @@ const EMPTY_GROUP_B = {
   wifiPassword: "",
 };
 
+const EMPTY_DISPATCH_FORM = {
+  hardwareRevision: "",
+  project: "",
+  charger_type: "",
+
+  location: "",
+  lat: "",
+  lng: "",
+  area: "",
+  city: "",
+  state: "",
+
+  meterType: "",
+  meterConsumerNumber: "",
+
+  rate: 20,
+
+  commercial: {
+    electricityBearer: "OWNER",
+    userRatePerKwh: "",
+    vjraMarginPerKwh: "",
+    ownerSharePerKwh: "",
+    pgPercent: "",
+  },
+
+  targetFirmwareVersion: "",
+
+  wifiSSID: "",
+  wifiPassword: "",
+
+  notes: "",
+};
+
 // --------------------------------------------------
 // HELPERS
 // --------------------------------------------------
@@ -545,6 +578,11 @@ const submitDispatch = async (event) => {
           limit: 1,
           stage: "dispatch",
         }),
+        productionV3Api.list({
+        page: 1,
+        limit: 1,
+        filter: "dispatch_ready",
+        }),
       ]);
 
       setSummary({
@@ -866,39 +904,6 @@ useEffect(() => {
     }
   };
 
-  const EMPTY_DISPATCH_FORM = {
-  hardwareRevision: "",
-  project: "",
-  charger_type: "",
-
-  location: "",
-  lat: "",
-  lng: "",
-  area: "",
-  city: "",
-  state: "",
-
-  meterType: "",
-  meterConsumerNumber: "",
-
-  rate: 20,
-
-  commercial: {
-    electricityBearer: "OWNER",
-    userRatePerKwh: "",
-    vjraMarginPerKwh: "",
-    ownerSharePerKwh: "",
-    pgPercent: "",
-  },
-
-  targetFirmwareVersion: "",
-
-  wifiSSID: "",
-  wifiPassword: "",
-
-  notes: "",
-};
-
 
   // ------------------------------------------------
   // DEVICE WORKBENCH / DETAILS
@@ -913,6 +918,7 @@ useEffect(() => {
     setWorkbenchOpen(false);
     setSelectedDevice(null);
   };
+
 
 const handlePrimaryAction = (device) => {
   if (
@@ -934,8 +940,33 @@ const handlePrimaryAction = (device) => {
     return;
   }
 
+  if (
+    device.stage === "dispatch" &&
+    device.dispatch?.status === "completed"
+  ) {
+    const liveDeviceId = device.dispatch?.liveDeviceId;
+
+    if (!liveDeviceId) {
+      setSnackbar({
+        severity: "error",
+        message: "Live Device reference is missing. Check the dispatch record.",
+      });
+      return;
+    }
+
+    // Navigate to the actual Live Device details route here.
+    // Do not open the Production workbench.
+    // Add the navigation call only after confirming the existing route.
+    setSnackbar({
+      severity: "info",
+      message: `Migrated to Live Device: ${liveDeviceId}`,
+    });
+    return;
+  }
+
   openWorkbench(device);
 };
+
 
   const handleWorkbenchUpdated = async (updatedDevice) => {
     if (updatedDevice) {
