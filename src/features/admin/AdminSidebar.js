@@ -15,6 +15,7 @@ import TrackChangesIcon from '@mui/icons-material/TrackChanges';
 import PaymentsIcon from "@mui/icons-material/Payments";
 import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
 import PrecisionManufacturingRoundedIcon from "@mui/icons-material/PrecisionManufacturingRounded";
+import BuildCircleOutlinedIcon from "@mui/icons-material/BuildCircleOutlined";
 
 const NavItem = ({ to, icon, label, onClick }) => (
   <NavLink
@@ -82,6 +83,12 @@ const AdminSidebar = ({ isOpen, onClose }) => (
   to="/admin/production-v3"
   icon={<PrecisionManufacturingRoundedIcon />}
   label="Production 3.0"
+  onClick={onClose}
+/>
+<NavItem
+  to="/admin/device-maintenance"
+  icon={<BuildCircleOutlinedIcon />}
+  label="Maintenance of Devices"
   onClick={onClose}
 />
       <NavItem to="/profile" icon={<PersonIcon />} label="Profile" onClick={onClose} />

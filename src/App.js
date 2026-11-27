@@ -52,7 +52,7 @@ import AdminStartSession from "./features/admin/AdminStartSession";
 import AdminOwnerFinance from "./features/admin/AdminOwnerFinance";
 
 import ProductionV3Workspace from "./features/admin/productionV3/ProductionV3Workspace";
-
+import DeviceMaintenance from "./features/admin/deviceMaintenance/DeviceMaintenance";
 import AccountantDashboard from "./features/accountant/AccountantDashboard";
 
 import OwnerDashboard from "./features/owner/OwnerDashboard";
@@ -254,7 +254,10 @@ const AppContent = () => {
   path="production-v3"
   element={<ProductionV3Workspace />}
 /> 
-
+<Route
+  path="device-maintenance"
+  element={<DeviceMaintenance />}
+/>
 {/* Legacy production page — retained */}
 <Route path="Production" element={<Production />} />
         </Route>
